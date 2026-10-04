@@ -29,6 +29,7 @@ public class Hud : MonoBehaviour
             if (kb.f3Key.wasPressedThisFrame) ShowReadout = !ShowReadout;
             if (kb.escapeKey.wasPressedThisFrame || kb.tabKey.wasPressedThisFrame) Playing = !Playing;
             if (kb.enterKey.wasPressedThisFrame && g.phase == Phase.Lobby) g.StartJob();
+            else if (kb.enterKey.wasPressedThisFrame && g.won) g.BackToLobby();
         }
         if (!inGame) { Playing = false; ShowPanel = false; }
         Cursor.lockState = Playing ? CursorLockMode.Locked : CursorLockMode.None;
@@ -56,6 +57,7 @@ public class Hud : MonoBehaviour
             if (ShowPanel) Panel(g, panel);
             if (ShowReadout) Readout(g);
             if (g.phase == Phase.Lobby) Lobby(g, width);
+            if (g.phase == Phase.Job) Clock(g, width, height);
             if (Playing) GUI.Label(new Rect(width / 2 - 5, height / 2 - 11, 20, 20), "+", label);
             else GUI.Label(new Rect(width / 2 - 150, height - 30, 300, 22), "Click to play.  Tab frees the mouse.", label);
 
@@ -96,6 +98,22 @@ public class Hud : MonoBehaviour
         GUILayout.EndArea();
     }
 
+    static string Time_(float seconds) { return (int)(seconds / 60) + ":" + ((int)seconds % 60).ToString("00"); }
+
+    // The score is the time to finish, so the clock is always on screen during a job.
+    void Clock(Game g, float width, float height)
+    {
+        var centred = new GUIStyle(title) { alignment = TextAnchor.UpperCenter };
+        centred.normal.textColor = g.won ? new Color(1f, 0.9f, 0.2f) : Color.white;
+        GUI.Label(new Rect(width / 2 - 200, 6, 400, 40), Time_(g.jobTime), centred);
+        if (!g.won) return;
+        GUI.Label(new Rect(width / 2 - 300, height * 0.3f, 600, 44), "THE ROAD IS OPEN", centred);
+        var small = new GUIStyle(label) { alignment = TextAnchor.UpperCenter, fontSize = 18 };
+        string line = "Finished in " + Time_(g.jobTime) + ".   Best on this machine: " + Time_(g.bestTime) + ".";
+        if (Net.IsHost) line += "\nPress Enter to take everyone back to the lobby.";
+        GUI.Label(new Rect(width / 2 - 300, height * 0.3f + 46, 600, 60), line, small);
+    }
+
     void Lobby(Game g, float width)
     {
         GUILayout.BeginArea(new Rect(width / 2 - 170, 10, 340, 150), box);
@@ -123,7 +141,7 @@ public class Hud : MonoBehaviour
         text.Append("   moving ").Append(Net.IsHost ? g.cubes.Moving : g.cubes.clientMoving).Append('\n');
         text.Append("quake at ").Append((int)g.tuning.quakeThreshold).Append("   quakes ").Append(g.quake.count).Append('\n');
         if (g.phase == Phase.Job) text.Append("towns joined by asphalt: ").Append(g.road.asphaltLinked ? "YES" : "no").Append("   by paint: ").Append(g.road.paintedLinked ? "YES" : "no").Append('\n');
-        if (g.phase == Phase.Job) text.Append("job time ").Append((int)(g.jobTime / 60)).Append(':').Append(((int)g.jobTime % 60).ToString("00")).Append('\n');
+        if (g.phase == Phase.Job) text.Append("truck: ").Append(g.truck.alive ? "driving" : "none").Append('\n');
 
         if (Net.IsHost)
         {
@@ -177,7 +195,10 @@ public class Hud : MonoBehaviour
             if (GUILayout.Button("Oil")) Give(g, Cubes.Oil);
             if (GUILayout.Button("Paint")) Give(g, Cubes.PaintOf(Time.frameCount % Mats.PaintColors.Length));
             GUILayout.EndHorizontal();
+            GUILayout.BeginHorizontal();
             if (GUILayout.Button(AutoTest.I.stressRunning ? "Running..." : "Run stress series")) AutoTest.I.RunStress();
+            if (GUILayout.Button("Back to lobby")) g.BackToLobby();
+            GUILayout.EndHorizontal();
         }
 
         GUI.enabled = host;

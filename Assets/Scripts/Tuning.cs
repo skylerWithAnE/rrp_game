@@ -49,6 +49,15 @@ public class Tuning : ScriptableObject
     [Tooltip("How far a point may sit off the line between its neighbours and still take gravel (m).")]
     [Range(0.02f, 0.5f)] public float gravelFlatness = 0.12f;
 
+    [Header("Truck")]
+    [Range(1, 12)] public float truckSpeed = 4f;
+    [Tooltip("Push available for climbing. 170 stalls on slopes steeper than about 20 degrees.")]
+    [Range(50, 600)] public float truckPower = 190f;
+    [Range(100, 900)] public float truckSpring = 320f;
+    [Range(5, 120)] public float truckDamper = 40f;
+    [Tooltip("Seconds without moving before the truck gives up and blows up.")]
+    [Range(1, 15)] public float truckStuckSeconds = 4f;
+
     [Header("Collapse")]
     [Tooltip("Stable drop between neighbouring ground points (m). Points are 0.5 m apart.")]
     [Range(0.25f, 3)] public float collapseSlope = 1f;

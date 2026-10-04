@@ -116,6 +116,12 @@ Tick these off as they are finished. Check in with the user for a playtest after
     on a client. An earthquake cracks road near loose cubes. The three fail noises have not been
     heard by anyone: they are generated in code and untested by ear.
 - [ ] **5. The Hill.** Two towns, the truck, win on paint, timer. Size the map to 20 to 30 minutes.
+  - *Built 2026-10-04, awaiting the user's playtest.* With a scripted road and one client: the truck
+    shuttles town to town around the hill (about 25 s each way) and matches on the client; straight
+    over the hill it stalls, bounces away and blows up; breaking the road stops it; painting the
+    route wins on both machines and stops the clock; Enter returns everyone to the lobby and a
+    second job starts. **The 20 to 30 minute sizing is an estimate, not a measurement** (see
+    decision 26): nobody has built a road by hand yet.
 - [ ] **6. Reinforcement.** Blocks, reinforced walls, tunnels with ground above the roof.
 - [ ] **7. Tuning.**
 
@@ -219,6 +225,25 @@ Added in milestone 4:
 19. **The two town sites are red posts** at either end of the map until milestone 5 builds towns.
 20. **Earthquake cracking**: road within `quakeCrackRadius` (2 m) of any loose cube drops one tier.
 21. **Cosmetic paint** is a wash of color over bare ground or gravel; packing sand on it removes it.
+
+Added in milestone 5:
+
+22. **A town** is five solid houses and a 3 m square pad of finished painted road. The pad cannot
+    be dug, smacked, cracked or buried. The players' road must touch both pads.
+23. **The truck** is small (0.9 by 1.6 m, to fit a 3-wide road), there is only ever one, and it
+    reverses back along the road rather than turning round. A new one sets off from the first
+    town 3 s after a wreck, and only while the towns are joined by asphalt.
+24. **The truck cannot climb more than about 20 degrees** (`truckPower`). The hill's face is 28
+    degrees, so a road straight over wrecks it until someone cuts a ramp.
+25. **Winning** stops the clock and shows the time and this machine's best. The host presses Enter
+    to take everyone back to the lobby, where joining is open again. "Back to lobby" is also a
+    button on the tuning panel, to abandon a job.
+26. **Map size.** The map stays 64 m square with the towns 40 m apart. A route curving round the
+    hill is about 50 m, so roughly 300 road points and 900 cubes (rock, oil and paint). At a guessed
+    8 s per delivered cube per player, a crew of 4 takes about 30 minutes; a ramp cut straight over
+    is shorter in road but costs digging. The guess is the weak part. If it runs long, the cheapest
+    lever is letting one cube surface more than one point.
+27. **When the road breaks** the truck brakes, sits for `truckStuckSeconds`, and blows up.
 
 Not built, because nothing exists yet for it to act on: reinforced walls being skipped by
 collapse (milestone 6).

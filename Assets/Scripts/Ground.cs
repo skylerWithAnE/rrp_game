@@ -8,6 +8,7 @@ using UnityEngine;
 public class Ground : MonoBehaviour
 {
     public const float Cell = 0.5f;   // one cube
+    public const float TownInset = 12f; // how far each town sits from its end of the map
     public const byte Bare = 0, Gravel = 1, Asphalt = 2, Painted = 3;
     const int ChunkCells = 16;
     const int RebuildsPerFrame = 6;
@@ -17,6 +18,8 @@ public class Ground : MonoBehaviour
     public float[] sand;              // sand lying on top of the rock at each point
     public byte[] surface;            // Bare, Gravel, Asphalt, Painted
     public byte[] paint;              // 0 none, else paint color + 1 (cosmetic unless the surface is Painted)
+    public bool[] locked;             // town ground: nothing can change it
+    public Vector3 siteA, siteB;      // the middle of each town's pad
     float[] h0;                       // height at generation, for tinting what was dug or packed
     byte[] pocket;                    // 0 none, else the cube material buried in the rock here
     float[] pocketLow, pocketHigh;    // the heights that pocket spans
@@ -59,6 +62,7 @@ public class Ground : MonoBehaviour
         sand = new float[n];
         surface = new byte[n];
         paint = new byte[n];
+        locked = new bool[n];
         pocket = new byte[n];
         pocketLow = new float[n];
         pocketHigh = new float[n];
@@ -87,6 +91,8 @@ public class Ground : MonoBehaviour
         }
         if (hill)
         {
+            siteA = Pad(TownInset);
+            siteB = Pad(SizeZ - TownInset);
             for (int k = 0; k < 8; k++) Pocket(rng, Cubes.Oil);
             for (int k = 0; k < 7; k++) Pocket(rng, Cubes.PaintOf(k % Mats.PaintColors.Length));
         }
@@ -106,6 +112,27 @@ public class Ground : MonoBehaviour
             c.collider = go.AddComponent<MeshCollider>();
             Rebuild(i);
         }
+    }
+
+    // A town's pad: a level patch of finished, painted road that can never be changed. The players'
+    // road has to reach it. Returns the middle of the pad.
+    Vector3 Pad(float z)
+    {
+        int cx = w / 2, cz = Mathf.RoundToInt(z / Cell);
+        float level = h[Index(cx, cz)];
+        for (int dz = -12; dz <= 12; dz++)
+            for (int dx = -12; dx <= 12; dx++)
+            {
+                float distance = new Vector2(dx, dz).magnitude * Cell;
+                if (distance > 5.5f) continue;
+                int i = Index(cx + dx, cz + dz);
+                h[i] = h0[i] = Mathf.Lerp(level, h[i], Mathf.SmoothStep(0, 1, Mathf.InverseLerp(2.3f, 5.5f, distance)));
+                if (Mathf.Abs(dx) > 3 || Mathf.Abs(dz) > 3) continue;
+                surface[i] = Painted;
+                paint[i] = 2;
+                locked[i] = true;
+            }
+        return new Vector3(cx * Cell, level, cz * Cell);
     }
 
     // A round pocket of one material, buried in the rock a little below the sand.
@@ -199,7 +226,7 @@ public class Ground : MonoBehaviour
     public void Set(int i, float v)
     {
         v = Mathf.Max(0, v);
-        if (h[i] == v) return;
+        if (h[i] == v || locked[i]) return;
         sand[i] = Mathf.Max(0, sand[i] + v - h[i]);
         h[i] = v;
         Touch(i);
@@ -215,7 +242,7 @@ public class Ground : MonoBehaviour
     public bool Dig(int i, out byte mat)
     {
         mat = 0;
-        if (h[i] < Cell * 0.5f) return false;
+        if (h[i] < Cell * 0.5f || locked[i]) return false;
         mat = MaterialAt(i, h[i] - Cell * 0.5f);
         Set(i, h[i] - Cell);
         if (surface[i] != Bare || paint[i] != 0) SetSurface(i, Bare, 0);
@@ -231,7 +258,7 @@ public class Ground : MonoBehaviour
 
     public void SetSurface(int i, byte newSurface, byte newPaint)
     {
-        if (surface[i] == newSurface && paint[i] == newPaint) return;
+        if (locked[i] || (surface[i] == newSurface && paint[i] == newPaint)) return;
         if (surface[i] != newSurface) Game.I.road.dirty = true;
         surface[i] = newSurface;
         paint[i] = newPaint;
@@ -323,6 +350,7 @@ public class Ground : MonoBehaviour
                     int jx = x + DirX[k], jz = z + DirZ[k];
                     if (jx < 1 || jz < 1 || jx > w - 2 || jz > d - 2) continue;
                     int j = Index(jx, jz);
+                    if (locked[i] || locked[j]) continue;
                     float drop = h[i] - h[j];
                     if (drop <= slope + 0.01f) continue;
                     if (WallHeight(x, z, k, slope) < tall) continue;

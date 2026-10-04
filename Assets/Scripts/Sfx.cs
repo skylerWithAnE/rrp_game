@@ -3,7 +3,7 @@ using UnityEngine;
 // The fail noises, one per material, made in code: no audio files.
 public static class Sfx
 {
-    public const byte Rough = 0, Thud = 1, Squeak = 2;
+    public const byte Rough = 0, Thud = 1, Squeak = 2, Bang = 3;
     const int Rate = 44100;
 
     static AudioClip[] clips;
@@ -21,7 +21,7 @@ public static class Sfx
     public static void Play(byte kind, Vector3 position)
     {
         if (Application.isBatchMode) return;
-        if (clips == null) clips = new[] { MakeRough(), MakeThud(), MakeSqueak() };
+        if (clips == null) clips = new[] { MakeRough(), MakeThud(), MakeSqueak(), MakeBang() };
         var go = new GameObject("Sfx");
         go.transform.position = position;
         var source = go.AddComponent<AudioSource>();
@@ -59,6 +59,18 @@ public static class Sfx
     static AudioClip MakeThud()
     {
         return Make("Thud", 0.3f, t => Mathf.Sin(2f * Mathf.PI * (95f - 120f * t) * t) * Mathf.Exp(-t * 16f));
+    }
+
+    // the truck blowing up
+    static AudioClip MakeBang()
+    {
+        var rng = new System.Random(2);
+        float low = 0;
+        return Make("Bang", 0.7f, t =>
+        {
+            low = Mathf.Lerp(low, (float)rng.NextDouble() * 2f - 1f, 0.12f);
+            return (low * 1.6f + Mathf.Sin(2f * Mathf.PI * 55f * t) * 0.7f) * Mathf.Exp(-t * 6f);
+        });
     }
 
     // oil with nothing to soak into: a rising squeak

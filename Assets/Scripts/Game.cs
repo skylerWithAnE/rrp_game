@@ -18,6 +18,7 @@ public class Game : MonoBehaviour
     public Cubes cubes;
     public Quake quake;
     public Road road;
+    public Truck truck;
     public CameraRig cam;
 
     public Phase phase = Phase.Menu;
@@ -26,6 +27,8 @@ public class Game : MonoBehaviour
     public Player local;
     public int localSlot = -1;
     public float jobTime;
+    public bool won;            // the towns are joined by painted road; jobTime is the score
+    public float bestTime;      // this machine's best, 0 if none
 
     // what the host last reported, for the readout on clients
     public float hostFps;
@@ -46,6 +49,7 @@ public class Game : MonoBehaviour
     void Awake()
     {
         I = this;
+        bestTime = PlayerPrefs.GetFloat("bestTime", 0);
         DontDestroyOnLoad(gameObject);
         Application.runInBackground = true;
         // headless test instances must not spin a core each
@@ -79,6 +83,7 @@ public class Game : MonoBehaviour
         cubes = Child<Cubes>("Cubes");
         quake = Child<Quake>("Quake");
         road = Child<Road>("Road");
+        truck = Child<Truck>("Truck");
         cam = Child<CameraRig>("Camera");
         Child<Hud>("Hud");
         Child<AutoTest>("AutoTest");
@@ -154,6 +159,8 @@ public class Game : MonoBehaviour
         ground.Clear();
         ground.h = null;
         road.Setup(false);
+        truck.Clear();
+        won = false;
         local = null;
         localSlot = -1;
         phase = Phase.Menu;
@@ -164,10 +171,39 @@ public class Game : MonoBehaviour
     {
         phase = Phase.Lobby;
         status = "";
+        won = false;
         cubes.Clear();
+        truck.Clear();
         ground.Generate(false, 0);
         road.Setup(false);
         AddPlayer(localSlot, true);
+        foreach (var p in players)
+        {
+            if (p == null) continue;
+            p.load = p.bits = 0;
+            p.SetLoad(0, 0);
+            p.knocked = 0;
+            p.Teleport(SpawnPoint(p.slot));
+        }
+    }
+
+    // host: the job is over (or abandoned); everyone goes back to the lobby, where others can join
+    public void BackToLobby()
+    {
+        if (!Net.IsHost || phase != Phase.Job) return;
+        Net.ToClients(Msg.New(Op.ToLobby, 4), true);
+        EnterLobby();
+    }
+
+    void Win(float time)
+    {
+        won = true;
+        jobTime = time;
+        if (bestTime <= 0 || time < bestTime)
+        {
+            bestTime = time;
+            PlayerPrefs.SetFloat("bestTime", time);
+        }
     }
 
     // No joining mid-game: once the job starts the host turns everyone away.
@@ -257,9 +293,9 @@ public class Game : MonoBehaviour
 
     Vector3 SpawnPoint(int slot)
     {
-        // a row facing the hill (or the middle of the lobby)
-        float x = ground.SizeX * 0.5f + (slot - 3.5f) * 1.5f;
-        float z = phase == Phase.Job ? 8f : ground.SizeZ * 0.5f;
+        // a row beside the first town's pad, facing the hill (or the middle of the lobby)
+        float x = ground.SizeX * 0.5f + (slot - 3.5f) * 1.2f;
+        float z = phase == Phase.Job ? ground.siteA.z + 3f : ground.SizeZ * 0.5f;
         return new Vector3(x, ground.HeightAt(x, z) + 0.1f, z);
     }
 
@@ -278,7 +314,9 @@ public class Game : MonoBehaviour
     {
         phase = Phase.Job;
         jobTime = 0;
+        won = false;
         cubes.Clear();
+        truck.Clear();
         ground.Generate(true, seed);
         road.Setup(true);
         quake.count = 0;
@@ -373,6 +411,10 @@ public class Game : MonoBehaviour
                 road.asphaltLinked = (links & 1) != 0;
                 road.paintedLinked = (links & 2) != 0;
                 break;
+            case Op.Truck: truck.OnState(m); break;
+            case Op.Boom: Truck.Boom(m.V3()); break;
+            case Op.Win: Win(m.F32()); break;
+            case Op.ToLobby: EnterLobby(); break;
             case Op.Sound:
                 {
                     byte kind = m.U8();
@@ -407,7 +449,18 @@ public class Game : MonoBehaviour
         if (!Net.Running) return;
         Net.Tick(dt);
         if (phase != Phase.Lobby && phase != Phase.Job) return;
-        if (phase == Phase.Job && nm.IsHost) jobTime += Time.deltaTime;
+        if (phase == Phase.Job && nm.IsHost && !won)
+        {
+            jobTime += Time.deltaTime;
+            // painted road from town to town: the job is done and the clock stops
+            if (road.paintedLinked)
+            {
+                var m = Msg.New(Op.Win, 8);
+                m.F32(jobTime);
+                Net.ToClients(m, true);
+                Win(jobTime);
+            }
+        }
 
         playerTimer += dt;
         if (playerTimer >= 0.05f)
