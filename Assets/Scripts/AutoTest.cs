@@ -9,13 +9,22 @@ using UnityEngine;
 //   -rrpJoin <address>  join a direct session (retries until the host is up)
 //   -rrpStart <n>       host: start the job once n players are in the lobby
 //   -rrpBot             the local blob wanders and uses the shovel by itself
-//   -rrpLog             print one RRPSTATE line every two seconds
+//   -rrpLog             print one RRPSTATE line every second
+//
+// RunStress (also a button on the tuning panel) runs the cube experiment's pile and avalanche
+// tests on the host and prints one RRPSTRESS line per test.
 //
 // Multiplayer Play Mode clones do not get their own command line, so in the editor the same flags
 // are also read from the file rrp_autotest.txt in the system temp folder, if it exists.
 public class AutoTest : MonoBehaviour
 {
     public static bool Bot, Log;
+    public static AutoTest I;
+    public bool stressRunning;
+
+    // measured since the last State() call
+    static float worstMs, peakOut, sampleTime;
+    static int sampleFrames;
     string join;
     bool host;
     int startAt;
@@ -25,6 +34,7 @@ public class AutoTest : MonoBehaviour
 
     void Start()
     {
+        I = this;
         string[] args = Environment.GetCommandLineArgs();
 #if UNITY_EDITOR
         string file = Path.Combine(Path.GetTempPath(), "rrp_autotest.txt");
@@ -55,9 +65,15 @@ public class AutoTest : MonoBehaviour
 
         if (g.local != null) g.local.bot = Bot ? (Func<Controls>)BotControls : null;
 
+        float dt = Time.unscaledDeltaTime;
+        worstMs = Mathf.Max(worstMs, dt * 1000f);
+        sampleTime += dt;
+        sampleFrames++;
+        peakOut = Mathf.Max(peakOut, MaxSentRate());
+
         if (!Log) return;
         logTimer += Time.unscaledDeltaTime;
-        if (logTimer < 2f) return;
+        if (logTimer < 1f) return;
         logTimer = 0;
         Debug.Log(State());
     }
@@ -106,6 +122,79 @@ public class AutoTest : MonoBehaviour
         float sent = 0, received = 0;
         foreach (var peer in Net.Peers.Values) { sent += peer.sentRate; received += peer.receivedRate; }
         s.Append(" outKB=").Append((sent / 1024f).ToString("0.0")).Append(" inKB=").Append((received / 1024f).ToString("0.0"));
+        s.Append(" avgFps=").Append(sampleTime > 0 ? Mathf.RoundToInt(sampleFrames / sampleTime) : 0);
+        s.Append(" worstMs=").Append(worstMs.ToString("0.0"));
+        if (!Net.IsHost) s.Append(" lag=").Append(g.cubes.clientLag.ToString("0.00"));
+        ResetSamples();
         return s.ToString();
+    }
+
+    static void ResetSamples() { worstMs = 0; peakOut = 0; sampleTime = 0; sampleFrames = 0; }
+
+    // the busiest single client link, bytes per second
+    static float MaxSentRate()
+    {
+        float max = 0;
+        foreach (var peer in Net.Peers.Values) max = Mathf.Max(max, peer.sentRate);
+        return max;
+    }
+
+    public void RunStress()
+    {
+        if (Net.IsHost && Game.I.phase == Phase.Job && !stressRunning) StartCoroutine(Stress());
+    }
+
+    // Tests 2 and 3 of the cube experiment: resting piles of 100 to 800, then an avalanche.
+    // The earthquake is held off while it runs.
+    System.Collections.IEnumerator Stress()
+    {
+        var g = Game.I;
+        stressRunning = true;
+        float savedThreshold = g.tuning.quakeThreshold, savedMax = g.tuning.maxLooseCubes;
+        g.tuning.quakeThreshold = 100000;
+        g.tuning.maxLooseCubes = Cubes.Capacity;
+        g.TuningChanged();
+        Vector3 spot = g.ground.Clamp(g.local.transform.position + g.local.Forward * 8f, 6f);
+
+        foreach (int n in new[] { 100, 200, 400, 800 })
+        {
+            g.cubes.RemoveAll();
+            yield return new WaitForSecondsRealtime(1f);
+            g.cubes.SpawnPile(n, spot);
+            yield return Measure("pile n=" + n);
+        }
+        g.cubes.Avalanche();
+        yield return Measure("avalanche n=" + g.cubes.Loose);
+
+        g.cubes.RemoveAll();
+        g.tuning.quakeThreshold = savedThreshold;
+        g.tuning.maxLooseCubes = savedMax;
+        g.TuningChanged();
+        stressRunning = false;
+        Debug.Log("RRPSTRESS done");
+    }
+
+    // Watch until every cube is asleep (or 60 s), then a few seconds at rest.
+    System.Collections.IEnumerator Measure(string label)
+    {
+        var g = Game.I;
+        ResetSamples();
+        float start = Time.realtimeSinceStartup, peakMoving = 0;
+        yield return new WaitForSecondsRealtime(0.2f);
+        while (g.cubes.Moving > 0 && Time.realtimeSinceStartup - start < 60f)
+        {
+            peakMoving = Mathf.Max(peakMoving, g.cubes.Moving);
+            yield return null;
+        }
+        float settle = Time.realtimeSinceStartup - start;
+        float movingFps = sampleFrames / Mathf.Max(sampleTime, 0.001f), movingWorst = worstMs, movingPeak = peakOut;
+        int stillMoving = g.cubes.Moving;
+
+        ResetSamples();
+        yield return new WaitForSecondsRealtime(3f);
+        float restFps = sampleFrames / Mathf.Max(sampleTime, 0.001f);
+        Debug.Log("RRPSTRESS " + label + " clients=" + (g.PlayerCount - 1) + " settle=" + settle.ToString("0.0") + "s" + (stillMoving > 0 ? "(timeout, " + stillMoving + " still moving)" : "")
+            + " peakMoving=" + peakMoving + " movingAvgFps=" + Mathf.RoundToInt(movingFps) + " movingWorstMs=" + movingWorst.ToString("0.0")
+            + " peakOutPerClientKB=" + (movingPeak / 1024f).ToString("0.0") + " restFps=" + Mathf.RoundToInt(restFps) + " restWorstMs=" + worstMs.ToString("0.0"));
     }
 }

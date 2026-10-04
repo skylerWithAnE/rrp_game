@@ -39,6 +39,7 @@ public class Cubes : MonoBehaviour
 
     public int Loose, Moving;
     public int clientMoving;                // from the host's stats
+    public float clientLag;                 // client: how far the worst cube is from where it should be
     uint tick;
     float syncTimer;
     Material sandMaterial, oilMaterial;
@@ -410,15 +411,19 @@ public class Cubes : MonoBehaviour
     void ClientEase()
     {
         float k = 1f - Mathf.Exp(-18f * Time.deltaTime);
+        float worst = 0;
         for (int i = 0; i < Capacity; i++)
         {
             var c = all[i];
             if (c == null || !c.active) continue;
             var tr = c.go.transform;
             Vector3 p = tr.position;
-            if ((p - c.targetPos).sqrMagnitude < 1e-8f) continue;
+            float sqr = (p - c.targetPos).sqrMagnitude;
+            if (sqr > worst) worst = sqr;
+            if (sqr < 1e-8f) continue;
             tr.SetPositionAndRotation(Vector3.Lerp(p, c.targetPos, k), Quaternion.Slerp(tr.rotation, c.targetRot, k));
         }
+        clientLag = Mathf.Max(Mathf.Sqrt(worst), clientLag * 0.98f);
     }
 
     // For comparing instances: where the resting cubes are, to the centimetre.

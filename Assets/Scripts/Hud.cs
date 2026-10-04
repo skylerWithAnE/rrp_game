@@ -170,7 +170,10 @@ public class Hud : MonoBehaviour
             if (GUILayout.Button("Earthquake")) g.quake.Trigger();
             if (GUILayout.Button("Clear cubes")) g.cubes.RemoveAll();
             GUILayout.EndHorizontal();
+            GUILayout.BeginHorizontal();
             if (GUILayout.Button("Oil cube")) g.cubes.Spawn(Cubes.Oil, false, g.local.target + Vector3.up, Quaternion.identity, Vector3.zero);
+            if (GUILayout.Button(AutoTest.I.stressRunning ? "Running..." : "Run stress series")) AutoTest.I.RunStress();
+            GUILayout.EndHorizontal();
         }
 
         GUI.enabled = host;
