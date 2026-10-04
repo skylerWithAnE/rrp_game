@@ -162,10 +162,10 @@ public class Hud : MonoBehaviour
             text.Append("from host ").Append(Kb(host.receivedRate)).Append("  to host ").Append(Kb(host.sentRate));
             text.Append("  rtt ").Append(g.utp.GetCurrentRtt(NetworkManager.ServerClientId)).Append(" ms\n");
         }
-        text.Append("<size=11>F1 tuning   F3 readout   Tab mouse\nLMB scoop / fling   RMB smack / set down   Space hop</size>");
+        text.Append("<size=11>F1 tuning   F3 readout   Tab mouse\nLMB scoop / fling   RMB smack / set down   Space hop\nrock set down = block; fling it to smack it</size>");
 
-        GUI.Box(new Rect(8, 8, 330, 210), GUIContent.none, box);
-        GUI.Label(new Rect(16, 12, 320, 205), text.ToString(), label);
+        GUI.Box(new Rect(8, 8, 330, 225), GUIContent.none, box);
+        GUI.Label(new Rect(16, 12, 320, 220), text.ToString(), label);
     }
 
     static string Kb(float bytesPerSecond) { return (bytesPerSecond / 1024f).ToString("0.0") + " kB/s"; }

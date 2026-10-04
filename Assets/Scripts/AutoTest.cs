@@ -106,6 +106,8 @@ public class AutoTest : MonoBehaviour
             // dig while standing; fling or set down whatever was picked up
             c.primary = wander == Vector2.zero || p.load != 0;
             c.secondary = botStep % 7 == 0 && !c.primary;
+            c.primaryDown = c.primary;
+            c.secondaryDown = c.secondary;
         }
         return c;
     }
@@ -119,6 +121,7 @@ public class AutoTest : MonoBehaviour
         foreach (var p in g.players)
             if (p != null) s.Append(p.slot).Append(':').Append(p.transform.position.ToString("0.0")).Append("load").Append(p.load).Append(' ');
         if (g.ground.Ready) s.Append(" ground=").Append(g.ground.Hash().ToString("x8"));
+        s.Append(" blocks=").Append(g.blocks.Count);
         s.Append(" cubes=").Append(g.cubes.Loose).Append(" moving=").Append(Net.IsHost ? g.cubes.Moving : g.cubes.clientMoving);
         s.Append(" rest=").Append(g.cubes.RestHash().ToString("x8"));
         s.Append(" quakes=").Append(g.quake.count);

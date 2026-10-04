@@ -4,7 +4,8 @@ using UnityEngine.InputSystem;
 public struct Controls
 {
     public Vector2 move;
-    public bool jump, primary, secondary;
+    public bool jump, primary, secondary;       // held
+    public bool primaryDown, secondaryDown;     // pressed this frame
 }
 
 // One blob. The owner moves it and sends its pose; everyone else eases toward the last pose.
@@ -33,6 +34,7 @@ public class Player : MonoBehaviour
     Transform marker;
     float verticalSpeed;
     float cooldown;
+    float primaryPress, secondaryPress;   // a fresh click is remembered briefly, through the cooldown
     Vector3 lastPos;
 
     public Vector3 Forward => Quaternion.Euler(0, yaw, 0) * Vector3.forward;
@@ -173,10 +175,18 @@ public class Player : MonoBehaviour
         marker.gameObject.SetActive(g.phase == Phase.Job);
         marker.position = target + Vector3.up * 0.03f;
 
+        // Digging and smacking repeat while the button is held. Letting go of a cube (fling, set
+        // down) takes a fresh click, so holding the button to dig does not throw each cube away.
         cooldown -= dt;
-        if (g.phase != Phase.Job || cooldown > 0 || !(c.primary || c.secondary)) return;
+        primaryPress = c.primaryDown ? 0.3f : primaryPress - dt;
+        secondaryPress = c.secondaryDown ? 0.3f : secondaryPress - dt;
+        bool carrying = load != 0;
+        bool wantPrimary = carrying ? primaryPress > 0 : c.primary;
+        bool wantSecondary = carrying ? secondaryPress > 0 : c.secondary;
+        if (g.phase != Phase.Job || cooldown > 0 || !(wantPrimary || wantSecondary)) return;
         cooldown = t.digInterval;
-        byte verb = c.primary ? Verbs.Primary : Verbs.Secondary;
+        primaryPress = secondaryPress = 0;
+        byte verb = wantPrimary ? Verbs.Primary : Verbs.Secondary;
         // play the swing now rather than waiting for the host
         bool loaded = load != 0 && bits == 0;
         Swing(verb == Verbs.Primary ? (loaded ? Blob.SwingFling : Blob.SwingScoop) : (loaded ? Blob.SwingScoop : Blob.SwingSmack));
@@ -211,6 +221,8 @@ public class Player : MonoBehaviour
         {
             c.primary = mouse.leftButton.isPressed;
             c.secondary = mouse.rightButton.isPressed;
+            c.primaryDown = mouse.leftButton.wasPressedThisFrame;
+            c.secondaryDown = mouse.rightButton.wasPressedThisFrame;
         }
         return c;
     }

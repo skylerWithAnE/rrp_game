@@ -131,6 +131,15 @@ Tick these off as they are finished. Check in with the user for a playtest after
     drives through a covered stretch of road. **Nobody has placed a block with the mouse yet**:
     the crosshair ray was tested, the hands-on feel was not.
 - [ ] **7. Tuning.**
+  - *Not done: this one needs people playing.* What exists for it: every number is a live slider
+    (F1), "Save these numbers" writes them to the asset, and the list below says which defaults are
+    guesses. A regression run of the finished game (8 standalone bots, 120 s, three earthquakes)
+    ended identical on all 8 with no errors, and the real keyboard and mouse path was exercised
+    with simulated input events.
+  - **Numbers most in need of a human**: `quakeThreshold` (8 fling-happy bots hit 150 every 40 s),
+    `digInterval`, `collapseSlope` / `collapseHeight` (the user could not trigger a cave-in at the
+    defaults by digging naturally), `truckPower`, `gravelFlatness`, the count and depth of oil and
+    paint pockets, and whether one cube should surface more than one road point (decision 26).
 
 ## How it was built (milestones 0 to 3) [Claude]
 
@@ -194,6 +203,7 @@ Choices the docs did not cover. Each is the simplest option found; confirm or ch
 
 1. **Controls.** Left mouse: scoop with an empty shovel, fling with a loaded one. Right mouse:
    smack with an empty shovel, set down with a loaded one. WASD to move, mouse to look.
+   Tab or Esc frees the mouse, F1 is the tuning panel, F3 the readout, Enter starts the job.
 2. **A hop** (Space). Not in the verb list. Added because a blob has no other way out of a
    steep-sided hole or onto a cube.
 3. ~~Digging pops the cube out loose.~~ **Decided by the user 2026-10-04: a dug cube goes straight
@@ -269,3 +279,9 @@ Added in milestone 6:
     get a loose rock cube to smack, fling it.
 34. **The camera moves in** rather than look through a hill, a house or a roof.
 35. **Town houses** are blocks that cannot be removed, about 300 per town.
+
+Added in milestone 7:
+
+36. **Hold to dig, click to let go.** Digging and smacking repeat while the button is held.
+    Flinging and setting down need a fresh click, so holding the button to dig does not throw
+    every cube away.

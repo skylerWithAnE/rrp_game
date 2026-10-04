@@ -60,7 +60,7 @@ count as different players. **This path has never connected**, so expect to fix 
   Press Play in the main editor, click "Host (direct)", then click Join in each clone (the box
   already says 127.0.0.1).
 - **Builds**: *RRP > Build Windows Player* writes `Builds/rrp_game/rrp_game.exe`. This is also the
-  build to send to other players.
+  build to send to other players. The one on disk was built from the milestone 7 commit.
 - **Bots and logs**: see the flags at the top of `Assets/Scripts/AutoTest.cs`. Example, a host and
   a bot client: `rrp_game.exe -rrpHost -rrpStart 2` and `rrp_game.exe -rrpJoin 127.0.0.1 -rrpBot`.
   Clones in the editor read the same flags from `rrp_autotest.txt` in the system temp folder; delete
