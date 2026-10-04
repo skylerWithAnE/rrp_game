@@ -7,10 +7,16 @@ for a high score. The first is the Hill.
 
 ## Start here
 
-1. Read `docs/DESIGN.md` (what the game is), `docs/TECH_PLAN.md` (how to build it, and the
-   milestone checklist) and `docs/SETUP.md` (tooling state and known problems).
-2. Find the first unticked milestone in `docs/TECH_PLAN.md` and work on that. Tick it when the user
-   has playtested and accepted it.
+**The game is being redesigned (2026-10-04).** The first prototype was built through milestone 6
+and the user does not want it as it stands. Do not continue the milestone list.
+
+1. Read `docs/POSTMORTEM.md` first: what was built, why it missed, and the questions the redesign
+   has to answer.
+2. `docs/DESIGN.md` and `docs/TECH_PLAN.md` describe the prototype as built. Treat them as a record,
+   not a plan. `docs/SETUP.md` is still current for tooling.
+3. Decided by the user for the redesign: **the "only tool is the shovel" rule is gone; the game is
+   first person; throwing cubes around is out of favour.** The description above and several ground
+   rules below predate that and are up for review with the user.
 
 **Do not read `docs/archive/` unless the user asks you to.** It holds superseded planning documents
 full of ideas that were cut or deferred. Nothing in it is current, and it must not be used as a

@@ -1,5 +1,9 @@
 # Technical plan
 
+> **Superseded 2026-10-04.** This is the plan the first prototype was built from, with notes on
+> what was built and tested. The game is being redesigned: see `POSTMORTEM.md`. Do not continue
+> the milestone list below.
+
 Final trim 2026-10-04. Claude's proposals for building what `DESIGN.md` describes, except where
 marked **[User]**. Build only what the current milestone needs.
 

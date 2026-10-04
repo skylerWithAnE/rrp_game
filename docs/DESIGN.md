@@ -1,5 +1,9 @@
 # Game design
 
+> **Superseded 2026-10-04.** This page describes the first prototype as it was built. The user is
+> redesigning the game: see `POSTMORTEM.md`. Already decided for the redesign: the shovel is no
+> longer the only tool, the camera is first person, and thrown cubes are out of favour.
+
 Final trim 2026-10-04. Everything here was decided by the user unless marked **[Claude]**. The user
 wants scope creep resisted: do not add anything that is not on this page.
 
