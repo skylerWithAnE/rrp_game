@@ -1,8 +1,8 @@
 # rrp_game
 
 Online co-op Unity prototype: a crew of solid-color blobs builds a road between two towns across a
-hilly desert, and the only tool is the shovel. Digging pops out physics cubes the crew has to deal
-with; too many loose cubes brings a punishing earthquake. Scenarios are 20 to 30 minute jobs chased
+hilly desert, and the only tool is the shovel. Dug cubes go onto the shovel and become loose physics
+cubes when flung or set down; too many loose cubes brings a punishing earthquake. Scenarios are 20 to 30 minute jobs chased
 for a high score. The first is the Hill.
 
 ## Start here

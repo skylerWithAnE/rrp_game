@@ -15,7 +15,6 @@ public class Tuning : ScriptableObject
     [Header("Shovel")]
     [Tooltip("Seconds per scoop: the digging speed.")]
     [Range(0.05f, 1.5f)] public float digInterval = 0.35f;
-    [Range(0, 10)] public float popSpeed = 4f;
     [Range(2, 20)] public float flingSpeed = 8f;
     [Range(0, 12)] public float flingUp = 5f;
     [Range(0.3f, 2.5f)] public float catchRadius = 0.9f;

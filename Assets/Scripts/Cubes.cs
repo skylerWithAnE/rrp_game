@@ -24,7 +24,7 @@ public class Cubes : MonoBehaviour
         // host
         public bool awake;
         public float slowTime;
-        public int flySource = -1;          // who dug or flung it; they cannot catch it
+        public int flySource = -1;          // who flung it; they cannot catch it
         public float flyTime;               // catchable while above zero
         // client
         public Vector3 targetPos;

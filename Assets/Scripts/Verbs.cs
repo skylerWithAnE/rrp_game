@@ -2,7 +2,8 @@ using UnityEngine;
 
 // What the shovel does. Runs on the host only; clients send a request with where they aimed.
 //
-//   Primary   empty shovel: scoop the loose cube at the target, or dig the ground (a cube pops out)
+//   Primary   empty shovel: scoop the loose cube at the target, or dig the ground; either way
+//                           the cube ends up on the shovel
 //             loaded:       fling the cube
 //   Secondary loaded:       set the cube down
 //             empty:        smack the loose cube at the target, or flatten bare ground
@@ -62,21 +63,16 @@ public static class Verbs
             g.cubes.Remove(cube);
             return;
         }
-        if (partial || g.cubes.Full) return;
+        if (partial) return;
 
-        int i = g.ground.NearestPoint(target);
-        if (!g.ground.Dig(i)) return;
-        // the cube pops out of the hole, a little toward the digger
-        Vector3 at = g.ground.PointPos(i) + Vector3.up * 0.45f;
-        Vector3 back = p.transform.position - at;
-        back.y = 0;
-        Vector3 velocity = Vector3.up * g.tuning.popSpeed + back.normalized * 0.6f + Random.insideUnitSphere * 0.5f;
-        g.cubes.Spawn(Cubes.Sand, false, at, Random.rotation, velocity, p.slot);
+        // dug ground goes straight onto the shovel; it only becomes a loose cube when flung or set down
+        if (g.ground.Dig(g.ground.NearestPoint(target))) p.SetLoad(Cubes.Sand, 0);
     }
 
     static void Fling(Player p, Vector3 aim)
     {
         var g = Game.I;
+        if (g.cubes.Full) return;
         aim.y = 0;
         aim = aim.sqrMagnitude > 0.001f ? aim.normalized : p.Forward;
         Vector3 velocity = aim * g.tuning.flingSpeed + Vector3.up * g.tuning.flingUp;
@@ -87,6 +83,7 @@ public static class Verbs
     static void SetDown(Player p, Vector3 target)
     {
         var g = Game.I;
+        if (g.cubes.Full) return;
         // on top of whatever is there: ground or another cube
         float top = target.y;
         if (Physics.Raycast(target + Vector3.up * 4f, Vector3.down, out var hit, 8f)) top = hit.point.y;

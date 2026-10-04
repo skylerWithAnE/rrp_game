@@ -6,8 +6,8 @@ wants scope creep resisted: do not add anything that is not on this page.
 ## The game
 
 An online co-op crew game. Solid-color blobs build a road between two towns across a desert that is
-not flat. **The only tool is the shovel.** Digging pops out physics cubes that the crew has to deal
-with. It should be weird. A scenario is a replayable 20 to 30 minute job, chased for a high score.
+not flat. **The only tool is the shovel.** Digging puts a cube on the digger's shovel; flung or set down, it
+becomes a loose physics cube that the crew has to deal with. It should be weird. A scenario is a replayable 20 to 30 minute job, chased for a high score.
 
 The crew the user pictures: one player digging, another catching the dug-up cubes and carrying them
 off to pack into the ground elsewhere, others digging up material for the next phase.
@@ -21,6 +21,8 @@ off to pack into the ground elsewhere, others digging up material for the next p
 - **Verbs:** scoop, fling (teammates can catch on their shovel), smack (also flattens bare ground),
   and setting a cube down.
 - **Everything dug up is a cube**, half a blob tall. No liquids, sprays or drips.
+- **A dug cube goes straight onto the digger's shovel** (decided 2026-10-04 after the first
+  playtest; it used to pop out loose). It becomes a loose cube when flung or set down.
 - **Ground:** sand on top, rock underneath, with buried oil pockets and brightly colored paint pockets.
 - **A road** is a connected strip at least **3 cubes wide**. Players route it wherever they like.
 - **Goal:** painted asphalt connecting the two towns.

@@ -19,7 +19,8 @@ marked **[User]**. Build only what the current milestone needs.
 - **Heightfield** [User], split into chunks. One cell is one cube wide.
 - Per cell: ground height, depth of sand over rock, any pocket (oil, paint), road surface (none,
   gravel, asphalt, painted), and a cosmetic paint color.
-- **Scoop** removes one cube's volume and spawns a cube of that material. **Smack** applies the
+- **Scoop** removes one cube's volume and puts a cube of that material on the digger's shovel
+  [User, 2026-10-04]. **Smack** applies the
   interaction grid in `DESIGN.md`; on bare ground with no cube it flattens.
 - **Collapse:** after digging and during earthquakes, the host finds walls steeper and taller than a
   threshold and slides that material downhill. Reinforced walls are skipped.
@@ -177,12 +178,12 @@ Choices the docs did not cover. Each is the simplest option found; confirm or ch
    smack with an empty shovel, set down with a loaded one. WASD to move, mouse to look.
 2. **A hop** (Space). Not in the verb list. Added because a blob has no other way out of a
    steep-sided hole or onto a cube.
-3. **Digging pops the cube out loose**, as designed; it does not land on the shovel. A second
-   scoop picks it up. Nobody can catch a cube they dug or flung themselves.
+3. ~~Digging pops the cube out loose.~~ **Decided by the user 2026-10-04: a dug cube goes straight
+   onto the shovel.** Still open: nobody can catch a cube they flung themselves.
 4. **Catching is automatic**: a flying cube that passes within the catch radius of an empty
    shovel lands on it. No button.
-5. **At the maximum loose cubes, digging does nothing.** Only reachable if the earthquake
-   threshold is set above the maximum.
+5. **At the maximum loose cubes, fling and set down do nothing** (the cube stays on the shovel).
+   Only reachable if the earthquake threshold is set above the maximum.
 6. **Quarter-height oil bits** are flat slabs, five to a cube. A partly filled shovel (1 to 4 bits)
    can only scoop more bits, or set them all back down.
 7. **Smacking a sand cube packs it in even when it is resting on another cube**; it goes into the
