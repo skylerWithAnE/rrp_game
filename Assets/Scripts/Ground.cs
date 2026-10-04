@@ -19,6 +19,13 @@ public class Ground : MonoBehaviour
     public byte[] surface;            // Bare, Gravel, Asphalt, Painted
     public byte[] paint;              // 0 none, else paint color + 1 (cosmetic unless the surface is Painted)
     public bool[] locked;             // town ground: nothing can change it
+    // The one special case: where blocks stand above the ground, earth can lie on top of them
+    // as a second layer. That is what buries a tunnel roof.
+    public float[] blockTop;          // top of the highest block at this point, 0 if none
+    public float[] upper;             // earth lying on top of those blocks
+    readonly Dictionary<int, Transform> upperBoxes = new Dictionary<int, Transform>();
+    readonly Dictionary<int, int> upperByCollider = new Dictionary<int, int>();
+    Material earthMaterial;
     public Vector3 siteA, siteB;      // the middle of each town's pad
     float[] h0;                       // height at generation, for tinting what was dug or packed
     byte[] pocket;                    // 0 none, else the cube material buried in the rock here
@@ -63,6 +70,9 @@ public class Ground : MonoBehaviour
         surface = new byte[n];
         paint = new byte[n];
         locked = new bool[n];
+        blockTop = new float[n];
+        upper = new float[n];
+        earthMaterial = Mats.Make(PackedColor);
         pocket = new byte[n];
         pocketLow = new float[n];
         pocketHigh = new float[n];
@@ -160,6 +170,8 @@ public class Ground : MonoBehaviour
     {
         for (int i = transform.childCount - 1; i >= 0; i--) Destroy(transform.GetChild(i).gameObject);
         chunks = null;
+        upperBoxes.Clear();
+        upperByCollider.Clear();
         pending.Clear();
         pendingSet.Clear();
         collapsing = false;
@@ -195,6 +207,14 @@ public class Ground : MonoBehaviour
         return p;
     }
 
+    // Blocks standing proud of the ground at this point?
+    public bool Stacked(int i) { return blockTop[i] > h[i] + 0.01f; }
+
+    // The top of whatever is at this point: the ground, or the blocks and any earth on them.
+    public float Surface(int i) { return Stacked(i) ? blockTop[i] + upper[i] : h[i]; }
+
+    public bool TryUpper(Collider collider, out int i) { return upperByCollider.TryGetValue(collider.GetInstanceID(), out i); }
+
     // What a scoop here would bring up: sand while there is any, then rock or whatever is buried.
     public byte MaterialAt(int i, float y)
     {
@@ -216,7 +236,7 @@ public class Ground : MonoBehaviour
     {
         uint hash = 2166136261;
         for (int i = 0; i < h.Length; i++)
-            hash = (hash ^ (uint)(Mathf.RoundToInt(h[i] * 100f) + surface[i] * 7919 + paint[i] * 104729)) * 16777619;
+            hash = (hash ^ (uint)(Mathf.RoundToInt(h[i] * 100f) + Mathf.RoundToInt(upper[i] * 100f) * 31 + surface[i] * 7919 + paint[i] * 104729)) * 16777619;
         return hash;
     }
 
@@ -234,6 +254,7 @@ public class Ground : MonoBehaviour
 
     void Touch(int i)
     {
+        RefreshUpper(i);
         MarkDirty(i);
         if (pendingSet.Add(i)) pending.Add(i);
     }
@@ -250,10 +271,68 @@ public class Ground : MonoBehaviour
         return true;
     }
 
-    public void Raise(int i, float amount)
+    // Add earth at a point. Where blocks stand above the ground it lands on top of them, unless
+    // it is known to be underneath (a cube lying on a tunnel floor).
+    public void Raise(int i, float amount, bool underBlocks = false)
     {
-        Set(i, h[i] + amount);
+        if (locked[i]) return;
+        if (Stacked(i) && !underBlocks)
+        {
+            upper[i] += amount;
+            Touch(i);
+        }
+        else Set(i, h[i] + amount);
         Disturb(i);
+    }
+
+    // Scoop from the earth lying on top of blocks.
+    public bool DigUpper(int i)
+    {
+        if (!Stacked(i) || upper[i] < 0.05f) return false;
+        upper[i] = Mathf.Max(0, upper[i] - Cell);
+        Touch(i);
+        Disturb(i);
+        return true;
+    }
+
+    // Blocks were added or removed at this point.
+    public void SetBlockTop(int i, float top)
+    {
+        blockTop[i] = top;
+        if (Net.IsHost && upper[i] > 0 && !Stacked(i))
+        {
+            // nothing holds the earth up any more: it drops onto the ground
+            float fallen = upper[i];
+            upper[i] = 0;
+            Set(i, h[i] + fallen);
+            Touch(i);
+        }
+        if (Net.IsHost) Disturb(i);
+        RefreshUpper(i);
+    }
+
+    // The earth on top of blocks is drawn as a plain box per point.
+    void RefreshUpper(int i)
+    {
+        bool want = upper[i] > 0.01f && Stacked(i);
+        upperBoxes.TryGetValue(i, out var box);
+        if (!want)
+        {
+            if (box == null) return;
+            upperByCollider.Remove(box.GetComponent<Collider>().GetInstanceID());
+            Destroy(box.gameObject);
+            upperBoxes.Remove(i);
+            return;
+        }
+        if (box == null)
+        {
+            box = Mats.Part(transform, Mats.Cube, earthMaterial, Vector3.zero, Vector3.one);
+            box.name = "Earth";
+            upperByCollider[box.gameObject.AddComponent<BoxCollider>().GetInstanceID()] = i;
+            upperBoxes[i] = box;
+        }
+        box.position = new Vector3(i % w * Cell, blockTop[i] + upper[i] * 0.5f, i / w * Cell);
+        box.localScale = new Vector3(Cell, upper[i], Cell);
     }
 
     public void SetSurface(int i, byte newSurface, byte newPaint)
@@ -351,12 +430,23 @@ public class Ground : MonoBehaviour
                     if (jx < 1 || jz < 1 || jx > w - 2 || jz > d - 2) continue;
                     int j = Index(jx, jz);
                     if (locked[i] || locked[j]) continue;
-                    float drop = h[i] - h[j];
+                    // Blocks never move. A wall with blocks standing as high as it is has nothing to
+                    // fall onto, so it is reinforced; only loose earth on top of blocks can slide.
+                    float drop = Surface(i) - Surface(j);
                     if (drop <= slope + 0.01f) continue;
+                    bool stacked = Stacked(i);
+                    if (stacked && upper[i] < 0.001f) continue;
                     if (WallHeight(x, z, k, slope) < tall) continue;
                     float move = (drop - slope) * 0.35f + 0.005f;
-                    Set(i, h[i] - move);
-                    Set(j, h[j] + move);
+                    if (stacked)
+                    {
+                        move = Mathf.Min(move, upper[i]);
+                        upper[i] -= move;
+                        Touch(i);
+                    }
+                    else Set(i, h[i] - move);
+                    if (Stacked(j)) { upper[j] += move; Touch(j); }
+                    else Set(j, h[j] + move);
                     Grow(jx, jz, 2);
                     moved = true;
                 }
@@ -368,13 +458,13 @@ public class Ground : MonoBehaviour
     // Height of the steep run through (x,z) going in direction k: follow it up behind and down ahead.
     float WallHeight(int x, int z, int k, float slope)
     {
-        float top = h[Index(x, z)], bottom = top;
+        float top = Surface(Index(x, z)), bottom = top;
         int ux = x, uz = z;
         for (int s = 0; s < 8; s++)
         {
             int nx = ux - DirX[k], nz = uz - DirZ[k];
             if (nx < 0 || nz < 0 || nx >= w || nz >= d) break;
-            float v = h[Index(nx, nz)];
+            float v = Surface(Index(nx, nz));
             if (v - top <= slope * 0.75f) break;
             top = v; ux = nx; uz = nz;
         }
@@ -383,7 +473,7 @@ public class Ground : MonoBehaviour
         {
             int nx = bx + DirX[k], nz = bz + DirZ[k];
             if (nx < 0 || nz < 0 || nx >= w || nz >= d) break;
-            float v = h[Index(nx, nz)];
+            float v = Surface(Index(nx, nz));
             if (bottom - v <= slope * 0.75f) break;
             bottom = v; bx = nx; bz = nz;
         }
@@ -424,11 +514,11 @@ public class Ground : MonoBehaviour
     {
         if (pending.Count == 0) return;
         Vector3 min = new Vector3(float.MaxValue, 0, float.MaxValue), max = new Vector3(float.MinValue, 0, float.MinValue);
-        const int perMessage = 280;
+        const int perMessage = 220;
         for (int start = 0; start < pending.Count; start += perMessage)
         {
             int count = Mathf.Min(perMessage, pending.Count - start);
-            var m = Msg.New(Op.GroundEdit, 8 + count * 14);
+            var m = Msg.New(Op.GroundEdit, 8 + count * 18);
             m.U16((ushort)count);
             for (int k = 0; k < count; k++)
             {
@@ -436,6 +526,7 @@ public class Ground : MonoBehaviour
                 m.I32(i);
                 m.F32(h[i]);
                 m.F32(sand[i]);
+                m.F32(upper[i]);
                 m.U8(surface[i]);
                 m.U8(paint[i]);
                 Vector3 p = PointPos(i);
@@ -456,11 +547,13 @@ public class Ground : MonoBehaviour
         for (int k = 0; k < count; k++)
         {
             int i = m.I32();
-            float height = m.F32(), sandDepth = m.F32();
+            float height = m.F32(), sandDepth = m.F32(), onBlocks = m.F32();
             byte newSurface = m.U8(), newPaint = m.U8();
             if (!Ready || i < 0 || i >= h.Length) continue;
             h[i] = height;
             sand[i] = sandDepth;
+            upper[i] = onBlocks;
+            RefreshUpper(i);
             surface[i] = newSurface;
             paint[i] = newPaint;
             MarkDirty(i);

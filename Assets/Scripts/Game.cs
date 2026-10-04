@@ -17,6 +17,7 @@ public class Game : MonoBehaviour
     public Ground ground;
     public Cubes cubes;
     public Quake quake;
+    public Blocks blocks;
     public Road road;
     public Truck truck;
     public CameraRig cam;
@@ -82,6 +83,7 @@ public class Game : MonoBehaviour
         ground = Child<Ground>("Ground");
         cubes = Child<Cubes>("Cubes");
         quake = Child<Quake>("Quake");
+        blocks = Child<Blocks>("Blocks");
         road = Child<Road>("Road");
         truck = Child<Truck>("Truck");
         cam = Child<CameraRig>("Camera");
@@ -158,6 +160,7 @@ public class Game : MonoBehaviour
         cubes.Clear();
         ground.Clear();
         ground.h = null;
+        blocks.Clear();
         road.Setup(false);
         truck.Clear();
         won = false;
@@ -174,6 +177,7 @@ public class Game : MonoBehaviour
         won = false;
         cubes.Clear();
         truck.Clear();
+        blocks.Clear();
         ground.Generate(false, 0);
         road.Setup(false);
         AddPlayer(localSlot, true);
@@ -317,6 +321,7 @@ public class Game : MonoBehaviour
         won = false;
         cubes.Clear();
         truck.Clear();
+        blocks.Clear();
         ground.Generate(true, seed);
         road.Setup(true);
         quake.count = 0;
@@ -347,7 +352,11 @@ public class Game : MonoBehaviour
                 byte verb = m.U8();
                 Vector3 target = m.V3();
                 Vector3 aim = m.V3();
-                Verbs.Do(p, verb, target, aim);
+                byte kind = m.U8();
+                var cell = new Vector3Int(m.U16(), m.U16(), m.U16());
+                int packed = m.U8();
+                var normal = new Vector3Int(packed % 3 - 1, packed / 3 % 3 - 1, packed / 9 % 3 - 1);
+                Verbs.Do(p, verb, target, aim, kind, cell, normal);
             }
             return;
         }
@@ -411,6 +420,7 @@ public class Game : MonoBehaviour
                 road.asphaltLinked = (links & 1) != 0;
                 road.paintedLinked = (links & 2) != 0;
                 break;
+            case Op.Block: blocks.OnMessage(m); break;
             case Op.Truck: truck.OnState(m); break;
             case Op.Boom: Truck.Boom(m.V3()); break;
             case Op.Win: Win(m.F32()); break;

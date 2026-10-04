@@ -87,7 +87,9 @@ public class Quake : MonoBehaviour
             if (c == null || !c.active) continue;
             // finished road near the mess cracks and drops a tier
             g.ground.Crack(c.go.transform.position, g.tuning.quakeCrackRadius, cracked);
-            g.ground.Raise(g.ground.NearestPoint(c.go.transform.position), c.bit ? Ground.Cell / Cubes.BitsPerCube : Ground.Cell);
+            Vector3 at = c.go.transform.position;
+            int point = g.ground.NearestPoint(at);
+            g.ground.Raise(point, c.bit ? Ground.Cell / Cubes.BitsPerCube : Ground.Cell, at.y < g.ground.blockTop[point]);
         }
         g.cubes.RemoveAll();
         g.ground.quakeMode = true;

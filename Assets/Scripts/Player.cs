@@ -20,6 +20,7 @@ public class Player : MonoBehaviour
     public float yaw;
     public Vector3 velocity;
     public Vector3 target;      // where the shovel will act
+    public Aim aim;             // and what is there
     public float hostNextVerb;  // host: rate limit
     public System.Func<Controls> bot; // test driver; replaces keyboard and mouse
 
@@ -158,13 +159,17 @@ public class Player : MonoBehaviour
         }
 
         // where the shovel acts: under the crosshair, kept within reach
-        Vector3 aim = bot != null ? transform.position + Forward * 1.4f : g.cam.AimPoint();
-        Vector3 flat = aim - transform.position;
+        aim = default;
+        if (bot != null) aim.point = transform.position + Forward * 1.4f;
+        else aim = g.cam.AimAt();
+        Vector3 flat = aim.point - transform.position;
         flat.y = 0;
         float distance = Mathf.Clamp(flat.magnitude, 0.7f, t.reach);
+        // a block or roof earth only counts if the crosshair is on it within reach
+        if (aim.kind != Aim.Ground && (flat.magnitude > t.reach + 0.5f || Mathf.Abs(aim.point.y - transform.position.y) > t.reach + 1f)) aim.kind = Aim.Ground;
         flat = flat.sqrMagnitude > 0.0001f ? flat.normalized : Forward;
         target = transform.position + flat * distance;
-        target.y = g.ground.HeightAt(target.x, target.z);
+        target.y = aim.kind != Aim.Ground ? aim.point.y : g.ground.HeightAt(target.x, target.z);
         marker.gameObject.SetActive(g.phase == Phase.Job);
         marker.position = target + Vector3.up * 0.03f;
 
@@ -176,13 +181,18 @@ public class Player : MonoBehaviour
         bool loaded = load != 0 && bits == 0;
         Swing(verb == Verbs.Primary ? (loaded ? Blob.SwingFling : Blob.SwingScoop) : (loaded ? Blob.SwingScoop : Blob.SwingSmack));
         Vector3 aimDirection = bot != null ? Forward : g.cam.transform.forward;
-        if (Net.IsHost) Verbs.Do(this, verb, target, aimDirection);
+        if (Net.IsHost) Verbs.Do(this, verb, target, aimDirection, aim.kind, aim.cell, aim.normal);
         else
         {
             var m = Msg.New(Op.Verb, 32);
             m.U8(verb);
             m.V3(target);
             m.V3(aimDirection);
+            m.U8(aim.kind);
+            m.U16((ushort)aim.cell.x);
+            m.U16((ushort)aim.cell.y);
+            m.U16((ushort)aim.cell.z);
+            m.U8((byte)(aim.normal.x + 1 + (aim.normal.y + 1) * 3 + (aim.normal.z + 1) * 9));
             Net.ToHost(m, true);
         }
     }

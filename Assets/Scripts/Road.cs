@@ -25,29 +25,30 @@ public class Road : MonoBehaviour
         if (!hill) return;
 
         var ground = Game.I.ground;
-        Town(ground.siteA, -1, new Color(0.85f, 0.35f, 0.3f));
-        Town(ground.siteB, 1, new Color(0.3f, 0.5f, 0.85f));
+        Town(ground.siteA, -1, 1, 3);
+        Town(ground.siteB, 1, 2, 4);
         wide = new bool[ground.h.Length];
         from = new int[ground.h.Length];
         queue = new int[ground.h.Length];
         dirty = true;
     }
 
-    // A handful of solid-color houses behind the town's pad, away from the hill.
-    void Town(Vector3 site, int away, Color color)
+    // A handful of houses behind the town's pad, away from the hill. They are made of blocks that
+    // can never be removed, and every machine builds the same ones.
+    void Town(Vector3 site, int away, byte wall, byte roof)
     {
-        var wall = Mats.Make(color);
-        var roof = Mats.Make(color * 0.6f);
+        var g = Game.I;
         var rng = new System.Random((int)(site.z * 31));
         for (int k = 0; k < 5; k++)
         {
-            float x = site.x + (k - 2) * 2.3f;
-            float z = site.z + away * (3.4f + (k % 2) * 1.3f);
-            float y = Game.I.ground.HeightAt(x, z);
-            float width = 1.5f + (float)rng.NextDouble() * 0.5f, height = 1.6f + (float)rng.NextDouble() * 1.6f;
-            var house = Mats.Part(transform, Mats.Cube, wall, new Vector3(x, y + height * 0.5f - 0.3f, z), new Vector3(width, height + 0.6f, width));
-            house.gameObject.AddComponent<BoxCollider>();
-            Mats.Part(transform, Mats.Cube, roof, new Vector3(x, y + height + 0.1f, z), new Vector3(width + 0.3f, 0.25f, width + 0.3f));
+            int cx = Mathf.RoundToInt((site.x + (k - 2) * 2.5f) / Ground.Cell);
+            int cz = Mathf.RoundToInt((site.z + away * (3.6f + (k % 2) * 1.5f)) / Ground.Cell);
+            int floor = Mathf.FloorToInt(g.ground.h[g.ground.Index(cx, cz)] / Ground.Cell) - 1;
+            int storeys = 4 + rng.Next(4);
+            for (int y = 0; y <= storeys; y++)
+                for (int dz = -1; dz <= 1; dz++)
+                    for (int dx = -1; dx <= 1; dx++)
+                        g.blocks.Place(new Vector3Int(cx + dx, floor + y, cz + dz), y == storeys ? roof : wall, true, false);
         }
     }
 

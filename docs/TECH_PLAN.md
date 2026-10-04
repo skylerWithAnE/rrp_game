@@ -123,6 +123,13 @@ Tick these off as they are finished. Check in with the user for a playtest after
     second job starts. **The 20 to 30 minute sizing is an estimate, not a measurement** (see
     decision 26): nobody has built a road by hand yet.
 - [ ] **6. Reinforcement.** Blocks, reinforced walls, tunnels with ground above the roof.
+  - *Built 2026-10-04, awaiting the user's playtest.* Checked on a host with one client, by script:
+    a trench lined with block walls and a roof keeps its shape while an identical bare trench
+    slumps; sand packs onto a roof and can be scooped off; removing the roof block under earth
+    drops it to the floor; an earthquake leaves blocks alone and puts its lumps on the roof;
+    blocks scoop up as rock and go back against a face; town blocks cannot be taken; the truck
+    drives through a covered stretch of road. **Nobody has placed a block with the mouse yet**:
+    the crosshair ray was tested, the hands-on feel was not.
 - [ ] **7. Tuning.**
 
 ## How it was built (milestones 0 to 3) [Claude]
@@ -245,5 +252,20 @@ Added in milestone 5:
     lever is letting one cube surface more than one point.
 27. **When the road breaks** the truck brakes, sits for `truckStuckSeconds`, and blows up.
 
-Not built, because nothing exists yet for it to act on: reinforced walls being skipped by
-collapse (milestone 6).
+Added in milestone 6:
+
+28. **Where a block goes.** Aim at a block and it goes against the face under the crosshair.
+    Aim at anything else and it goes on top of that column, at the nearest half-metre level, so on
+    a slope it may sit up to a quarter metre proud or sunk.
+29. **A block may be placed anywhere it touches another block**, so hanging chains have no limit.
+    Nothing checks whether a blob or the truck is standing there.
+30. **Earth on a roof** is drawn as a plain box per ground point. It can be scooped off, and it
+    drops to the ground if the block under it is removed.
+31. **Reinforced** means the blocks beside a wall stand as high as the wall. If they are shorter,
+    the earth above them spills onto their tops.
+32. **On top of blocks only sand does anything** (it packs). Rock and oil fail with their noise;
+    paint does nothing there.
+33. **Gravel now needs a flung rock.** Setting a rock cube down makes a block, as designed, so to
+    get a loose rock cube to smack, fling it.
+34. **The camera moves in** rather than look through a hill, a house or a roof.
+35. **Town houses** are blocks that cannot be removed, about 300 per town.

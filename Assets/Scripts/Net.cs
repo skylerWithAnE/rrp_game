@@ -10,7 +10,7 @@ public enum Op : byte
     PlayerState, Verb,
     // host -> clients
     Welcome, Roster, Players, StartJob, GroundEdit, CubeSpawn, CubeRemove, CubeRest, CubeSnap,
-    Load, VerbFx, Tuning, Stats, Quake, Sound, Truck, Boom, Win, ToLobby,
+    Load, VerbFx, Tuning, Stats, Quake, Sound, Truck, Boom, Win, ToLobby, Block,
 }
 
 // A byte buffer with the few field types the game sends.
