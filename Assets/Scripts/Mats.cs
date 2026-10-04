@@ -13,6 +13,13 @@ public static class Mats
         new Color(0.25f, 0.85f, 0.80f), new Color(0.95f, 0.45f, 0.75f),
     };
 
+    // the paint that comes out of the ground: bright, and nothing like sand
+    public static readonly Color[] PaintColors =
+    {
+        new Color(1.00f, 0.90f, 0.10f), new Color(0.98f, 0.98f, 0.98f), new Color(0.10f, 0.85f, 0.95f),
+        new Color(1.00f, 0.25f, 0.60f), new Color(0.45f, 0.95f, 0.20f), new Color(1.00f, 0.50f, 0.05f),
+    };
+
     public static Material Make(Color color, bool flat = false)
     {
         if (shader == null) shader = Resources.Load<Shader>("SolidColor");

@@ -22,7 +22,7 @@ public class Blob : MonoBehaviour
 
     Transform body, shovel, loadVisual;
     MeshRenderer loadRenderer;
-    static Material sandMaterial, oilMaterial, eyeMaterial, handleMaterial, bladeMaterial;
+    static Material eyeMaterial, handleMaterial, bladeMaterial;
 
     Spring squash, swing, leanX, leanZ, flop;
     float walkPhase;
@@ -36,8 +36,6 @@ public class Blob : MonoBehaviour
             eyeMaterial = Mats.Make(new Color(0.08f, 0.08f, 0.1f));
             handleMaterial = Mats.Make(new Color(0.45f, 0.30f, 0.18f));
             bladeMaterial = Mats.Make(new Color(0.62f, 0.64f, 0.68f));
-            sandMaterial = Mats.Make(new Color(0.78f, 0.62f, 0.36f));
-            oilMaterial = Mats.Make(new Color(0.13f, 0.10f, 0.16f));
         }
 
         body = new GameObject("Body").transform;
@@ -51,7 +49,7 @@ public class Blob : MonoBehaviour
         shovel.localPosition = new Vector3(0.36f, 0.42f, 0.05f);
         Mats.Part(shovel, Mats.Cube, handleMaterial, new Vector3(0, 0, 0.35f), new Vector3(0.06f, 0.06f, 0.8f));
         Mats.Part(shovel, Mats.Cube, bladeMaterial, new Vector3(0, -0.01f, 0.88f), new Vector3(0.36f, 0.04f, 0.34f));
-        loadVisual = Mats.Part(shovel, Mats.Cube, sandMaterial, new Vector3(0, 0.22f, 0.88f), Vector3.one * 0.4f);
+        loadVisual = Mats.Part(shovel, Mats.Cube, Cubes.MaterialFor(Cubes.Sand), new Vector3(0, 0.22f, 0.88f), Vector3.one * 0.4f);
         loadRenderer = loadVisual.GetComponent<MeshRenderer>();
         loadVisual.gameObject.SetActive(false);
 
@@ -62,7 +60,7 @@ public class Blob : MonoBehaviour
     {
         loadVisual.gameObject.SetActive(load != 0);
         if (load == 0) return;
-        loadRenderer.sharedMaterial = load == Cubes.Oil ? oilMaterial : sandMaterial;
+        loadRenderer.sharedMaterial = Cubes.MaterialFor((byte)load);
         // a partial oil load shows as a stack of thin bits
         float height = bits == 0 ? 0.4f : 0.08f * bits;
         loadVisual.localScale = new Vector3(0.4f, height, 0.4f);

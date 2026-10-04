@@ -2,17 +2,24 @@ using System.Collections.Generic;
 using UnityEngine;
 
 // The heightfield. Heights live on grid points one cube-width apart, so lowering a single point by
-// one cube height removes exactly one cube's volume. Only the host changes heights; it broadcasts
-// the resulting values and every client applies the same change.
+// one cube height removes exactly one cube's volume. Each point also has a depth of sand over rock,
+// maybe a buried pocket of oil or paint, a road surface and a coat of paint.
+// Only the host changes any of it; it broadcasts the resulting values and every client applies them.
 public class Ground : MonoBehaviour
 {
     public const float Cell = 0.5f;   // one cube
+    public const byte Bare = 0, Gravel = 1, Asphalt = 2, Painted = 3;
     const int ChunkCells = 16;
     const int RebuildsPerFrame = 6;
 
     public int w, d;                  // points per side
     public float[] h;                 // current height at each point
+    public float[] sand;              // sand lying on top of the rock at each point
+    public byte[] surface;            // Bare, Gravel, Asphalt, Painted
+    public byte[] paint;              // 0 none, else paint color + 1 (cosmetic unless the surface is Painted)
     float[] h0;                       // height at generation, for tinting what was dug or packed
+    byte[] pocket;                    // 0 none, else the cube material buried in the rock here
+    float[] pocketLow, pocketHigh;    // the heights that pocket spans
 
     Chunk[] chunks;
     int chunksX, chunksZ;
@@ -46,8 +53,15 @@ public class Ground : MonoBehaviour
         Clear();
         material = Mats.Make(Color.white, true);
         w = d = hill ? 129 : 41;
-        h = new float[w * d];
-        h0 = new float[w * d];
+        int n = w * d;
+        h = new float[n];
+        h0 = new float[n];
+        sand = new float[n];
+        surface = new byte[n];
+        paint = new byte[n];
+        pocket = new byte[n];
+        pocketLow = new float[n];
+        pocketHigh = new float[n];
 
         float baseHeight = 4f;
         var rng = new System.Random(seed);
@@ -57,16 +71,24 @@ public class Ground : MonoBehaviour
         {
             for (int x = 0; x < w; x++)
             {
+                int i = Index(x, z);
                 float y = baseHeight;
+                sand[i] = 100f; // the lobby is all sand
                 if (hill)
                 {
                     Vector2 p = new Vector2(x, z) * Cell;
                     float r = (p - centre).magnitude;
                     y += 8f * Mathf.Exp(-r * r / (2f * 9f * 9f));
                     y += (Mathf.PerlinNoise(ox + p.x * 0.08f, oz + p.y * 0.08f) - 0.5f) * 1.2f;
+                    sand[i] = 0.8f + Mathf.PerlinNoise(oz + p.x * 0.05f, ox + p.y * 0.05f) * 1.4f;
                 }
-                h[Index(x, z)] = h0[Index(x, z)] = y;
+                h[i] = h0[i] = y;
             }
+        }
+        if (hill)
+        {
+            for (int k = 0; k < 8; k++) Pocket(rng, Cubes.Oil);
+            for (int k = 0; k < 7; k++) Pocket(rng, Cubes.PaintOf(k % Mats.PaintColors.Length));
         }
 
         chunksX = (w - 1 + ChunkCells - 1) / ChunkCells;
@@ -84,6 +106,27 @@ public class Ground : MonoBehaviour
             c.collider = go.AddComponent<MeshCollider>();
             Rebuild(i);
         }
+    }
+
+    // A round pocket of one material, buried in the rock a little below the sand.
+    void Pocket(System.Random rng, byte mat)
+    {
+        float px = 8f + (float)rng.NextDouble() * (SizeX - 16f), pz = 8f + (float)rng.NextDouble() * (SizeZ - 16f);
+        float radius = 2f + (float)rng.NextDouble() * 1.5f;
+        float below = (float)rng.NextDouble() * 0.6f, thickness = 1f + (float)rng.NextDouble() * 0.5f;
+        int reach = Mathf.CeilToInt(radius / Cell);
+        int cx = Mathf.RoundToInt(px / Cell), cz = Mathf.RoundToInt(pz / Cell);
+        for (int z = cz - reach; z <= cz + reach; z++)
+            for (int x = cx - reach; x <= cx + reach; x++)
+            {
+                if (x < 0 || z < 0 || x >= w || z >= d) continue;
+                if (new Vector2(x - cx, z - cz).magnitude * Cell > radius) continue;
+                int i = Index(x, z);
+                if (pocket[i] != 0) continue;
+                pocket[i] = mat;
+                pocketHigh[i] = h0[i] - sand[i] - below;
+                pocketLow[i] = pocketHigh[i] - thickness;
+            }
     }
 
     public void Clear()
@@ -125,29 +168,57 @@ public class Ground : MonoBehaviour
         return p;
     }
 
+    // What a scoop here would bring up: sand while there is any, then rock or whatever is buried.
+    public byte MaterialAt(int i, float y)
+    {
+        if (sand[i] > 0.02f) return Cubes.Sand;
+        if (pocket[i] != 0 && y <= pocketHigh[i] && y >= pocketLow[i]) return pocket[i];
+        return Cubes.Rock;
+    }
+
+    // Level enough to take gravel: the point sits on the line between its neighbours, both ways.
+    // A steady slope counts as flat; a bump or a dip does not.
+    public bool IsFlat(int i)
+    {
+        float tolerance = Game.I.tuning.gravelFlatness;
+        return Mathf.Abs(h[i] - (h[i - 1] + h[i + 1]) * 0.5f) <= tolerance
+            && Mathf.Abs(h[i] - (h[i - w] + h[i + w]) * 0.5f) <= tolerance;
+    }
+
     public uint Hash()
     {
         uint hash = 2166136261;
-        for (int i = 0; i < h.Length; i++) hash = (hash ^ (uint)Mathf.RoundToInt(h[i] * 100f)) * 16777619;
+        for (int i = 0; i < h.Length; i++)
+            hash = (hash ^ (uint)(Mathf.RoundToInt(h[i] * 100f) + surface[i] * 7919 + paint[i] * 104729)) * 16777619;
         return hash;
     }
 
     // ---- host edits
 
+    // Every height change goes through here. Added height is sand; removed height takes sand first.
     public void Set(int i, float v)
     {
         v = Mathf.Max(0, v);
         if (h[i] == v) return;
+        sand[i] = Mathf.Max(0, sand[i] + v - h[i]);
         h[i] = v;
+        Touch(i);
+    }
+
+    void Touch(int i)
+    {
         MarkDirty(i);
         if (pendingSet.Add(i)) pending.Add(i);
     }
 
-    // Scoop: one cube's volume out of the point. False at bedrock.
-    public bool Dig(int i)
+    // Scoop: one cube's volume out of the point, and any road on it. False at bedrock.
+    public bool Dig(int i, out byte mat)
     {
+        mat = 0;
         if (h[i] < Cell * 0.5f) return false;
+        mat = MaterialAt(i, h[i] - Cell * 0.5f);
         Set(i, h[i] - Cell);
+        if (surface[i] != Bare || paint[i] != 0) SetSurface(i, Bare, 0);
         Disturb(i);
         return true;
     }
@@ -158,9 +229,36 @@ public class Ground : MonoBehaviour
         Disturb(i);
     }
 
-    // Smack on bare ground: pull a point and its neighbours toward their average. Keeps volume.
+    public void SetSurface(int i, byte newSurface, byte newPaint)
+    {
+        if (surface[i] == newSurface && paint[i] == newPaint) return;
+        if (surface[i] != newSurface) Game.I.road.dirty = true;
+        surface[i] = newSurface;
+        paint[i] = newPaint;
+        Touch(i);
+    }
+
+    // Earthquake: road within reach drops one tier. Each point only once per quake.
+    public void Crack(Vector3 centre, float radius, HashSet<int> done)
+    {
+        int reach = Mathf.CeilToInt(radius / Cell);
+        int cx = Mathf.RoundToInt(centre.x / Cell), cz = Mathf.RoundToInt(centre.z / Cell);
+        for (int z = cz - reach; z <= cz + reach; z++)
+            for (int x = cx - reach; x <= cx + reach; x++)
+            {
+                if (x < 1 || z < 1 || x > w - 2 || z > d - 2) continue;
+                if (new Vector2(x - cx, z - cz).magnitude * Cell > radius) continue;
+                int i = Index(x, z);
+                if (surface[i] == Bare || !done.Add(i)) continue;
+                SetSurface(i, (byte)(surface[i] - 1), 0);
+            }
+    }
+
+    // Smack on bare ground: pull a point and its bare neighbours toward their average. Keeps volume
+    // when all nine are bare.
     public void Flatten(int i, float strength)
     {
+        if (surface[i] != Bare) return;
         int x = i % w, z = i / w;
         float sum = 0;
         for (int dz = -1; dz <= 1; dz++) for (int dx = -1; dx <= 1; dx++) sum += h[Index(x + dx, z + dz)];
@@ -169,7 +267,7 @@ public class Ground : MonoBehaviour
             for (int dx = -1; dx <= 1; dx++)
             {
                 int j = Index(x + dx, z + dz);
-                if (!Edge(j)) Set(j, Mathf.Lerp(h[j], mean, strength));
+                if (!Edge(j) && surface[j] == Bare) Set(j, Mathf.Lerp(h[j], mean, strength));
             }
     }
 
@@ -298,17 +396,20 @@ public class Ground : MonoBehaviour
     {
         if (pending.Count == 0) return;
         Vector3 min = new Vector3(float.MaxValue, 0, float.MaxValue), max = new Vector3(float.MinValue, 0, float.MinValue);
-        const int perMessage = 400;
+        const int perMessage = 280;
         for (int start = 0; start < pending.Count; start += perMessage)
         {
             int count = Mathf.Min(perMessage, pending.Count - start);
-            var m = Msg.New(Op.GroundEdit, 8 + count * 8);
+            var m = Msg.New(Op.GroundEdit, 8 + count * 14);
             m.U16((ushort)count);
             for (int k = 0; k < count; k++)
             {
                 int i = pending[start + k];
                 m.I32(i);
                 m.F32(h[i]);
+                m.F32(sand[i]);
+                m.U8(surface[i]);
+                m.U8(paint[i]);
                 Vector3 p = PointPos(i);
                 min = Vector3.Min(min, p);
                 max = Vector3.Max(max, p);
@@ -327,9 +428,13 @@ public class Ground : MonoBehaviour
         for (int k = 0; k < count; k++)
         {
             int i = m.I32();
-            float v = m.F32();
+            float height = m.F32(), sandDepth = m.F32();
+            byte newSurface = m.U8(), newPaint = m.U8();
             if (!Ready || i < 0 || i >= h.Length) continue;
-            h[i] = v;
+            h[i] = height;
+            sand[i] = sandDepth;
+            surface[i] = newSurface;
+            paint[i] = newPaint;
             MarkDirty(i);
         }
     }
@@ -349,15 +454,35 @@ public class Ground : MonoBehaviour
             }
     }
 
-    static readonly Color Sand = new Color(0.87f, 0.74f, 0.50f);
-    static readonly Color Dug = new Color(0.66f, 0.52f, 0.34f);
-    static readonly Color Packed = new Color(0.95f, 0.86f, 0.64f);
+    static readonly Color SandColor = new Color(0.87f, 0.74f, 0.50f);
+    static readonly Color DugColor = new Color(0.66f, 0.52f, 0.34f);
+    static readonly Color PackedColor = new Color(0.95f, 0.86f, 0.64f);
+    static readonly Color RockColor = new Color(0.50f, 0.47f, 0.46f);
+    static readonly Color GravelColor = new Color(0.62f, 0.61f, 0.60f);
+    static readonly Color AsphaltColor = new Color(0.17f, 0.17f, 0.19f);
 
     Color32 ColorAt(int i)
     {
-        float delta = h[i] - h0[i];
-        Color c = delta < 0 ? Color.Lerp(Sand, Dug, Mathf.Clamp01(-delta / 1.5f)) : Color.Lerp(Sand, Packed, Mathf.Clamp01(delta / 1f));
-        // a little fixed speckle so flat sand is not one flat color
+        Color c;
+        if (surface[i] == Painted) c = Mats.PaintColors[paint[i] - 1];
+        else if (surface[i] == Asphalt) c = AsphaltColor;
+        else
+        {
+            if (surface[i] == Gravel) c = GravelColor;
+            else
+            {
+                byte mat = MaterialAt(i, h[i] - 0.05f);
+                if (mat == Cubes.Sand)
+                {
+                    float delta = h[i] - h0[i];
+                    c = delta < 0 ? Color.Lerp(SandColor, DugColor, Mathf.Clamp01(-delta / 1.5f)) : Color.Lerp(SandColor, PackedColor, Mathf.Clamp01(delta / 1f));
+                }
+                else c = mat == Cubes.Rock ? RockColor : Cubes.ColorOf(mat);
+            }
+            // cosmetic paint: a wash over whatever is underneath
+            if (paint[i] != 0) c = Color.Lerp(c, Mats.PaintColors[paint[i] - 1], 0.55f);
+        }
+        // a little fixed speckle so flat ground is not one flat color
         float speckle = (((uint)i * 2654435761u) >> 24) / 255f;
         return c * (0.96f + 0.08f * speckle);
     }

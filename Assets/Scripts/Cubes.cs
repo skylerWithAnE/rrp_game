@@ -6,7 +6,30 @@ using UnityEngine;
 // falls asleep gets one final reliable pose.
 public class Cubes : MonoBehaviour
 {
-    public const byte Sand = 1, Oil = 2;
+    // A cube's material is one byte: the kind in the low three bits, and for paint the color above.
+    public const byte Sand = 1, Oil = 2, Rock = 3, Paint = 4;
+    public static int Kind(byte mat) { return mat & 7; }
+    public static int Tint(byte mat) { return mat >> 3 & 7; }
+    public static byte PaintOf(int tint) { return (byte)(Paint | tint << 3); }
+
+    public static Color ColorOf(byte mat)
+    {
+        switch (Kind(mat))
+        {
+            case Oil: return new Color(0.13f, 0.10f, 0.16f);
+            case Rock: return new Color(0.48f, 0.46f, 0.45f);
+            case Paint: return Mats.PaintColors[Tint(mat) % Mats.PaintColors.Length];
+            default: return new Color(0.78f, 0.62f, 0.36f);
+        }
+    }
+
+    static readonly Dictionary<byte, Material> materials = new Dictionary<byte, Material>();
+    public static Material MaterialFor(byte mat)
+    {
+        if (!materials.TryGetValue(mat, out var m) || m == null) materials[mat] = m = Mats.Make(ColorOf(mat));
+        return m;
+    }
+
     public const int Capacity = 2048;
     public const int BitsPerCube = 5;       // a failed oil cube splits into this many quarter-height bits
     const float Size = Ground.Cell;
@@ -42,13 +65,10 @@ public class Cubes : MonoBehaviour
     public float clientLag;                 // client: how far the worst cube is from where it should be
     uint tick;
     float syncTimer;
-    Material sandMaterial, oilMaterial;
     PhysicsMaterial physicsMaterial;
 
     void Awake()
     {
-        sandMaterial = Mats.Make(new Color(0.78f, 0.62f, 0.36f));
-        oilMaterial = Mats.Make(new Color(0.13f, 0.10f, 0.16f));
         physicsMaterial = new PhysicsMaterial("Cube");
         for (int i = Capacity - 1; i >= 0; i--) free.Push(i);
     }
@@ -69,7 +89,7 @@ public class Cubes : MonoBehaviour
         c.active = true;
         c.mat = mat;
         c.bit = bit;
-        c.renderer.sharedMaterial = mat == Oil ? oilMaterial : sandMaterial;
+        c.renderer.sharedMaterial = MaterialFor(mat);
         c.go.transform.localScale = bit ? new Vector3(Size * 0.8f, Size * 0.25f, Size * 0.8f) : Vector3.one * Size * 0.98f;
         c.go.transform.SetPositionAndRotation(pos, rot);
         c.targetPos = pos;

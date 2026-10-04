@@ -42,6 +42,13 @@ public class Tuning : ScriptableObject
     [Tooltip("Walls shorter than this survive a quake (m).")]
     [Range(0.25f, 4)] public float quakeWallHeight = 1f;
 
+    [Tooltip("Road within this distance of a loose cube cracks in a quake (m).")]
+    [Range(0, 6)] public float quakeCrackRadius = 2f;
+
+    [Header("Road")]
+    [Tooltip("How far a point may sit off the line between its neighbours and still take gravel (m).")]
+    [Range(0.02f, 0.5f)] public float gravelFlatness = 0.12f;
+
     [Header("Collapse")]
     [Tooltip("Stable drop between neighbouring ground points (m). Points are 0.5 m apart.")]
     [Range(0.25f, 3)] public float collapseSlope = 1f;

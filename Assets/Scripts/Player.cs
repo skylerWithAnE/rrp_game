@@ -13,7 +13,7 @@ public class Player : MonoBehaviour
 {
     public int slot;
     public bool isLocal;
-    public int load;            // 0 empty, else Cubes.Sand / Cubes.Oil
+    public int load;            // 0 empty, else a cube material (see Cubes)
     public int bits;            // 1-4 while collecting oil bits, 0 for a whole cube
     public float knocked;       // seconds left lying down
     public bool grounded = true;

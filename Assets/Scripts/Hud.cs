@@ -122,6 +122,7 @@ public class Hud : MonoBehaviour
         text.Append("loose cubes ").Append(g.cubes.Loose).Append(" / ").Append((int)g.tuning.maxLooseCubes);
         text.Append("   moving ").Append(Net.IsHost ? g.cubes.Moving : g.cubes.clientMoving).Append('\n');
         text.Append("quake at ").Append((int)g.tuning.quakeThreshold).Append("   quakes ").Append(g.quake.count).Append('\n');
+        if (g.phase == Phase.Job) text.Append("towns joined by asphalt: ").Append(g.road.asphaltLinked ? "YES" : "no").Append("   by paint: ").Append(g.road.paintedLinked ? "YES" : "no").Append('\n');
         if (g.phase == Phase.Job) text.Append("job time ").Append((int)(g.jobTime / 60)).Append(':').Append(((int)g.jobTime % 60).ToString("00")).Append('\n');
 
         if (Net.IsHost)
@@ -145,8 +146,8 @@ public class Hud : MonoBehaviour
         }
         text.Append("<size=11>F1 tuning   F3 readout   Tab mouse\nLMB scoop / fling   RMB smack / set down   Space hop</size>");
 
-        GUI.Box(new Rect(8, 8, 330, 190), GUIContent.none, box);
-        GUI.Label(new Rect(16, 12, 320, 185), text.ToString(), label);
+        GUI.Box(new Rect(8, 8, 330, 210), GUIContent.none, box);
+        GUI.Label(new Rect(16, 12, 320, 205), text.ToString(), label);
     }
 
     static string Kb(float bytesPerSecond) { return (bytesPerSecond / 1024f).ToString("0.0") + " kB/s"; }
@@ -172,9 +173,11 @@ public class Hud : MonoBehaviour
             if (GUILayout.Button("Clear cubes")) g.cubes.RemoveAll();
             GUILayout.EndHorizontal();
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Oil cube")) g.cubes.Spawn(Cubes.Oil, false, g.local.target + Vector3.up, Quaternion.identity, Vector3.zero);
-            if (GUILayout.Button(AutoTest.I.stressRunning ? "Running..." : "Run stress series")) AutoTest.I.RunStress();
+            if (GUILayout.Button("Rock")) Give(g, Cubes.Rock);
+            if (GUILayout.Button("Oil")) Give(g, Cubes.Oil);
+            if (GUILayout.Button("Paint")) Give(g, Cubes.PaintOf(Time.frameCount % Mats.PaintColors.Length));
             GUILayout.EndHorizontal();
+            if (GUILayout.Button(AutoTest.I.stressRunning ? "Running..." : "Run stress series")) AutoTest.I.RunStress();
         }
 
         GUI.enabled = host;
@@ -214,6 +217,12 @@ public class Hud : MonoBehaviour
 #endif
         GUILayout.EndScrollView();
         GUILayout.EndArea();
+    }
+
+    // a test cube dropped at the crosshair
+    static void Give(Game g, byte mat)
+    {
+        g.cubes.Spawn(mat, false, g.local.target + Vector3.up, Quaternion.identity, Vector3.zero);
     }
 
     // test piles land a little ahead of the host's blob

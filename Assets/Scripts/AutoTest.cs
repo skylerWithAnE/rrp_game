@@ -122,6 +122,7 @@ public class AutoTest : MonoBehaviour
         s.Append(" cubes=").Append(g.cubes.Loose).Append(" moving=").Append(Net.IsHost ? g.cubes.Moving : g.cubes.clientMoving);
         s.Append(" rest=").Append(g.cubes.RestHash().ToString("x8"));
         s.Append(" quakes=").Append(g.quake.count);
+        s.Append(" road=").Append(g.road.asphaltLinked ? 'A' : '-').Append(g.road.paintedLinked ? 'P' : '-');
         s.Append(" fps=").Append(Mathf.RoundToInt(g.fps)).Append(" hostfps=").Append(Mathf.RoundToInt(g.hostFps));
         float sent = 0, received = 0;
         foreach (var peer in Net.Peers.Values) { sent += peer.sentRate; received += peer.receivedRate; }

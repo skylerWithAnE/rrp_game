@@ -80,10 +80,13 @@ public class Quake : MonoBehaviour
     {
         var g = Game.I;
         merged = true;
+        var cracked = new System.Collections.Generic.HashSet<int>();
         for (int i = 0; i < Cubes.Capacity; i++)
         {
             var c = g.cubes.all[i];
             if (c == null || !c.active) continue;
+            // finished road near the mess cracks and drops a tier
+            g.ground.Crack(c.go.transform.position, g.tuning.quakeCrackRadius, cracked);
             g.ground.Raise(g.ground.NearestPoint(c.go.transform.position), c.bit ? Ground.Cell / Cubes.BitsPerCube : Ground.Cell);
         }
         g.cubes.RemoveAll();

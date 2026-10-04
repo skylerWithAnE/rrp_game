@@ -110,6 +110,11 @@ Tick these off as they are finished. Check in with the user for a playtest after
     tests that need real people on a real connection (1, 4, 5 and the feel of 6) are not done.
 - [ ] **4. Road recipe.** Rock, oil and paint in the ground; the interaction grid with its fail
   noises; gravel, asphalt and paint surfaces; road check.
+  - *Built 2026-10-04, awaiting the user's playtest.* All 14 cells of the smack table were run on
+    the host and behave as `DESIGN.md` says. The road check rejects a 2-wide strip, accepts a 3-wide
+    one, tracks asphalt and paint separately, and notices a dug-out point. Surfaces and links match
+    on a client. An earthquake cracks road near loose cubes. The three fail noises have not been
+    heard by anyone: they are generated in code and untested by ear.
 - [ ] **5. The Hill.** Two towns, the truck, win on paint, timer. Size the map to 20 to 30 minutes.
 - [ ] **6. Reinforcement.** Blocks, reinforced walls, tunnels with ground above the roof.
 - [ ] **7. Tuning.**
@@ -198,5 +203,22 @@ Choices the docs did not cover. Each is the simplest option found; confirm or ch
 12. **Roads and blocks later** (milestones 4 and 6) will sit on ground *points*, since that is where
     heights live. Flag now if cells must be squares instead.
 
-Not built, because nothing exists yet for it to act on: "finished road near the mess cracks and
-drops a tier" (needs milestone 4), and reinforced walls being skipped by collapse (milestone 6).
+Added in milestone 4:
+
+13. **"Flat" means smooth, not level.** A point takes gravel if it sits on the line between its
+    neighbours in both directions (within `gravelFlatness`), so a road can climb a steady slope.
+14. **One cube surfaces one ground point** (0.5 m square). The straight route between the posts is
+    about 110 points long, so a 3-wide road needs roughly 330 rock, 330 oil and 330 paint cubes.
+    That is probably too much for a 20 to 30 minute job; milestone 5 sizes the map against it.
+15. **Gravel adds no height.** The rock cube is smashed flat into the surface.
+16. **Digging a road point destroys the road there.** Smack-flattening never moves a road point.
+17. **A rock cube set down is still a loose cube.** It becomes a block in milestone 6.
+18. **Pockets**: 8 oil and 7 paint (6 colors), round, 2 to 3.5 m across, sitting in the rock just
+    under the sand, placed at random from the job seed. Exposed rock, oil and paint show as the
+    color of the ground. Nothing hints at where they are.
+19. **The two town sites are red posts** at either end of the map until milestone 5 builds towns.
+20. **Earthquake cracking**: road within `quakeCrackRadius` (2 m) of any loose cube drops one tier.
+21. **Cosmetic paint** is a wash of color over bare ground or gravel; packing sand on it removes it.
+
+Not built, because nothing exists yet for it to act on: reinforced walls being skipped by
+collapse (milestone 6).

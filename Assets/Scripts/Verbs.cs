@@ -66,7 +66,7 @@ public static class Verbs
         if (partial) return;
 
         // dug ground goes straight onto the shovel; it only becomes a loose cube when flung or set down
-        if (g.ground.Dig(g.ground.NearestPoint(target))) p.SetLoad(Cubes.Sand, 0);
+        if (g.ground.Dig(g.ground.NearestPoint(target), out byte mat)) p.SetLoad(mat, 0);
     }
 
     static void Fling(Player p, Vector3 aim)
@@ -80,6 +80,7 @@ public static class Verbs
         p.SetLoad(0, 0);
     }
 
+    // A rock cube set down stays a loose cube for now; it becomes a block in milestone 6.
     static void SetDown(Player p, Vector3 target)
     {
         var g = Game.I;
@@ -96,27 +97,56 @@ public static class Verbs
         p.SetLoad(0, 0);
     }
 
+    // Smack a loose cube that is resting on a surface. What happens depends on the cube and on
+    // what it rests on; see the table in DESIGN.md. A noise means it failed and the cube stays.
     static void Smack(Player p, Vector3 target)
     {
         var g = Game.I;
+        var ground = g.ground;
         var cube = g.cubes.Nearest(target + Vector3.up * 0.25f, g.tuning.pickRadius);
         if (cube == null)
         {
-            g.ground.Flatten(g.ground.NearestPoint(target), g.tuning.flattenStrength);
+            ground.Flatten(ground.NearestPoint(target), g.tuning.flattenStrength);
             return;
         }
-        // only a cube that is resting on something can be smacked
         if (cube.rb.linearVelocity.sqrMagnitude > 1f) return;
+
         Vector3 at = cube.go.transform.position;
-        if (cube.mat == Cubes.Sand)
+        int i = ground.NearestPoint(at);
+        byte under = ground.surface[i];
+        int kind = Cubes.Kind(cube.mat);
+
+        if (kind == Cubes.Paint)
         {
-            // sand on bare ground packs in
-            g.ground.Raise(g.ground.NearestPoint(at), Ground.Cell);
+            // paint never fails: on asphalt it makes painted road, anywhere else it is cosmetic
+            byte color = (byte)(Cubes.Tint(cube.mat) + 1);
+            ground.SetSurface(i, under >= Ground.Asphalt ? Ground.Painted : under, color);
             g.cubes.Remove(cube);
         }
-        else if (cube.mat == Cubes.Oil && !cube.bit)
+        else if (kind == Cubes.Sand)
         {
-            // oil on bare ground fails: it spreads out into quarter-height bits
+            if (under != Ground.Bare) { Sfx.Broadcast(Sfx.Rough, at); return; }
+            ground.SetSurface(i, Ground.Bare, 0);
+            ground.Raise(i, Ground.Cell);
+            g.cubes.Remove(cube);
+        }
+        else if (kind == Cubes.Rock)
+        {
+            if (under != Ground.Bare || !ground.IsFlat(i)) { Sfx.Broadcast(Sfx.Thud, at); return; }
+            ground.SetSurface(i, Ground.Gravel, ground.paint[i]);
+            g.cubes.Remove(cube);
+        }
+        else if (kind == Cubes.Oil)
+        {
+            if (under == Ground.Gravel && !cube.bit)
+            {
+                ground.SetSurface(i, Ground.Asphalt, 0);
+                g.cubes.Remove(cube);
+                return;
+            }
+            Sfx.Broadcast(Sfx.Squeak, at);
+            if (cube.bit) return;
+            // a failed oil cube spreads out into quarter-height bits
             g.cubes.Remove(cube);
             for (int k = 0; k < Cubes.BitsPerCube; k++)
             {

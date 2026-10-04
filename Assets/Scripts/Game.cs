@@ -17,6 +17,7 @@ public class Game : MonoBehaviour
     public Ground ground;
     public Cubes cubes;
     public Quake quake;
+    public Road road;
     public CameraRig cam;
 
     public Phase phase = Phase.Menu;
@@ -77,6 +78,7 @@ public class Game : MonoBehaviour
         ground = Child<Ground>("Ground");
         cubes = Child<Cubes>("Cubes");
         quake = Child<Quake>("Quake");
+        road = Child<Road>("Road");
         cam = Child<CameraRig>("Camera");
         Child<Hud>("Hud");
         Child<AutoTest>("AutoTest");
@@ -151,6 +153,7 @@ public class Game : MonoBehaviour
         cubes.Clear();
         ground.Clear();
         ground.h = null;
+        road.Setup(false);
         local = null;
         localSlot = -1;
         phase = Phase.Menu;
@@ -163,6 +166,7 @@ public class Game : MonoBehaviour
         status = "";
         cubes.Clear();
         ground.Generate(false, 0);
+        road.Setup(false);
         AddPlayer(localSlot, true);
     }
 
@@ -276,6 +280,8 @@ public class Game : MonoBehaviour
         jobTime = 0;
         cubes.Clear();
         ground.Generate(true, seed);
+        road.Setup(true);
+        quake.count = 0;
         foreach (var p in players)
         {
             if (p == null) continue;
@@ -363,7 +369,16 @@ public class Game : MonoBehaviour
                 hostFps = m.U16();
                 cubes.clientMoving = m.U16();
                 jobTime = m.F32();
+                int links = m.U8();
+                road.asphaltLinked = (links & 1) != 0;
+                road.paintedLinked = (links & 2) != 0;
                 break;
+            case Op.Sound:
+                {
+                    byte kind = m.U8();
+                    Sfx.Play(kind, m.V3());
+                    break;
+                }
             case Op.Quake:
                 quake.Begin(m.F32(), m.F32());
                 break;
@@ -428,6 +443,7 @@ public class Game : MonoBehaviour
             scratch.U16((ushort)Mathf.Clamp(fps, 0, 65535));
             scratch.U16((ushort)cubes.Moving);
             scratch.F32(jobTime);
+            scratch.U8((byte)((road.asphaltLinked ? 1 : 0) | (road.paintedLinked ? 2 : 0)));
             Net.ToClients(scratch, false);
         }
 
