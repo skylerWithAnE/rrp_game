@@ -235,11 +235,11 @@ Added in milestone 4:
     That is probably too much for a 20 to 30 minute job; milestone 5 sizes the map against it.
 15. **Gravel adds no height.** The rock cube is smashed flat into the surface.
 16. **Digging a road point destroys the road there.** Smack-flattening never moves a road point.
-17. **A rock cube set down is still a loose cube.** It becomes a block in milestone 6.
+17. ~~A rock cube set down is still a loose cube.~~ Superseded by milestone 6: it becomes a block.
 18. **Pockets**: 8 oil and 7 paint (6 colors), round, 2 to 3.5 m across, sitting in the rock just
     under the sand, placed at random from the job seed. Exposed rock, oil and paint show as the
     color of the ground. Nothing hints at where they are.
-19. **The two town sites are red posts** at either end of the map until milestone 5 builds towns.
+19. ~~The two town sites are red posts.~~ Superseded by milestone 5: they are towns.
 20. **Earthquake cracking**: road within `quakeCrackRadius` (2 m) of any loose cube drops one tier.
 21. **Cosmetic paint** is a wash of color over bare ground or gravel; packing sand on it removes it.
 
