@@ -47,7 +47,8 @@ public class Game : MonoBehaviour
         I = this;
         DontDestroyOnLoad(gameObject);
         Application.runInBackground = true;
-        Application.targetFrameRate = -1;
+        // headless test instances must not spin a core each
+        Application.targetFrameRate = Application.isBatchMode ? 60 : -1;
 
         var asset = Resources.Load<Tuning>("Tuning");
         tuning = asset != null ? Instantiate(asset) : ScriptableObject.CreateInstance<Tuning>();

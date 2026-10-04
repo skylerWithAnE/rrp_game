@@ -40,6 +40,7 @@ public class Hud : MonoBehaviour
         if (label == null)
         {
             label = new GUIStyle(GUI.skin.label) { fontSize = 14, richText = true };
+            label.normal.textColor = Color.white;
             title = new GUIStyle(GUI.skin.label) { fontSize = 30, fontStyle = FontStyle.Bold };
             box = new GUIStyle(GUI.skin.box);
         }

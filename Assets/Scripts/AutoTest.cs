@@ -9,6 +9,7 @@ using UnityEngine;
 //   -rrpJoin <address>  join a direct session (retries until the host is up)
 //   -rrpStart <n>       host: start the job once n players are in the lobby
 //   -rrpBot             the local blob wanders and uses the shovel by itself
+//   -rrpBotTime <s>     bots stand still once the job is this many seconds old
 //   -rrpLog             print one RRPSTATE line every second
 //
 // RunStress (also a button on the tuning panel) runs the cube experiment's pile and avalanche
@@ -26,6 +27,7 @@ public class AutoTest : MonoBehaviour
     static float worstMs, peakOut, sampleTime;
     static int sampleFrames;
     string join;
+    float botTime;
     bool host;
     int startAt;
     float retry, logTimer, botTimer;
@@ -48,6 +50,7 @@ public class AutoTest : MonoBehaviour
             else if (args[i] == "-rrpJoin" && i + 1 < args.Length) join = args[++i];
             else if (args[i] == "-rrpStart" && i + 1 < args.Length) int.TryParse(args[++i], out startAt);
             else if (args[i] == "-rrpBot") Bot = true;
+            else if (args[i] == "-rrpBotTime" && i + 1 < args.Length) float.TryParse(args[++i], out botTime);
             else if (args[i] == "-rrpLog") Log = true;
         }
         if (host) Game.I.Host(false);
@@ -83,6 +86,7 @@ public class AutoTest : MonoBehaviour
     {
         var g = Game.I;
         var p = g.local;
+        if (botTime > 0 && g.phase == Phase.Job && g.jobTime > botTime) return default;
         botTimer -= Time.deltaTime;
         if (botTimer <= 0)
         {

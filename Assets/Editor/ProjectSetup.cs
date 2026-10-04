@@ -31,6 +31,22 @@ public static class ProjectSetup
         Debug.Log("RRP setup done.");
     }
 
+    // The build to hand to other players. Builds/ is ignored by git.
+    [MenuItem("RRP/Build Windows Player")]
+    public static void Build()
+    {
+        var options = new BuildPlayerOptions
+        {
+            scenes = new[] { ScenePath },
+            locationPathName = "Builds/rrp_game/rrp_game.exe",
+            target = BuildTarget.StandaloneWindows64,
+            options = BuildOptions.None,
+        };
+        var report = BuildPipeline.BuildPlayer(options);
+        Debug.Log("RRP build: " + report.summary.result + ", " + report.summary.totalErrors + " errors, "
+            + (report.summary.totalSize / (1024 * 1024)) + " MB at " + options.locationPathName);
+    }
+
     static void SetupUrp()
     {
         var urp = AssetDatabase.LoadAssetAtPath<UniversalRenderPipelineAsset>(UrpPath);
