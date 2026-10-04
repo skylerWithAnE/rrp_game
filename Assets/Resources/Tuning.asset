@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 262d43bb8771ddc4d996b51e54a7bbe7, type: 3}
+  m_Name: Tuning
+  m_EditorClassIdentifier: Assembly-CSharp::Tuning
+  moveSpeed: 5
+  jumpSpeed: 5.5
+  gravity: 20
+  reach: 2.2
+  digInterval: 0.35
+  popSpeed: 4
+  flingSpeed: 8
+  flingUp: 5
+  catchRadius: 0.9
+  pickRadius: 0.7
+  flattenStrength: 0.5
+  maxLooseCubes: 600
+  cubeMass: 1
+  cubeFriction: 0.6
+  cubeBounce: 0.1
+  sleepSpeed: 0.15
+  sleepDelay: 0.5
+  syncRate: 20
+  quakeThreshold: 150
+  quakeKnockdown: 3
+  quakeSlope: 0.5
+  quakeWallHeight: 1
+  collapseSlope: 1
+  collapseHeight: 1.5

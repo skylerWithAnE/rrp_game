@@ -88,5 +88,7 @@ public static class ProjectSetup
 
     static void SetupTuning()
     {
+        if (AssetDatabase.LoadAssetAtPath<Tuning>(TuningPath) == null)
+            AssetDatabase.CreateAsset(ScriptableObject.CreateInstance<Tuning>(), TuningPath);
     }
 }
