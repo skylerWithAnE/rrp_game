@@ -16,7 +16,8 @@ marked **[User]**. Build only what the current milestone needs.
 
 ## Terrain
 
-- **Heightfield** [User], split into chunks. One cell is one cube wide.
+- **Heightfield** [User], split into chunks. One cell is one cube wide: 1 m, as tall as a blob
+  [User 2026-10-04: everything bigger; the 1 m figure is Claude's].
 - Per cell: ground height, depth of sand over rock, any pocket (oil, paint), road surface (none,
   gravel, asphalt, painted), and a cosmetic paint color.
 - **Scoop** removes one cube's volume and puts a cube of that material on the digger's shovel
@@ -279,6 +280,22 @@ Added in milestone 6:
     get a loose rock cube to smack, fling it.
 34. **The camera moves in** rather than look through a hill, a house or a roof.
 35. **Town houses** are blocks that cannot be removed, about 300 per town.
+
+After the second playtest (2026-10-04). The user found the world felt small, the pace tedious and
+the rock rule confusing, and decided: make everything the shovel touches bigger; keep the map size
+and town distance for testing; keep the rock rule but show it.
+
+37. **The grid is 1 m** (was 0.5 m). Ground faces, cubes, blocks and each scoop are twice the size
+    next to a blob. The map is still 64 m with towns 40 m apart. Reach, hop, pick-up radius, the
+    collapse limits and the truck were rescaled to match; the earthquake threshold dropped to 60
+    because cubes are bigger. All still guesses.
+38. **`roadSpread`: one smacked cube surfaces a 3 by 3 patch**, a full road width. Claude added
+    this because the bigger grid alone only halved the cube count. A scripted crew joined the
+    towns and won with 39 cubes (13 each of rock, oil and paint) instead of about 900. Set the
+    slider to 0 for one point per cube. Supersedes decisions 14 and 26.
+39. **The hint** under the crosshair names what each mouse button will do right now, including
+    why a smack would fail ("ground is not flat", "oil needs gravel under it"). Loose rock is pale;
+    blocks are steel blue.
 
 Added in milestone 7:
 

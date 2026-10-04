@@ -1,13 +1,13 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-// The heightfield. Heights live on grid points one cube-width apart, so lowering a single point by
+// The heightfield. Heights live on grid points one cube-width apart (a cube is as tall as a blob), so lowering a single point by
 // one cube height removes exactly one cube's volume. Each point also has a depth of sand over rock,
 // maybe a buried pocket of oil or paint, a road surface and a coat of paint.
 // Only the host changes any of it; it broadcasts the resulting values and every client applies them.
 public class Ground : MonoBehaviour
 {
-    public const float Cell = 0.5f;   // one cube
+    public const float Cell = 1f;     // one cube: the size of everything the shovel touches
     public const float TownInset = 12f; // how far each town sits from its end of the map
     public const byte Bare = 0, Gravel = 1, Asphalt = 2, Painted = 3;
     const int ChunkCells = 16;
@@ -62,7 +62,7 @@ public class Ground : MonoBehaviour
     {
         Clear();
         material = Mats.Make(Color.white, true);
-        w = d = hill ? 129 : 41;
+        w = d = hill ? 65 : 21;
         int n = w * d;
         h = new float[n];
         h0 = new float[n];
@@ -124,7 +124,7 @@ public class Ground : MonoBehaviour
         }
     }
 
-    // A town's pad: a level patch of finished, painted road that can never be changed. The players'
+    // A town's pad: a level 3 by 3 patch of finished, painted road that can never be changed. The players'
     // road has to reach it. Returns the middle of the pad.
     Vector3 Pad(float z)
     {
@@ -137,7 +137,7 @@ public class Ground : MonoBehaviour
                 if (distance > 5.5f) continue;
                 int i = Index(cx + dx, cz + dz);
                 h[i] = h0[i] = Mathf.Lerp(level, h[i], Mathf.SmoothStep(0, 1, Mathf.InverseLerp(2.3f, 5.5f, distance)));
-                if (Mathf.Abs(dx) > 3 || Mathf.Abs(dz) > 3) continue;
+                if (Mathf.Abs(dx) > 1 || Mathf.Abs(dz) > 1) continue;
                 surface[i] = Painted;
                 paint[i] = 2;
                 locked[i] = true;

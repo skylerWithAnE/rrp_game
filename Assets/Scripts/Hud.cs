@@ -59,6 +59,7 @@ public class Hud : MonoBehaviour
             if (g.phase == Phase.Lobby) Lobby(g, width);
             if (g.phase == Phase.Job) Clock(g, width, height);
             if (Playing) GUI.Label(new Rect(width / 2 - 5, height / 2 - 11, 20, 20), "+", label);
+            if (g.phase == Phase.Job && g.local != null) Hint(g, width, height);
             else GUI.Label(new Rect(width / 2 - 150, height - 30, 300, 22), "Click to play.  Tab frees the mouse.", label);
 
             // a click on the world (not on a button or the panel) grabs the mouse
@@ -96,6 +97,66 @@ public class Hud : MonoBehaviour
             if (g.status.Length > 0) GUILayout.Label(g.status, label);
         }
         GUILayout.EndArea();
+    }
+
+    static string Name(byte mat)
+    {
+        switch (Cubes.Kind(mat))
+        {
+            case Cubes.Rock: return "rock";
+            case Cubes.Oil: return "oil";
+            case Cubes.Paint: return "paint";
+            default: return "sand";
+        }
+    }
+
+    // What a smack on this cube would do, by the same rules the host uses.
+    static string SmackResult(Game g, Cubes.Cube cube)
+    {
+        var ground = g.ground;
+        Vector3 at = cube.go.transform.position;
+        int i = ground.NearestPoint(at);
+        int kind = Cubes.Kind(cube.mat);
+        byte under = ground.surface[i];
+        if (ground.Stacked(i) && at.y > ground.blockTop[i]) return kind == Cubes.Sand ? "packs down on top of the blocks" : "FAILS: only sand packs on blocks";
+        if (kind == Cubes.Paint) return under >= Ground.Asphalt ? "paints the road (this is what wins)" : "paints the ground (looks only)";
+        if (kind == Cubes.Sand) return under == Ground.Bare ? "packs into the ground" : "FAILS: there is road here";
+        if (kind == Cubes.Rock)
+        {
+            if (under != Ground.Bare) return "FAILS: already surfaced";
+            return ground.IsFlat(i) ? "becomes GRAVEL" : "FAILS: ground is not flat (smack bare ground to flatten)";
+        }
+        if (cube.bit) return "FAILS: scoop up all five bits first";
+        return under == Ground.Gravel ? "becomes ASPHALT" : "FAILS and splits: oil needs gravel under it";
+    }
+
+    // Two lines under the crosshair: what each mouse button will do right now.
+    void Hint(Game g, float width, float height)
+    {
+        var p = g.local;
+        string left, right;
+        if (p.load == 0)
+        {
+            var cube = g.cubes.Nearest(p.target + Vector3.up * Ground.Cell * 0.5f, g.tuning.pickRadius);
+            if (p.aim.kind == Aim.Block) left = g.blocks.Permanent(p.aim.cell) ? "town block, cannot be moved" : "pick the block up (it becomes a rock cube)";
+            else if (cube != null) left = "scoop up the " + Name(cube.mat) + " cube";
+            else left = p.aim.kind == Aim.Earth ? "dig earth off the blocks" : "dig";
+            if (cube != null) right = "smack the " + Name(cube.mat) + " cube: " + SmackResult(g, cube);
+            else right = p.aim.kind == Aim.Ground ? "flatten the ground" : p.aim.kind == Aim.Block ? "nothing (a block cannot be smacked; pick it up and fling it)" : "nothing";
+        }
+        else if (p.bits > 0)
+        {
+            left = "scoop another oil bit (" + p.bits + " of 5)";
+            right = "set the bits down";
+        }
+        else
+        {
+            bool rock = Cubes.Kind((byte)p.load) == Cubes.Rock;
+            left = "FLING the " + Name((byte)p.load) + " cube" + (rock ? " (loose rock can be smacked into gravel)" : "");
+            right = rock ? "set it down as a fixed BLOCK (for walls and roofs)" : "set the cube down";
+        }
+        var style = new GUIStyle(label) { alignment = TextAnchor.UpperCenter };
+        GUI.Label(new Rect(width / 2 - 350, height * 0.76f, 700, 44), "<b>Left</b>: " + left + "\n<b>Right</b>: " + right, style);
     }
 
     static string Time_(float seconds) { return (int)(seconds / 60) + ":" + ((int)seconds % 60).ToString("00"); }
@@ -162,7 +223,7 @@ public class Hud : MonoBehaviour
             text.Append("from host ").Append(Kb(host.receivedRate)).Append("  to host ").Append(Kb(host.sentRate));
             text.Append("  rtt ").Append(g.utp.GetCurrentRtt(NetworkManager.ServerClientId)).Append(" ms\n");
         }
-        text.Append("<size=11>F1 tuning   F3 readout   Tab mouse\nLMB scoop / fling   RMB smack / set down   Space hop\nrock set down = block; fling it to smack it</size>");
+        text.Append("<size=11>F1 tuning   F3 readout   Tab mouse\nWASD move   Space hop   Enter start</size>");
 
         GUI.Box(new Rect(8, 8, 330, 225), GUIContent.none, box);
         GUI.Label(new Rect(16, 12, 320, 220), text.ToString(), label);

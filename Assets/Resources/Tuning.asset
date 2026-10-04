@@ -12,16 +12,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 262d43bb8771ddc4d996b51e54a7bbe7, type: 3}
   m_Name: Tuning
   m_EditorClassIdentifier: Assembly-CSharp::Tuning
-  moveSpeed: 5
-  jumpSpeed: 5.5
+  moveSpeed: 6
+  jumpSpeed: 7.5
   gravity: 20
-  reach: 2.2
+  reach: 3.2
   digInterval: 0.35
-  popSpeed: 4
-  flingSpeed: 8
-  flingUp: 5
-  catchRadius: 0.9
-  pickRadius: 0.7
+  flingSpeed: 9
+  flingUp: 6
+  catchRadius: 1.4
+  pickRadius: 1.1
   flattenStrength: 0.5
   maxLooseCubes: 600
   cubeMass: 1
@@ -30,9 +29,9 @@ MonoBehaviour:
   sleepSpeed: 0.15
   sleepDelay: 0.5
   syncRate: 20
-  quakeThreshold: 150
+  quakeThreshold: 60
   quakeKnockdown: 3
-  quakeSlope: 0.5
-  quakeWallHeight: 1
-  collapseSlope: 1
-  collapseHeight: 1.5
+  quakeSlope: 1
+  quakeWallHeight: 1.5
+  collapseSlope: 1.5
+  collapseHeight: 2

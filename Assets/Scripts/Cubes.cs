@@ -17,7 +17,7 @@ public class Cubes : MonoBehaviour
         switch (Kind(mat))
         {
             case Oil: return new Color(0.13f, 0.10f, 0.16f);
-            case Rock: return new Color(0.48f, 0.46f, 0.45f);
+            case Rock: return new Color(0.66f, 0.62f, 0.56f);   // pale rubble; blocks are dark
             case Paint: return Mats.PaintColors[Tint(mat) % Mats.PaintColors.Length];
             default: return new Color(0.78f, 0.62f, 0.36f);
         }

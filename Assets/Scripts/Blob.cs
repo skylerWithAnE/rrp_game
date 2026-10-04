@@ -62,8 +62,9 @@ public class Blob : MonoBehaviour
         if (load == 0) return;
         loadRenderer.sharedMaterial = Cubes.MaterialFor((byte)load);
         // a partial oil load shows as a stack of thin bits
-        float height = bits == 0 ? 0.4f : 0.08f * bits;
-        loadVisual.localScale = new Vector3(0.4f, height, 0.4f);
+        // the cube is far bigger than the shovel, and is carried that way
+        float height = bits == 0 ? 0.7f : 0.14f * bits;
+        loadVisual.localScale = new Vector3(0.7f, height, 0.7f);
         loadVisual.localPosition = new Vector3(0, 0.02f + height * 0.5f, 0.88f);
     }
 

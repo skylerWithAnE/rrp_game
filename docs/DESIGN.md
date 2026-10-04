@@ -20,7 +20,10 @@ off to pack into the ground elsewhere, others digging up material for the next p
 - **Camera:** third person.
 - **Verbs:** scoop, fling (teammates can catch on their shovel), smack (also flattens bare ground),
   and setting a cube down.
-- **Everything dug up is a cube**, half a blob tall. No liquids, sprays or drips.
+- **Everything dug up is a cube.** No liquids, sprays or drips.
+- **Everything the shovel touches is big** (decided 2026-10-04 after the second playtest: "everything
+  needs to be bigger"). **[Claude]** read that as doubling the ground grid to 1 m, so a cube is now
+  as tall as a blob, not half a blob as first written. Confirm or correct.
 - **A dug cube goes straight onto the digger's shovel** (decided 2026-10-04 after the first
   playtest; it used to pop out loose). It becomes a loose cube when flung or set down.
 - **Ground:** sand on top, rock underneath, with buried oil pockets and brightly colored paint pockets.
@@ -47,7 +50,9 @@ Smack a loose cube that is resting on a surface:
 - **A failed oil cube spreads out into five quarter-height cubes.** All five must be scooped up to
   make one oil cube again. (To be tried in the cube experiment.)
 - **Setting a rock cube down** makes it a block (see Reinforcement). Smacking only works on a loose
-  rock cube; a placed block must be scooped up before it can be smashed into gravel.
+  rock cube; a placed block must be scooped up before it can be smashed into gravel. (Kept as is
+  on 2026-10-04; the game now shows on screen what each button will do, and blocks and loose rock
+  are different colors.)
 
 ## The truck
 

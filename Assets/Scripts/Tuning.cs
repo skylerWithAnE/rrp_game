@@ -7,18 +7,18 @@ using UnityEngine;
 public class Tuning : ScriptableObject
 {
     [Header("Player")]
-    [Range(1, 12)] public float moveSpeed = 5f;
-    [Range(0, 12)] public float jumpSpeed = 5.5f;
+    [Range(1, 12)] public float moveSpeed = 6f;
+    [Range(0, 12)] public float jumpSpeed = 7.5f;
     [Range(5, 40)] public float gravity = 20f;
-    [Range(1, 4)] public float reach = 2.2f;
+    [Range(1, 6)] public float reach = 3.2f;
 
     [Header("Shovel")]
     [Tooltip("Seconds per scoop: the digging speed.")]
     [Range(0.05f, 1.5f)] public float digInterval = 0.35f;
-    [Range(2, 20)] public float flingSpeed = 8f;
-    [Range(0, 12)] public float flingUp = 5f;
-    [Range(0.3f, 2.5f)] public float catchRadius = 0.9f;
-    [Range(0.2f, 1.5f)] public float pickRadius = 0.7f;
+    [Range(2, 20)] public float flingSpeed = 9f;
+    [Range(0, 12)] public float flingUp = 6f;
+    [Range(0.3f, 2.5f)] public float catchRadius = 1.4f;
+    [Range(0.2f, 2.5f)] public float pickRadius = 1.1f;
     [Range(0.1f, 1)] public float flattenStrength = 0.5f;
 
     [Header("Cubes")]
@@ -35,22 +35,24 @@ public class Tuning : ScriptableObject
 
     [Header("Earthquake")]
     [Tooltip("Loose cubes that trigger an earthquake.")]
-    [Range(10, 2000)] public float quakeThreshold = 150f;
+    [Range(10, 2000)] public float quakeThreshold = 60f;
     [Range(0.5f, 8)] public float quakeKnockdown = 3f;
     [Tooltip("Stable drop between neighbouring ground points during a quake (m).")]
-    [Range(0.1f, 2)] public float quakeSlope = 0.5f;
+    [Range(0.1f, 2)] public float quakeSlope = 1f;
     [Tooltip("Walls shorter than this survive a quake (m).")]
-    [Range(0.25f, 4)] public float quakeWallHeight = 1f;
+    [Range(0.25f, 4)] public float quakeWallHeight = 1.5f;
 
     [Tooltip("Road within this distance of a loose cube cracks in a quake (m).")]
-    [Range(0, 6)] public float quakeCrackRadius = 2f;
+    [Range(0, 6)] public float quakeCrackRadius = 3f;
 
     [Header("Road")]
+    [Tooltip("How far a smacked cube's surface spreads: 0 is one point, 1 is a 3 by 3 patch (a full road width).")]
+    [Range(0, 2)] public float roadSpread = 1f;
     [Tooltip("How far a point may sit off the line between its neighbours and still take gravel (m).")]
-    [Range(0.02f, 0.5f)] public float gravelFlatness = 0.12f;
+    [Range(0.02f, 1f)] public float gravelFlatness = 0.25f;
 
     [Header("Truck")]
-    [Range(1, 12)] public float truckSpeed = 4f;
+    [Range(1, 12)] public float truckSpeed = 6f;
     [Tooltip("Push available for climbing. 170 stalls on slopes steeper than about 20 degrees.")]
     [Range(50, 600)] public float truckPower = 190f;
     [Range(100, 900)] public float truckSpring = 320f;
@@ -59,10 +61,10 @@ public class Tuning : ScriptableObject
     [Range(1, 15)] public float truckStuckSeconds = 4f;
 
     [Header("Collapse")]
-    [Tooltip("Stable drop between neighbouring ground points (m). Points are 0.5 m apart.")]
-    [Range(0.25f, 3)] public float collapseSlope = 1f;
+    [Tooltip("Stable drop between neighbouring ground points (m). Points are 1 m apart.")]
+    [Range(0.25f, 3)] public float collapseSlope = 1.5f;
     [Tooltip("Walls shorter than this never collapse (m).")]
-    [Range(0.5f, 6)] public float collapseHeight = 1.5f;
+    [Range(0.5f, 6)] public float collapseHeight = 2f;
 
     static FieldInfo[] fields;
     public static FieldInfo[] Fields

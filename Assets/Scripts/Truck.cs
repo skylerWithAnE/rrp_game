@@ -7,7 +7,8 @@ using UnityEngine;
 // sets off from the first town. Clients see a smoothed copy.
 public class Truck : MonoBehaviour
 {
-    const float RayLength = 0.55f;
+    const float Scale = 1.6f;      // sized to a road three points wide
+    const float RayLength = 0.55f * Scale;
     static readonly Vector3[] Wheels =
     {
         new Vector3(-0.38f, -0.1f, 0.6f), new Vector3(0.38f, -0.1f, 0.6f),
@@ -42,6 +43,7 @@ public class Truck : MonoBehaviour
     {
         body = new GameObject("Truck");
         body.transform.SetPositionAndRotation(position, rotation);
+        body.transform.localScale = Vector3.one * Scale;
         netPos = position;
         netRot = rotation;
         var box = body.AddComponent<BoxCollider>();
@@ -88,7 +90,7 @@ public class Truck : MonoBehaviour
             if (respawnTimer > 0) return;
             Vector3 ahead = path[3] - path[0];
             ahead.y = 0;
-            Build(path[0] + Vector3.up * 0.8f, Quaternion.LookRotation(ahead));
+            Build(path[0] + Vector3.up * 1.2f, Quaternion.LookRotation(ahead));
             direction = 1;
             index = 0;
             stuckTime = flippedTime = 0;

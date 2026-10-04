@@ -38,7 +38,7 @@ public class Player : MonoBehaviour
     Vector3 lastPos;
 
     public Vector3 Forward => Quaternion.Euler(0, yaw, 0) * Vector3.forward;
-    public Vector3 ShovelPoint => transform.position + Forward * 0.8f + Vector3.up * 0.6f;
+    public Vector3 ShovelPoint => transform.position + Forward * 1.1f + Vector3.up * 0.7f;
 
     public void Init(int slot, bool isLocal, Vector3 position)
     {
@@ -56,7 +56,7 @@ public class Player : MonoBehaviour
             controller.center = new Vector3(0, 0.5f, 0);
             controller.slopeLimit = 50f;
             controller.stepOffset = 0.3f;
-            marker = Mats.Part(null, Mats.Cube, Mats.Make(new Color(1f, 1f, 1f)), Vector3.zero, new Vector3(0.3f, 0.03f, 0.3f));
+            marker = Mats.Part(null, Mats.Cube, Mats.Make(new Color(1f, 1f, 1f)), Vector3.zero, new Vector3(0.6f, 0.04f, 0.6f));
             marker.name = "Target";
         }
 
@@ -162,11 +162,11 @@ public class Player : MonoBehaviour
 
         // where the shovel acts: under the crosshair, kept within reach
         aim = default;
-        if (bot != null) aim.point = transform.position + Forward * 1.4f;
+        if (bot != null) aim.point = transform.position + Forward * Ground.Cell * 1.6f;
         else aim = g.cam.AimAt();
         Vector3 flat = aim.point - transform.position;
         flat.y = 0;
-        float distance = Mathf.Clamp(flat.magnitude, 0.7f, t.reach);
+        float distance = Mathf.Clamp(flat.magnitude, Ground.Cell * 0.9f, t.reach);
         // a block or roof earth only counts if the crosshair is on it within reach
         if (aim.kind != Aim.Ground && (flat.magnitude > t.reach + 0.5f || Mathf.Abs(aim.point.y - transform.position.y) > t.reach + 1f)) aim.kind = Aim.Ground;
         flat = flat.sqrMagnitude > 0.0001f ? flat.normalized : Forward;

@@ -41,10 +41,10 @@ public class Road : MonoBehaviour
         var rng = new System.Random((int)(site.z * 31));
         for (int k = 0; k < 5; k++)
         {
-            int cx = Mathf.RoundToInt((site.x + (k - 2) * 2.5f) / Ground.Cell);
-            int cz = Mathf.RoundToInt((site.z + away * (3.6f + (k % 2) * 1.5f)) / Ground.Cell);
+            int cx = Mathf.RoundToInt((site.x + (k - 2) * 4f) / Ground.Cell);
+            int cz = Mathf.RoundToInt((site.z + away * (4.5f + (k % 2) * 2.5f)) / Ground.Cell);
             int floor = Mathf.FloorToInt(g.ground.h[g.ground.Index(cx, cz)] / Ground.Cell) - 1;
-            int storeys = 4 + rng.Next(4);
+            int storeys = 3 + rng.Next(3);
             for (int y = 0; y <= storeys; y++)
                 for (int dz = -1; dz <= 1; dz++)
                     for (int dx = -1; dx <= 1; dx++)

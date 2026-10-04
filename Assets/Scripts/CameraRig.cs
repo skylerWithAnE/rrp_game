@@ -14,7 +14,7 @@ public struct Aim
 // Third-person camera: orbits the local blob with the mouse. The crosshair picks the shovel target.
 public class CameraRig : MonoBehaviour
 {
-    public float yaw, pitch = 28f, distance = 6.5f;
+    public float yaw, pitch = 28f, distance = 8.5f;
     static readonly RaycastHit[] hits = new RaycastHit[48];
 
     void Awake()

@@ -48,7 +48,7 @@ public class Blocks : MonoBehaviour
         if (!materials.TryGetValue(style, out var m) || m == null)
         {
             // style 0 is dressed rock; the others are town colors, with a darker shade for roofs
-            Color c = new Color(0.40f, 0.39f, 0.42f);
+            Color c = new Color(0.30f, 0.38f, 0.52f);   // steel blue: nothing like a loose rock or oil cube
             if (style == 1) c = new Color(0.85f, 0.35f, 0.3f);
             else if (style == 2) c = new Color(0.3f, 0.5f, 0.85f);
             else if (style == 3) c = new Color(0.5f, 0.2f, 0.18f);
