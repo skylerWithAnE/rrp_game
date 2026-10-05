@@ -4,7 +4,7 @@ using UnityEngine;
 public static class Mats
 {
     static Shader shader;
-    static Mesh cube, sphere;
+    static Mesh cube, sphere, cylinder;
 
     public static readonly Color[] PlayerColors =
     {
@@ -30,6 +30,7 @@ public static class Mats
     }
 
     public static Mesh Cube => cube != null ? cube : cube = Primitive(PrimitiveType.Cube);
+    public static Mesh Cylinder => cylinder != null ? cylinder : cylinder = Primitive(PrimitiveType.Cylinder);
     public static Mesh Sphere => sphere != null ? sphere : sphere = Primitive(PrimitiveType.Sphere);
 
     static Mesh Primitive(PrimitiveType type)

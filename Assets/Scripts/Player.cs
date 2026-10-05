@@ -4,7 +4,7 @@ using UnityEngine.InputSystem;
 public struct Controls
 {
     public Vector2 move;
-    public bool jump, primary, secondary;       // held
+    public bool jump, sprint, primary, secondary; // held
     public bool primaryDown, secondaryDown;     // pressed this frame
 }
 
@@ -53,11 +53,15 @@ public class Player : MonoBehaviour
             controller = gameObject.AddComponent<CharacterController>();
             controller.height = Blob.Height;
             controller.radius = 0.45f;
-            controller.center = new Vector3(0, Blob.Height * 0.5f, 0);
+            // a controller rests its skin width above the ground; raise the capsule by that much so
+            // the feet are on the ground and eye height is true
+            controller.center = new Vector3(0, Blob.Height * 0.5f + controller.skinWidth, 0);
             controller.slopeLimit = 50f;
             controller.stepOffset = 0.45f;
             marker = Mats.Part(null, Mats.Cube, Mats.Make(new Color(1f, 1f, 1f)), Vector3.zero, new Vector3(0.6f, 0.04f, 0.6f));
             marker.name = "Target";
+            marker.gameObject.SetActive(false);
+            blob.Hide();
         }
 
         if (Net.IsHost)
@@ -142,23 +146,17 @@ public class Player : MonoBehaviour
         if (controller.isGrounded)
         {
             verticalSpeed = -2f;
-            if (c.jump) verticalSpeed = t.jumpSpeed;
+            // station 1 is walk and look only: the hop (c.jump, t.jumpSpeed) is switched off
         }
         verticalSpeed -= t.gravity * dt;
-        // stay on the map: trim the step so it ends inside
-        Vector3 p = transform.position;
-        Vector3 step = (move * t.moveSpeed + Vector3.up * verticalSpeed) * dt;
-        Vector3 end = g.ground.Clamp(p + step, 0.6f);
-        step.x = end.x - p.x;
-        step.z = end.z - p.z;
-        controller.Move(step);
+        float speed = t.walkSpeed * (c.sprint ? t.sprintMultiplier : 1f);
+        controller.Move((move * speed + Vector3.up * verticalSpeed) * dt);
         grounded = controller.isGrounded;
-        if (transform.position.y < -10f)
-        {
-            p = g.ground.Clamp(transform.position, 0.6f);
-            p.y = g.ground.HeightAt(p.x, p.z) + 1f;
-            Teleport(p);
-        }
+        if (transform.position.y < -10f) Teleport(g.yard.Spawn(slot));   // walked off the edge of the yard
+
+        // Everything below is the first prototype's shovel. It only runs in a job, and station 1
+        // never starts one.
+        if (g.phase != Phase.Job) return;
 
         // where the shovel acts: under the crosshair, kept within reach
         aim = default;
@@ -172,7 +170,7 @@ public class Player : MonoBehaviour
         flat = flat.sqrMagnitude > 0.0001f ? flat.normalized : Forward;
         target = transform.position + flat * distance;
         target.y = aim.kind != Aim.Ground ? aim.point.y : g.ground.HeightAt(target.x, target.z);
-        marker.gameObject.SetActive(g.phase == Phase.Job);
+        marker.gameObject.SetActive(true);
         marker.position = target + Vector3.up * 0.03f;
 
         // Digging and smacking repeat while the button is held. Letting go of a cube (fling, set
@@ -216,6 +214,7 @@ public class Player : MonoBehaviour
         {
             c.move = new Vector2((kb.dKey.isPressed ? 1 : 0) - (kb.aKey.isPressed ? 1 : 0), (kb.wKey.isPressed ? 1 : 0) - (kb.sKey.isPressed ? 1 : 0));
             c.jump = kb.spaceKey.isPressed;
+            c.sprint = kb.leftShiftKey.isPressed || kb.rightShiftKey.isPressed;
         }
         if (mouse != null)
         {

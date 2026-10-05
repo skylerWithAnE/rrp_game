@@ -121,6 +121,9 @@ public class AutoTest : MonoBehaviour
         foreach (var p in g.players)
             if (p != null) s.Append(p.slot).Append(':').Append(p.transform.position.ToString("0.0")).Append("load").Append(p.load).Append(' ');
         if (g.ground.Ready) s.Append(" ground=").Append(g.ground.Hash().ToString("x8"));
+        var t = g.tuning;
+        s.Append(" eye=").Append(t.eyeHeight).Append(" fov=").Append(t.fieldOfView).Append(" walk=").Append(t.walkSpeed).Append(" sprint=").Append(t.sprintMultiplier);
+        s.Append(" truck=").Append(t.truckWidth).Append('x').Append(t.truckLength).Append('x').Append(t.truckHeight).Append(" yardParts=").Append(g.yard.GetComponentsInChildren<MeshRenderer>().Length);
         s.Append(" blocks=").Append(g.blocks.Count);
         s.Append(" cubes=").Append(g.cubes.Loose).Append(" moving=").Append(Net.IsHost ? g.cubes.Moving : g.cubes.clientMoving);
         s.Append(" rest=").Append(g.cubes.RestHash().ToString("x8"));

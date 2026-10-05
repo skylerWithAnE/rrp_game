@@ -55,7 +55,11 @@ public class Blob : MonoBehaviour
         loadVisual.gameObject.SetActive(false);
 
         squash.x = 1;
+        shovel.gameObject.SetActive(false);   // station 1 has no tools
     }
+
+    // First person: the local player does not see their own blob.
+    public void Hide() { body.gameObject.SetActive(false); }
 
     public void SetLoad(int load, int bits)
     {

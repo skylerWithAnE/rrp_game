@@ -28,8 +28,7 @@ public class Hud : MonoBehaviour
             if (kb.f1Key.wasPressedThisFrame) { ShowPanel = !ShowPanel; if (ShowPanel) Playing = false; }
             if (kb.f3Key.wasPressedThisFrame) ShowReadout = !ShowReadout;
             if (kb.escapeKey.wasPressedThisFrame || kb.tabKey.wasPressedThisFrame) Playing = !Playing;
-            if (kb.enterKey.wasPressedThisFrame && g.phase == Phase.Lobby) g.StartJob();
-            else if (kb.enterKey.wasPressedThisFrame && g.won) g.BackToLobby();
+            if (kb.enterKey.wasPressedThisFrame && g.won) g.BackToLobby();
         }
         if (!inGame) { Playing = false; ShowPanel = false; }
         Cursor.lockState = Playing ? CursorLockMode.Locked : CursorLockMode.None;
@@ -54,11 +53,11 @@ public class Hud : MonoBehaviour
         else
         {
             Rect panel = new Rect(width - 370, 10, 360, height - 20);
+            Labels(g);
             if (ShowPanel) Panel(g, panel);
             if (ShowReadout) Readout(g);
             if (g.phase == Phase.Lobby) Lobby(g, width);
             if (g.phase == Phase.Job) Clock(g, width, height);
-            if (Playing) GUI.Label(new Rect(width / 2 - 5, height / 2 - 11, 20, 20), "+", label);
             if (g.phase == Phase.Job && g.local != null) Hint(g, width, height);
             else GUI.Label(new Rect(width / 2 - 150, height - 30, 300, 22), "Click to play.  Tab frees the mouse.", label);
 
@@ -177,15 +176,13 @@ public class Hud : MonoBehaviour
 
     void Lobby(Game g, float width)
     {
-        GUILayout.BeginArea(new Rect(width / 2 - 170, 10, 340, 150), box);
-        GUILayout.Label("Lobby: " + g.PlayerCount + " of " + Session.MaxPlayers + " players", label);
+        GUILayout.BeginArea(new Rect(width / 2 - 170, 10, 340, 80), box);
+        GUILayout.Label("Scale yard: " + g.PlayerCount + " of " + Session.MaxPlayers + " players", label);
         if (Net.IsHost)
         {
             if (Session.JoinCode.Length > 0) GUILayout.Label("Join code: <b>" + Session.JoinCode + "</b>", label);
             else GUILayout.Label("Direct host on port " + Session.Port + " (same machine: 127.0.0.1)", label);
-            if (GUILayout.Button("Start the job (Enter)", GUILayout.Height(28))) g.StartJob();
         }
-        else GUILayout.Label("Waiting for the host to start the job.", label);
         if (GUILayout.Button("Leave")) g.Leave();
         GUILayout.EndArea();
     }
@@ -198,9 +195,6 @@ public class Hud : MonoBehaviour
         text.Append("host fps ").Append(Mathf.RoundToInt(g.hostFps));
         if (!Net.IsHost) text.Append("   my fps ").Append(Mathf.RoundToInt(g.fps));
         text.Append('\n');
-        text.Append("loose cubes ").Append(g.cubes.Loose).Append(" / ").Append((int)g.tuning.maxLooseCubes);
-        text.Append("   moving ").Append(Net.IsHost ? g.cubes.Moving : g.cubes.clientMoving).Append('\n');
-        text.Append("quake at ").Append((int)g.tuning.quakeThreshold).Append("   quakes ").Append(g.quake.count).Append('\n');
         if (g.phase == Phase.Job) text.Append("towns joined by asphalt: ").Append(g.road.asphaltLinked ? "YES" : "no").Append("   by paint: ").Append(g.road.paintedLinked ? "YES" : "no").Append('\n');
         if (g.phase == Phase.Job) text.Append("truck: ").Append(g.truck.alive ? "driving" : "none").Append('\n');
 
@@ -223,10 +217,23 @@ public class Hud : MonoBehaviour
             text.Append("from host ").Append(Kb(host.receivedRate)).Append("  to host ").Append(Kb(host.sentRate));
             text.Append("  rtt ").Append(g.utp.GetCurrentRtt(NetworkManager.ServerClientId)).Append(" ms\n");
         }
-        text.Append("<size=11>F1 tuning   F3 readout   Tab mouse\nWASD move   Space hop   Enter start</size>");
+        text.Append("<size=11>F1 tuning   F3 readout   Tab mouse\nWASD walk   Shift sprint   mouse look</size>");
 
         GUI.Box(new Rect(8, 8, 330, 225), GUIContent.none, box);
         GUI.Label(new Rect(16, 12, 320, 220), text.ToString(), label);
+    }
+
+    // What each thing in the yard is and how big, written over it.
+    void Labels(Game g)
+    {
+        var cam = g.cam.GetComponent<Camera>();
+        var style = new GUIStyle(label) { alignment = TextAnchor.MiddleCenter };
+        foreach (var l in g.yard.labels)
+        {
+            Vector3 s = cam.WorldToScreenPoint(l.at);
+            if (s.z < 0.5f || s.z > 60f) continue;
+            GUI.Label(new Rect(s.x / scale - 200, (Screen.height - s.y) / scale - 20, 400, 40), l.text, style);
+        }
     }
 
     static string Kb(float bytesPerSecond) { return (bytesPerSecond / 1024f).ToString("0.0") + " kB/s"; }
@@ -263,10 +270,12 @@ public class Hud : MonoBehaviour
         }
 
         GUI.enabled = host;
-        bool changed = false;
+        bool changed = false, old = false;
         foreach (FieldInfo f in Tuning.Fields)
         {
             var header = f.GetCustomAttribute<HeaderAttribute>();
+            if (header != null) old = header.header.StartsWith("Old");
+            if (old) continue;  // the first prototype's numbers: switched off
             if (header != null) GUILayout.Label("<b>" + header.header + "</b>", label);
             var range = f.GetCustomAttribute<RangeAttribute>();
             float value = (float)f.GetValue(g.tuning);

@@ -10,6 +10,7 @@ public enum Phase { Menu, Connecting, Lobby, Job }
 public class Game : MonoBehaviour
 {
     public static Game I;
+    public static bool JobsEnabled = false;
 
     public NetworkManager nm;
     public UnityTransport utp;
@@ -20,6 +21,7 @@ public class Game : MonoBehaviour
     public Blocks blocks;
     public Road road;
     public Truck truck;
+    public Yard yard;
     public CameraRig cam;
 
     public Phase phase = Phase.Menu;
@@ -86,6 +88,9 @@ public class Game : MonoBehaviour
         blocks = Child<Blocks>("Blocks");
         road = Child<Road>("Road");
         truck = Child<Truck>("Truck");
+        // The first prototype's systems are kept but switched off: none of them runs in station 1.
+        ground.enabled = cubes.enabled = quake.enabled = blocks.enabled = road.enabled = truck.enabled = false;
+        yard = Child<Yard>("Yard");
         cam = Child<CameraRig>("Camera");
         Child<Hud>("Hud");
         Child<AutoTest>("AutoTest");
@@ -160,6 +165,7 @@ public class Game : MonoBehaviour
         cubes.Clear();
         ground.Clear();
         ground.h = null;
+        yard.Clear();
         blocks.Clear();
         road.Setup(false);
         truck.Clear();
@@ -178,9 +184,11 @@ public class Game : MonoBehaviour
         cubes.Clear();
         truck.Clear();
         blocks.Clear();
-        ground.Generate(false, 0);
         road.Setup(false);
+        yard.Refresh();
         AddPlayer(localSlot, true);
+        cam.yaw = local.yaw = Yard.SpawnYaw;
+        cam.pitch = 0;
         foreach (var p in players)
         {
             if (p == null) continue;
@@ -295,18 +303,13 @@ public class Game : MonoBehaviour
         players[slot] = null;
     }
 
-    Vector3 SpawnPoint(int slot)
-    {
-        // a row beside the first town's pad, facing the hill (or the middle of the lobby)
-        float x = ground.SizeX * 0.5f + (slot - 3.5f) * 1.2f;
-        float z = phase == Phase.Job ? ground.siteA.z + 3f : ground.SizeZ * 0.5f;
-        return new Vector3(x, ground.HeightAt(x, z) + 0.1f, z);
-    }
+    Vector3 SpawnPoint(int slot) { return yard.Spawn(slot); }
 
     // host: everyone loads a fresh map together
     public void StartJob()
     {
-        if (!Net.IsHost || phase != Phase.Lobby) return;
+        // switched off: station 1 is the yard only, and the job is the first prototype's
+        if (!JobsEnabled || !Net.IsHost || phase != Phase.Lobby) return;
         int seed = Random.Range(1, int.MaxValue);
         var m = Msg.New(Op.StartJob, 8);
         m.I32(seed);
@@ -335,7 +338,7 @@ public class Game : MonoBehaviour
         }
     }
 
-    public void TuningChanged() { tuningDirty = true; cubes.ApplyTuning(); }
+    public void TuningChanged() { tuningDirty = true; cubes.ApplyTuning(); yard.Refresh(); }
 
     // ---- messages
 
@@ -411,6 +414,7 @@ public class Game : MonoBehaviour
             case Op.Tuning:
                 tuning.Read(m);
                 cubes.ApplyTuning();
+                yard.Refresh();
                 break;
             case Op.Stats:
                 hostFps = m.U16();
