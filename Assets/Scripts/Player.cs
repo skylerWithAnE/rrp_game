@@ -4,7 +4,7 @@ using UnityEngine.InputSystem;
 public struct Controls
 {
     public Vector2 move;
-    public bool jump, sprint, primary, secondary; // held
+    public bool jump, down, sprint, primary, secondary; // held
     public bool primaryDown, secondaryDown;     // pressed this frame
 }
 
@@ -26,6 +26,7 @@ public class Player : MonoBehaviour
     public System.Func<Controls> bot; // test driver; replaces keyboard and mouse
 
     public static bool Sprinting;   // the local player's sprint toggle
+    public static bool Flying;      // dev: the local player flies, through anything
     public Vector3 netPos;
     public float netYaw;
 
@@ -143,6 +144,17 @@ public class Player : MonoBehaviour
         if (bot == null) yaw = Mathf.LerpAngle(yaw, g.cam.yaw, 1f - Mathf.Exp(-16f * dt));
 
         if (!g.WorldReady || g.respawn) return;     // nothing to stand on yet
+        // Dev: flying. No gravity and nothing is solid: the way the camera looks is forward,
+        // Space is up and Ctrl is down, at three times the speed on foot.
+        controller.enabled = !Flying;
+        if (Flying)
+        {
+            Vector3 way = g.cam.transform.rotation * new Vector3(c.move.x, 0, c.move.y) + Vector3.up * ((c.jump ? 1 : 0) - (c.down ? 1 : 0));
+            transform.position += way * (t.walkSpeed * 3f * (c.sprint ? t.sprintMultiplier : 1f) * dt);
+            verticalSpeed = 0;
+            grounded = false;
+            return;
+        }
         Vector3 move = Quaternion.Euler(0, bot != null ? yaw : g.cam.yaw, 0) * new Vector3(c.move.x, 0, c.move.y);
         if (move.sqrMagnitude > 1) move.Normalize();
         if (controller.isGrounded)
@@ -216,6 +228,8 @@ public class Player : MonoBehaviour
         {
             c.move = new Vector2((kb.dKey.isPressed ? 1 : 0) - (kb.aKey.isPressed ? 1 : 0), (kb.wKey.isPressed ? 1 : 0) - (kb.sKey.isPressed ? 1 : 0));
             c.jump = kb.spaceKey.isPressed;
+            c.down = kb.leftCtrlKey.isPressed;
+            if (kb.vKey.wasPressedThisFrame) Flying = !Flying;
             // Shift switches sprinting on and off
             if (kb.leftShiftKey.wasPressedThisFrame || kb.rightShiftKey.wasPressedThisFrame) Sprinting = !Sprinting;
             c.sprint = Sprinting;

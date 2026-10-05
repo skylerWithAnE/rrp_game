@@ -414,6 +414,11 @@ public class Game : MonoBehaviour
                 int plot = m.U8(), link = m.U8(), role = m.U8();
                 if (plot < plots.Length) plots[plot].HostZone(link, role);
             }
+            else if (op == Op.Finish)
+            {
+                int plot = m.U8(), link = m.U8();
+                if (plot < plots.Length) plots[plot].HostFinish(link);
+            }
             else if (op == Op.Shovel)
             {
                 int plot = m.U8(), what = m.U8();

@@ -83,6 +83,7 @@ public class Plot : MonoBehaviour
     public const int Grade = 0, Gravel = 1;     // these two are sent with a click
     public const int Stakes = 3;
     public const int Zone = 4;                  // the zoning tool: it changes a section's role
+    public const int Dev = 7;                   // the dev tool: it finishes a section's next stage in one click
     public static int Tool = Stakes;            // what the local player is holding
 
     public int id;
@@ -1846,14 +1847,33 @@ public class Plot : MonoBehaviour
         Seg first = segs[c0 < 0 ? ~c0 : c0], last = segs[c1 < 0 ? ~c1 : c1];
         Vector3 from = c0 < 0 ? first.a + first.d * first.len : first.a, ahead = c0 < 0 ? -first.d : first.d;
         for (float s = RunUp; s > 0; s -= 1f) path.Add(from - ahead * s + new Vector3(ahead.z, 0, -ahead.x) * half);
-        foreach (int c in chain)
+        for (int n = 0; n < chain.Count; n++)
         {
-            int k = c < 0 ? ~c : c;
+            int c = chain[n], k = c < 0 ? ~c : c;
             int steps = Mathf.Max(1, Mathf.RoundToInt(segs[k].len));
             for (int j = 0; j < steps; j++)
             {
                 float t = (float)j / steps;
                 path.Add(c < 0 ? World(k, 1f - t, -half) : World(k, t, half));
+            }
+            // At a junction the truck stays in its lane right up to the level ground round the
+            // stake, and turns there, on a curve from the end of its lane to the start of the
+            // next one. Turning right it swings a little wide, as a truck does.
+            if (n + 1 >= chain.Count || (c < 0 ? segs[k].eA : segs[k].eB) <= 0) continue;
+            int c2 = chain[n + 1], k2 = c2 < 0 ? ~c2 : c2;
+            Vector3 p1 = c < 0 ? World(k, 0, -half) : World(k, 1f, half), p2 = c2 < 0 ? World(k2, 1f, -half) : World(k2, 0, half);
+            Vector3 d1 = c < 0 ? -segs[k].d : segs[k].d, d2 = c2 < 0 ? -segs[k2].d : segs[k2].d;
+            float cross = d1.x * d2.z - d1.z * d2.x;
+            path.Add(p1);
+            if (Mathf.Abs(cross) < 0.2f) continue;      // straight on
+            Vector3 corner = p1 + d1 * (((p2.x - p1.x) * d2.z - (p2.z - p1.z) * d2.x) / cross);
+            Vector3 stake = Flat(stakes[c < 0 ? links[k].x : links[k].y]);
+            if ((cross < 0) != back) corner += (stake - corner).normalized * Mathf.Min(2f, Vector3.Distance(stake, corner));
+            int points = Mathf.Max(4, Mathf.RoundToInt((Vector3.Distance(p1, corner) + Vector3.Distance(corner, p2)) / 0.7f));
+            for (int j = 1; j < points; j++)
+            {
+                float u = (float)j / points;
+                path.Add(Vector3.Lerp(Vector3.Lerp(p1, corner, u), Vector3.Lerp(corner, p2, u), u));
             }
         }
         Vector3 to = c1 < 0 ? last.a : last.a + last.d * last.len;
@@ -1909,9 +1929,16 @@ public class Plot : MonoBehaviour
         if (!Physics.Raycast(eye.position, eye.forward, out var hit, tuning.clickReach * 2f, ~0, QueryTriggerInteraction.Ignore) || hit.collider.transform.parent != transform) return;
         if (!Section(hit.point.x, hit.point.z, out int link, out _, out _)) return;
         bool service = links[link].z == 1;
+        OutlineSection(link, service ? new Color(0.3f, 0.6f, 1f) : new Color(1f, 0.35f, 0.3f));
+        Say(service ? "a service road: the crew's trucks only. Left click to open it to everyone" : "a road for everyone. Left click to make it a service road", false);
+        if (mouse.leftButton.wasPressedThisFrame) RequestZone(link, service ? 0 : 1);
+    }
+
+    void OutlineSection(int link, Color color)
+    {
         const int Points = 48;
         cursor.enabled = true;
-        cursor.startColor = cursor.endColor = service ? new Color(0.3f, 0.6f, 1f) : new Color(1f, 0.35f, 0.3f);
+        cursor.startColor = cursor.endColor = color;
         cursor.positionCount = Points;
         for (int k = 0; k < Points; k++)
         {
@@ -1921,8 +1948,65 @@ public class Plot : MonoBehaviour
             Vector3 p = World(link, 0.5f + v * 0.5f, u * Reach);
             cursor.SetPosition(k, new Vector3(p.x, HeightAt(p.x, p.z) + 0.06f, p.z));
         }
-        Say(service ? "a service road: the crew's trucks only. Left click to open it to everyone" : "a road for everyone. Left click to make it a service road", false);
-        if (mouse.leftButton.wasPressedThisFrame) RequestZone(link, service ? 0 : 1);
+    }
+
+    // ---- the dev tool
+    //
+    // Not part of the game: it does a whole section's work in one click, so that what comes
+    // after the work can be tried without doing the work. One click puts every point of the
+    // section on its line; the next lays its gravel and packs it.
+
+    // which stage a section's next click would do: 0 level it, 1 gravel and pack it, -1 nothing left
+    int NextStage(int link)
+    {
+        bool gravelled = true;
+        for (int i = 0; i < h.Length; i++)
+        {
+            if (zone[i] == 0 || linkOf[i] != link) continue;
+            if (Mathf.Abs(h[i] - target[i]) >= Level) return 0;
+            if (zone[i] == 1 && (gravel[i] < FullGravel || packed[i] < 100)) gravelled = false;
+        }
+        return gravelled ? -1 : 1;
+    }
+
+    // host: do the next stage of a whole section at once
+    public bool HostFinish(int link)
+    {
+        if (!Ready || link < 0 || link >= segs.Length) return false;
+        int stage = NextStage(link);
+        if (stage < 0) return false;
+        changed.Clear();
+        for (int i = 0; i < h.Length; i++)
+        {
+            if (zone[i] == 0 || linkOf[i] != link) continue;
+            if (stage == 0) h[i] = target[i];
+            else if (zone[i] == 1) { gravel[i] = (byte)FullGravel; packed[i] = 100; }
+            health[i] = 100;
+            changed.Add(i);
+            // a section is a few thousand points; send them a few thousand at a time
+            if (changed.Count >= 5000) { Broadcast(); changed.Clear(); }
+        }
+        Broadcast();
+        return true;
+    }
+
+    public void RequestFinish(int link)
+    {
+        if (Net.IsHost) { HostFinish(link); return; }
+        var m = Msg.New(Op.Finish, 8);
+        m.U8((byte)id);
+        m.U8((byte)link);
+        Net.ToHost(m, true);
+    }
+
+    void DevTool(Tuning tuning, Mouse mouse, Transform eye)
+    {
+        if (!Physics.Raycast(eye.position, eye.forward, out var hit, 60f, ~0, QueryTriggerInteraction.Ignore) || hit.collider.transform.parent != transform) return;
+        if (!Section(hit.point.x, hit.point.z, out int link, out _, out _)) return;
+        int stage = NextStage(link);
+        OutlineSection(link, new Color(1f, 0.3f, 1f));
+        Say("dev tool: " + (stage == 0 ? "left click puts this whole section on its line" : stage == 1 ? "left click gravels and packs this whole section" : "this section is finished"), false);
+        if (stage >= 0 && mouse.leftButton.wasPressedThisFrame) RequestFinish(link);
     }
 
     // The quarry's own business each frame: what its labels say and how big the heap is, and
@@ -2027,6 +2111,11 @@ public class Plot : MonoBehaviour
         if (Tool == Zone)
         {
             ZoneTool(tuning, mouse, eye);
+            return;
+        }
+        if (Tool == Dev)
+        {
+            DevTool(tuning, mouse, eye);
             return;
         }
         if (IsQuarry && QuarryTool(g, tuning, mouse, eye)) return;
