@@ -17,8 +17,7 @@ The user's own summary of the miss:
 
 - The game was hampered by the camera angle. Listing first, third and top-down cameras may have
   confused the vision.
-- The picture in the user's head looks like **Lethal Company** or **PILGRIM** (first written here
-  as "Pilgrimage").
+- The picture in the user's head looks more like **Lethal Company**.
 - The heightmap is incredibly simple and low resolution. The scale wanted is like **Valheim**, with
   terrain mechanics like Valheim's.
 - The whole idea began while trying to build roads in **Satisfactory**.
@@ -30,20 +29,9 @@ Decided by the user on 2026-10-04, for the redesign:
 3. **Throwing cubes around is out of favour.** It was not as funny as hoped and is expected to become
    a problem later.
 
-**PILGRIM**, from its Steam page (https://store.steampowered.com/app/2965660/PILGRIM/, read
-2026-10-04; Claude has not seen it played):
-
-- First person, online co-op for up to 4, by DESPERATE MEASURES, in early access since May 2024.
-- "A medieval-based, co-op horror, adventure. Can you and your friends make it to the end of The
-  Road?"
-- The crew travels by a powered wagon that serves as their base and safe point, through
-  procedurally generated and hand-made levels. It is dark, and players need light sources.
-
-Claude's reading of why it was named, to be checked with the user: a small first-person crew, a
-vehicle that is the centre of the journey, and **a road as the thing the whole game is about**. Both
-references (this and Lethal Company) are 4-player first-person co-op with a dark, low-fidelity look,
-which is a long way from bright solid-color blobs. Neither has terrain building; that part comes
-from Valheim. Whether the horror is wanted, or only the camera, crew size and look, is not known.
+**The redesign is about mechanics** (user, 2026-10-04). References to other games' looks are about
+graphic fidelity and the scale of the world, and are parked for now. Do not let them steer the
+mechanics prototype.
 
 ## Where the idea came from: the Satisfactory road mod
 
@@ -112,7 +100,7 @@ exercised with simulated input events. **No human built a road, placed a block o
 | | Built | Wanted (as now stated) |
 |---|---|---|
 | View | Third person, orbit camera 6 to 8 m back, crosshair aiming past the character | First person |
-| Look | Flat solid colors, round blobs, bright sky | Lethal Company / PILGRIM |
+| Look | Flat solid colors, round blobs, bright sky | Closer to Lethal Company (parked for now) |
 | World | 64 m square, one 8 m hill, towns 40 m apart | Valheim scale |
 | Terrain | A grid of points 0.5 m (later 1 m) apart, moved one whole cube at a time | Valheim-like terraforming |
 | Tools | One shovel, two mouse buttons, meaning changes with what is carried | More than one tool |
@@ -283,9 +271,8 @@ for Valheim-like terraforming. What has to go is one-point, one-cube editing.
 
 Claude suggests settling these, with numbers and pictures, before any system is built.
 
-1. **Reference pictures.** One screenshot each from Lethal Company, PILGRIM and Valheim that
-   shows what is wanted from that game. Which gives the look, which the scale, which the feel?
-   And is the horror in the first two wanted, or only their camera, crew size and look?
+1. **A reference for scale and terrain.** One or two Valheim screenshots that show the scale and
+   the terraforming wanted. The look is parked: this is a mechanics prototype.
 2. **Three sizes in metres**: eye height, road width, truck size. The Satisfactory truck is 6.5 by
    10.5 m.
 3. **How big is the job?** Road length in metres, and whether 20 to 30 minutes still outranks size.
