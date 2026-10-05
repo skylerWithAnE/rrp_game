@@ -30,7 +30,7 @@ public class Plot : MonoBehaviour
     public const int PresetSections = 3;    // station 2: level, climbing, falling
     public const int Count = 8;
     public static readonly string[] Names = { "2", "3", "4", "5 good", "5 bad", "wear", "hairpin", "hairpin good" };
-    const int ChunkRows = 32;               // rows of cells per mesh
+    const int ChunkCells = 32;              // cells along each side of one mesh
     const float Margin = 5f;                // ground round the edge of a plot, sloping down to the yard
     const float BaseHeight = 1.2f;          // the line of a level preset road, above the yard
     const float Level = 0.005f;             // closer to the line than this counts as level
@@ -77,8 +77,12 @@ public class Plot : MonoBehaviour
     string built = "";
     int expected;                           // client: ground points still to arrive
 
-    class Chunk { public Mesh mesh; public MeshCollider collider; public Vector3[] verts; public Color32[] colors; public int row0, rows; public bool dirty; }
+    class Chunk { public Mesh mesh; public MeshCollider collider; public Vector3[] verts; public Color32[] colors; public int col0, cols, row0, rows; public bool dirty; }
     Chunk[] chunks;
+    int chunksX, chunksZ;
+    bool tallyDirty;
+    float nextTally;
+    readonly List<int> chain = new List<int>();     // sections in the order a truck meets them: the index, or ~index if it is driven from its second stake to its first
     Transform stakeRoot;
     readonly Dictionary<int, int> stakeByCollider = new Dictionary<int, int>();
     LineRenderer cursor, preview, hotRing;
@@ -348,25 +352,29 @@ public class Plot : MonoBehaviour
         along = new float[w * d];
         across = new float[w * d];
         Rebuild();
-        Resolve();
+        foreach (var seg in segs) Resolve(seg);
 
+        // square meshes, so an edit rebuilds only a few metres of ground however big the plot is
         var material = Mats.Make(Color.white, true);
-        int count = (d - 1 + ChunkRows - 1) / ChunkRows;
-        chunks = new Chunk[count];
-        for (int c = 0; c < count; c++)
+        chunksX = (w - 1 + ChunkCells - 1) / ChunkCells;
+        chunksZ = (d - 1 + ChunkCells - 1) / ChunkCells;
+        chunks = new Chunk[chunksX * chunksZ];
+        for (int c = 0; c < chunks.Length; c++)
         {
-            var chunk = chunks[c] = new Chunk { row0 = c * ChunkRows };
-            chunk.rows = Mathf.Min(ChunkRows, d - 1 - chunk.row0);
-            chunk.verts = new Vector3[w * (chunk.rows + 1)];
+            var chunk = chunks[c] = new Chunk { col0 = c % chunksX * ChunkCells, row0 = c / chunksX * ChunkCells };
+            chunk.cols = Mathf.Min(ChunkCells, w - 1 - chunk.col0);
+            chunk.rows = Mathf.Min(ChunkCells, d - 1 - chunk.row0);
+            int stride = chunk.cols + 1;
+            chunk.verts = new Vector3[stride * (chunk.rows + 1)];
             chunk.colors = new Color32[chunk.verts.Length];
-            var tris = new int[(w - 1) * chunk.rows * 6];
+            var tris = new int[chunk.cols * chunk.rows * 6];
             int k = 0;
             for (int z = 0; z < chunk.rows; z++)
-                for (int x = 0; x < w - 1; x++)
+                for (int x = 0; x < chunk.cols; x++)
                 {
-                    int i = z * w + x;
-                    tris[k++] = i; tris[k++] = i + w; tris[k++] = i + w + 1;
-                    tris[k++] = i; tris[k++] = i + w + 1; tris[k++] = i + 1;
+                    int i = z * stride + x;
+                    tris[k++] = i; tris[k++] = i + stride; tris[k++] = i + stride + 1;
+                    tris[k++] = i; tris[k++] = i + stride + 1; tris[k++] = i + 1;
                 }
             var go = new GameObject("Ground");
             go.transform.SetParent(transform, false);
@@ -435,9 +443,10 @@ public class Plot : MonoBehaviour
     void Fill(Chunk chunk)
     {
         float full = FullGravel;
+        int stride = chunk.cols + 1;
         for (int k = 0; k < chunk.verts.Length; k++)
         {
-            int i = chunk.row0 * w + k;
+            int i = (chunk.row0 + k / stride) * w + chunk.col0 + k % stride;
             chunk.verts[k] = new Vector3(i % w * Cell, Surface(i), i / w * Cell) + origin;
             bool level = zone[i] != 0 && Mathf.Abs(h[i] - target[i]) < Level;
             Color32 color = zone[i] == 0 ? Outside : zone[i] == 1 ? (level ? RoadDone : RoadRough) : (level ? ShoulderDone : ShoulderRough);
@@ -449,10 +458,23 @@ public class Plot : MonoBehaviour
 
     void Touch(int i)
     {
-        int row = i / w, c = Mathf.Min(row / ChunkRows, chunks.Length - 1);
-        chunks[c].dirty = true;
-        // a row on the seam between two meshes belongs to both
-        if (row % ChunkRows == 0 && c > 0) chunks[c - 1].dirty = true;
+        int ix = i % w, iz = i / w;
+        int cx = Mathf.Min(ix / ChunkCells, chunksX - 1), cz = Mathf.Min(iz / ChunkCells, chunksZ - 1);
+        chunks[cz * chunksX + cx].dirty = true;
+        // a point on the seam between meshes belongs to each of them
+        bool left = ix % ChunkCells == 0 && cx > 0, below = iz % ChunkCells == 0 && cz > 0;
+        if (left) chunks[cz * chunksX + cx - 1].dirty = true;
+        if (below) chunks[(cz - 1) * chunksX + cx].dirty = true;
+        if (left && below) chunks[(cz - 1) * chunksX + cx - 1].dirty = true;
+    }
+
+    // every mesh with a point in this box of points
+    void TouchBox(int x0, int x1, int z0, int z1)
+    {
+        int cx0 = Mathf.Max(0, (x0 - 1) / ChunkCells), cx1 = Mathf.Min(chunksX - 1, x1 / ChunkCells);
+        int cz0 = Mathf.Max(0, (z0 - 1) / ChunkCells), cz1 = Mathf.Min(chunksZ - 1, z1 / ChunkCells);
+        for (int cz = cz0; cz <= cz1; cz++)
+            for (int cx = cx0; cx <= cx1; cx++) chunks[cz * chunksX + cx].dirty = true;
     }
 
     void Upload(bool heights)
@@ -470,7 +492,7 @@ public class Plot : MonoBehaviour
             chunk.collider.sharedMesh = null;
             chunk.collider.sharedMesh = chunk.mesh;
         }
-        Tally();
+        tallyDirty = true;      // counted in Update, a few times a second at most
     }
 
     void Tally()
@@ -600,19 +622,39 @@ public class Plot : MonoBehaviour
         return Mathf.Lerp(segs[link].yA, segs[link].yB, t) - (over > 0 && shoulderWidth > 0 ? shoulderDrop * over / shoulderWidth : 0);
     }
 
-    // work out again what the sections make of every point
-    void Resolve()
+    // Work out again what the sections make of the points a section lies over, or lay over
+    // before it changed. Only those points are visited, so the cost follows the section and not
+    // the size of the plot.
+    void Resolve(Seg seg)
     {
-        for (int i = 0; i < h.Length; i++)
+        // the box round its four corners, mitres and all
+        float x0 = float.MaxValue, x1 = float.MinValue, z0 = float.MaxValue, z1 = float.MinValue;
+        for (int corner = 0; corner < 4; corner++)
         {
-            zone[i] = 0;
-            if (!Section(origin.x + i % w * Cell, origin.z + i / w * Cell, out int link, out float t, out float side)) continue;
-            linkOf[i] = (short)link;
-            along[i] = t;
-            across[i] = side;
-            zone[i] = (byte)(Mathf.Abs(side) <= lane ? 1 : 2);
-            target[i] = TargetIn(link, t, side);
+            float edge = corner < 2 ? -Reach : Reach;
+            Vector3 p = seg.a + seg.d * (corner % 2 == 0 ? edge * seg.kA : seg.len + edge * seg.kB) + seg.r * edge;
+            x0 = Mathf.Min(x0, p.x); x1 = Mathf.Max(x1, p.x); z0 = Mathf.Min(z0, p.z); z1 = Mathf.Max(z1, p.z);
         }
+        int ix0 = Mathf.Max(0, Mathf.FloorToInt((x0 - origin.x) / Cell) - 2), ix1 = Mathf.Min(w - 1, Mathf.CeilToInt((x1 - origin.x) / Cell) + 2);
+        int iz0 = Mathf.Max(0, Mathf.FloorToInt((z0 - origin.z) / Cell) - 2), iz1 = Mathf.Min(d - 1, Mathf.CeilToInt((z1 - origin.z) / Cell) + 2);
+        for (int iz = iz0; iz <= iz1; iz++)
+            for (int ix = ix0; ix <= ix1; ix++)
+            {
+                int i = iz * w + ix;
+                zone[i] = 0;
+                if (!Section(origin.x + ix * Cell, origin.z + iz * Cell, out int link, out float t, out float side)) continue;
+                linkOf[i] = (short)link;
+                along[i] = t;
+                across[i] = side;
+                zone[i] = (byte)(Mathf.Abs(side) <= lane ? 1 : 2);
+                target[i] = TargetIn(link, t, side);
+            }
+        if (chunks != null && ix1 >= ix0 && iz1 >= iz0) TouchBox(ix0, ix1, iz0, iz1);
+    }
+
+    static bool Same(Seg a, Seg b)
+    {
+        return a.a == b.a && a.d == b.d && a.len == b.len && a.yA == b.yA && a.yB == b.yB && a.kA == b.kA && a.kB == b.kB;
     }
 
     // ---- stakes
@@ -797,9 +839,15 @@ public class Plot : MonoBehaviour
         }
         if (selected >= stakes.Count) selected = -1;
         if (hotPlot == this) hotPlot = null;
+        // only the sections that changed, where they were and where they are now
+        var old = segs;
         Rebuild();
-        Resolve();
-        foreach (var chunk in chunks) chunk.dirty = true;
+        for (int k = 0; k < Mathf.Max(old.Length, segs.Length); k++)
+        {
+            if (k < old.Length && k < segs.Length && Same(old[k], segs[k])) continue;
+            if (k < old.Length) Resolve(old[k]);
+            if (k < segs.Length) Resolve(segs[k]);
+        }
         Upload(false);
         BuildStakes();
     }
@@ -1007,24 +1055,60 @@ public class Plot : MonoBehaviour
         return Mathf.Lerp(0.6f, 1f, packed[i] * 0.01f);
     }
 
-    // the truck's way along a road whose stakes run in order: up onto the first, along the
-    // right-hand lane, and off past the last; or back the other way
+    // Walk the ropes from one stake until they run out, or until they reach `end`. Players put
+    // stakes down in any order, so the order is found by following the ropes. Fills `chain`.
+    bool Chain(int start, int end)
+    {
+        chain.Clear();
+        int at = start, came = -1;
+        while (chain.Count <= links.Count)
+        {
+            int next = -1;
+            for (int k = 0; k < links.Count && next < 0; k++)
+            {
+                if (k == came) continue;
+                if (links[k].x == at) { chain.Add(k); at = links[k].y; next = k; }
+                else if (links[k].y == at) { chain.Add(~k); at = links[k].x; next = k; }
+            }
+            if (next < 0 || at == start || at == end) break;
+            came = next;
+        }
+        return chain.Count > 0 && (end < 0 || at == end);
+    }
+
+    // the stake a truck sets off from: the first one with a single rope
+    int ChainStart()
+    {
+        for (int i = 0; i < stakes.Count; i++) if (LinksAt(i) == 1) return i;
+        return -1;
+    }
+
+    // The truck's way along the road: up onto the first stake, along the right-hand lane of each
+    // section in turn, and off past the last; or back the other way, in the other lane.
     public bool Route(List<Vector3> path, bool back)
     {
         path.Clear();
-        if (!Ready || stakes.Count < 2 || segs.Length != stakes.Count - 1) return false;
+        int start = Ready ? ChainStart() : -1;
+        if (start < 0 || !Chain(start, -1)) return false;
         const float RunUp = 14f;
-        float side = (back ? -1f : 1f) * lane * 0.5f;
-        var first = segs[0];
-        var last = segs[segs.Length - 1];
-        for (float s = RunUp; s > 0; s -= 1f) path.Add(first.a - first.d * s + first.r * side);
-        for (int k = 0; k < segs.Length; k++)
+        float half = (back ? -1f : 1f) * lane * 0.5f;       // to the right of the way the chain runs
+        int c0 = chain[0], c1 = chain[chain.Count - 1];
+        Seg first = segs[c0 < 0 ? ~c0 : c0], last = segs[c1 < 0 ? ~c1 : c1];
+        Vector3 from = c0 < 0 ? first.a + first.d * first.len : first.a, ahead = c0 < 0 ? -first.d : first.d;
+        for (float s = RunUp; s > 0; s -= 1f) path.Add(from - ahead * s + new Vector3(ahead.z, 0, -ahead.x) * half);
+        foreach (int c in chain)
         {
+            int k = c < 0 ? ~c : c;
             int steps = Mathf.Max(1, Mathf.RoundToInt(segs[k].len));
-            for (int j = 0; j < steps; j++) path.Add(World(k, (float)j / steps, side));
+            for (int j = 0; j < steps; j++)
+            {
+                float t = (float)j / steps;
+                path.Add(c < 0 ? World(k, 1f - t, -half) : World(k, t, half));
+            }
         }
-        Vector3 end = last.a + last.d * last.len + last.r * side;
-        for (float s = 0; s <= RunUp; s += 1f) path.Add(end + last.d * s);
+        Vector3 to = c1 < 0 ? last.a : last.a + last.d * last.len;
+        ahead = c1 < 0 ? -last.d : last.d;
+        for (float s = 0; s <= RunUp; s += 1f) path.Add(to + ahead * s + new Vector3(ahead.z, 0, -ahead.x) * half);
         if (back) path.Reverse();    // the other way, which puts it in the other lane
         return path.Count > 8;
     }
@@ -1080,6 +1164,12 @@ public class Plot : MonoBehaviour
     {
         var g = Game.I;
         if (!Ready || cursor == null) return;
+        if (tallyDirty && Time.unscaledTime >= nextTally)
+        {
+            tallyDirty = false;
+            nextTally = Time.unscaledTime + 0.25f;
+            Tally();
+        }
         var tuning = g.tuning;
         cursor.enabled = preview.enabled = hotRing.enabled = false;
         if (g.local == null || !Hud.Playing) return;
