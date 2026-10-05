@@ -314,10 +314,10 @@ public class Game : MonoBehaviour
         players[slot] = null;
     }
 
-    public Vector3 SpawnPoint(int slot) { return map == 0 ? yard.Spawn(slot) : plots[Plot.Land].SpawnAt(slot); }
+    public Vector3 SpawnPoint(int slot) { return Plot.LandMap(map) ? plots[Plot.Land].SpawnAt(slot) : yard.Spawn(slot); }
 
     // is there ground to stand on yet? A client waits for the host to send it.
-    public bool WorldReady => map == 0 ? yard.Ready : plots[Plot.Land].Ready;
+    public bool WorldReady => Plot.LandMap(map) ? plots[Plot.Land].Ready : yard.Ready;
 
     // host: choose a map. Everyone gets its ground and starts again at its beginning. With
     // `again`, the land is made afresh from a new seed.
@@ -337,10 +337,10 @@ public class Game : MonoBehaviour
     {
         lorries.Clear();
         foreach (var plot in plots) plot.Clear();
-        if (map == 0) yard.Refresh(); else yard.Clear();
+        if (Plot.LandMap(map)) yard.Clear(); else yard.Refresh();
         if (Net.IsHost)
             foreach (var plot in plots)
-                if (plot.IsLand == (map != 0)) plot.Generate();
+                if (plot.ShownOn(map)) plot.Generate();
         respawn = true;
     }
 
@@ -377,7 +377,7 @@ public class Game : MonoBehaviour
         }
     }
 
-    public void TuningChanged() { tuningDirty = true; cubes.ApplyTuning(); if (map == 0) yard.Refresh(); foreach (var plot in plots) plot.TuningChanged(); }
+    public void TuningChanged() { tuningDirty = true; cubes.ApplyTuning(); if (!Plot.LandMap(map)) yard.Refresh(); foreach (var plot in plots) plot.TuningChanged(); }
 
     // ---- messages
 
@@ -485,7 +485,7 @@ public class Game : MonoBehaviour
             case Op.Tuning:
                 tuning.Read(m);
                 cubes.ApplyTuning();
-                if (map == 0) yard.Refresh();
+                if (!Plot.LandMap(map)) yard.Refresh();
                 break;
             case Op.Stats:
                 hostFps = m.U16();
@@ -538,7 +538,7 @@ public class Game : MonoBehaviour
         {
             respawn = false;
             local.Teleport(SpawnPoint(localSlot));
-            cam.yaw = local.yaw = map == 0 ? Yard.SpawnYaw : 0;
+            cam.yaw = local.yaw = Plot.LandMap(map) || map == Plot.TrucksMap ? 0 : Yard.SpawnYaw;
             cam.pitch = 0;
         }
         if (phase == Phase.Job && nm.IsHost && !won)

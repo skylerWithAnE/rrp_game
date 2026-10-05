@@ -64,6 +64,12 @@ public class Tuning : ScriptableObject
     [Tooltip("The steepest a rope may run (degrees), so that no road is staked that a truck cannot climb once it is finished.")]
     [Range(3, 40)] public float maxSlope = 15f;
 
+    [Header("Junctions (the Junctions test ground only)")]
+    [Tooltip("The most ropes one stake takes. 2: no junctions. 3: a T or a fork. 4: a crossroads too.")]
+    [Range(2, 4)] public float ropesPerStake = 4f;
+    [Tooltip("The least angle between a new branch and each rope already at the stake (degrees).")]
+    [Range(30, 90)] public float junctionAngle = 60f;
+
     [Header("Truck damage (the wear road only)")]
     [Tooltip("The most damage a truck does to a grid square each quarter second it is on it, out of 100. The amount is random up to this.")]
     [Range(0, 100)] public float truckDamage = 30f;

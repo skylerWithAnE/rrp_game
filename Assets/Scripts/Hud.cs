@@ -184,18 +184,21 @@ public class Hud : MonoBehaviour
 
     void Lobby(Game g, float width)
     {
-        GUILayout.BeginArea(new Rect(width / 2 - 200, 10, 400, Net.IsHost ? 132 : 60), box);
+        GUILayout.BeginArea(new Rect(width / 2 - 220, 10, 440, Net.IsHost ? 132 : 60), box);
         GUILayout.Label("<b>" + Plot.MapNames[g.map] + "</b>   " + g.PlayerCount + " of " + Session.MaxPlayers + " players", label);
         if (Net.IsHost)
         {
             // the host picks the map; everyone starts again on it
+            // the test grounds on one row, the maps on the other
             for (int row = 0; row < 2; row++)
             {
                 GUILayout.BeginHorizontal();
-                for (int i = row == 0 ? 0 : 3; i < (row == 0 ? 3 : Plot.MapNames.Length); i++)
+                GUILayout.Label(row == 0 ? "Tests" : "Maps", label, GUILayout.Width(40));
+                for (int i = 0; i < Plot.MapNames.Length; i++)
                 {
+                    if (Plot.LandMap(i) != (row == 1)) continue;
                     GUI.enabled = i != g.map;
-                    if (GUILayout.Button(i == 2 ? "Middle, " + Mathf.RoundToInt(g.tuning.mapDistance) + " m" : Plot.MapNames[i])) g.SetMap(i);
+                    if (GUILayout.Button(i == 2 ? "Middle " + Mathf.RoundToInt(g.tuning.mapDistance) : Plot.MapButtons[i])) g.SetMap(i);
                 }
                 GUI.enabled = true;
                 GUILayout.EndHorizontal();
@@ -306,12 +309,13 @@ public class Hud : MonoBehaviour
         }
 
         // on a map this makes new land from a new seed; choosing the map again brings the first back
-        if (host && GUILayout.Button(g.map == 0 ? "Make all the ground again" : "Make new land for this map")) g.SetMap(g.map, true);
-        if (host && g.map == 0)
+        if (host && GUILayout.Button(Plot.LandMap(g.map) ? "Make new land for this map" : "Make all the ground again")) g.SetMap(g.map, true);
+        if (host && g.map == Plot.BuildingMap)
         {
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Send trucks: station 2")) g.lorries.Send(0);
-            if (GUILayout.Button("station 4")) g.lorries.Send(2);
+            if (GUILayout.Button("Send trucks: clicking")) g.lorries.Send(0);
+            if (GUILayout.Button("hillside")) g.lorries.Send(1);
+            if (GUILayout.Button("gravel")) g.lorries.Send(2);
             GUILayout.EndHorizontal();
         }
 

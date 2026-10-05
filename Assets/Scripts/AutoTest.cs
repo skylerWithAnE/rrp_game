@@ -97,7 +97,7 @@ public class AutoTest : MonoBehaviour
         }
         clickTimer += Time.unscaledDeltaTime;
         stakeTimer += Time.unscaledDeltaTime;
-        if (g.map != 0)
+        if (Plot.LandMap(g.map))
         {
             if (g.phase == Phase.Lobby && g.plots[Plot.Land].Ready && !g.respawn) OnLand(g.plots[Plot.Land]);
         }

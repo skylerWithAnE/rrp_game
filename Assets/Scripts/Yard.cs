@@ -21,7 +21,7 @@ public class Yard : MonoBehaviour
 
     static string Signature(Tuning t)
     {
-        return t.truckWidth + " " + t.truckLength + " " + t.truckHeight + " " + t.truckWheel + " "
+        return Game.I.map + " " + t.truckWidth + " " + t.truckLength + " " + t.truckHeight + " " + t.truckWheel + " "
             + t.laneWidth + " " + t.sectionLength + " " + t.hairpinAcross;
     }
 
@@ -42,9 +42,12 @@ public class Yard : MonoBehaviour
         built = signature;
         Materials();
 
-        var ground = Mats.Part(transform, Mats.Cube, groundMaterial, new Vector3(0, -0.5f, 40f), new Vector3(400f, 1f, 400f));
+        // the flat ground is under every test ground; the truck, the strip and the painted
+        // hairpins are the scale yard's alone
+        var ground = Mats.Part(transform, Mats.Cube, groundMaterial, new Vector3(0, -0.5f, 40f), new Vector3(700f, 1f, 700f));
         ground.name = "Ground";
         ground.gameObject.AddComponent<BoxCollider>();
+        if (Game.I.map != Plot.YardMap) return;
 
         float road = t.laneWidth * 2f;
         Strip(t, road);
@@ -85,6 +88,8 @@ public class Yard : MonoBehaviour
     public Vector3 Spawn(int slot)
     {
         var t = Game.I.tuning;
+        // on the trucks' test ground: at the near end of the row of roads, between the good and the bad
+        if (Game.I.map == Plot.TrucksMap) return new Vector3(-t.laneWidth - 51.5f - slot * 1.2f, 0.1f, -6f);
         Vector3 truck = TruckPosition(t);
         return new Vector3(truck.x + t.truckWidth * 0.5f + 3f, 0.1f, 1f + slot * 1.2f);
     }

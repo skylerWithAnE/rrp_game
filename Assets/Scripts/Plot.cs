@@ -21,10 +21,18 @@ using UnityEngine.InputSystem;
 //   5  wear             a finished road that the trucks wear out
 //   6  hairpin          stakes laid round the tightest turn allowed, on rough ground
 //   7  hairpin good     the same turn, finished
-//   8  the map          one big piece of land with a town at each end: see "the map" below
+//   8  ramp, bare       a 14 degree climb on bare ground that is on its line: trucks cannot
+//   9  ramp, gravel     the same climb under loose gravel: they can
+//  10  steep, gravel    a 20 degree climb under loose gravel: they cannot
+//  11  steep, packed    the same climb, packed: they can
+//  12  T                a finished junction of three ropes at one stake
+//  13  crossroads       a finished junction of four
+//  14  Y                a finished junction with two branches 60 degrees apart
+//  15  junction         rough ground with a road across it, to rope a branch to
+//  16  the map          one big piece of land with a town at each end: see "the map" below
 //
-// The first eight are the stations, and exist only while the host has the stations chosen. The
-// ninth is the land of whichever map the host has chosen instead.
+// Each belongs to one of the host's choices (see MapOf) and exists only while that is chosen:
+// the test grounds for building, for trucks and for junctions, or the land of a map.
 //
 // The host decides every click and every stake and sends the results; clients never generate or
 // change anything themselves.
@@ -32,10 +40,25 @@ public class Plot : MonoBehaviour
 {
     public const float Cell = 0.25f;        // distance between ground points
     public const int PresetSections = 3;    // station 2: level, climbing, falling
-    public const int Count = 9, Land = 8;
-    public static readonly string[] Names = { "2", "3", "4", "5 good", "5 bad", "wear", "hairpin", "hairpin good", "map" };
-    // what the host can choose. 0 is the stations; the rest are land between two towns.
-    public static readonly string[] MapNames = { "Stations", "Short, 60 m", "Middle, a hill in the way", "Long, 300 m", "Climb, 16 m up", "Switchback, rocks" };
+    public const int Count = 17, Land = 16;
+    public static readonly string[] Names = { "clicking", "hillside", "gravel", "good road", "bad road", "wear", "hairpin", "hairpin good",
+        "ramp bare", "ramp gravel", "steep gravel", "steep packed", "T", "crossroads", "Y", "junction", "map" };
+    // What the host can choose. 1 to 5 are land between two towns. The others are test grounds,
+    // each about one thing: the sizes, building a road, what trucks can drive, and junctions.
+    public static readonly string[] MapNames = { "Scale yard", "Short, 60 m", "Middle, a hill in the way", "Long, 300 m", "Climb, 16 m up", "Switchback, rocks",
+        "Building roads", "Trucks: road types and turns", "Junctions" };
+    public static readonly string[] MapButtons = { "Yard", "Short", "Middle", "Long", "Climb", "Switchback", "Building", "Trucks", "Junctions" };
+    public const int YardMap = 0, BuildingMap = 6, TrucksMap = 7, JunctionsMap = 8;
+    public static bool LandMap(int map) { return map >= 1 && map <= 5; }
+
+    // which of the host's choices a plot belongs to
+    public static int MapOf(int id)
+    {
+        if (id == Land) return -1;
+        if (id <= 2 || id == 6) return BuildingMap;     // clicking, the hillside, gravel, and the hairpin to level
+        return id <= 11 ? TrucksMap : JunctionsMap;
+    }
+    public bool ShownOn(int map) { return IsLand ? LandMap(map) : MapOf(id) == map; }
     const int Switchback = 5;
     const float TierRise = 6f;              // the switchback map: each of its two banks is this high
     const float RampDegrees = 12f;          // ...and the one way up each is this steep: more than a truck climbs on bare ground, less than it climbs on gravel
@@ -82,7 +105,10 @@ public class Plot : MonoBehaviour
     public static string Why = "";
     public static int WhyFrame;
     static bool No(string why) { Why = why; return false; }
-    bool Finished => id == 3 || id == 5 || id == 7;
+    // how a plot's road starts: 2 gravelled and packed, 1 gravelled, 0 bare
+    int StartsAs => id == 3 || id == 5 || id == 7 || (id >= 11 && id <= 14) ? 2 : id == 9 || id == 10 ? 1 : 0;
+    // a stake here takes more than two ropes. Only on the junction test ground until it has been played.
+    bool Junctions => id >= 12 && id <= 15;
 
     Vector3 origin;                         // world position of point 0,0
     float lane, shoulderWidth, shoulderDrop;
@@ -93,6 +119,8 @@ public class Plot : MonoBehaviour
         public Vector3 a, d, r;             // first stake on the ground; along; to the right
         public float len, yA, yB;
         public float kA, kB;                // how far its two ends slant per metre to the right: the mitres
+        public float eA, eB;                // at a junction: how far it runs on past the stake, so the sections there overlap
+        public float pA, pB;                // at a junction: how far from the stake it stays level, at the stake's height
     }
     Seg[] segs = new Seg[0];
 
@@ -208,6 +236,28 @@ public class Plot : MonoBehaviour
             case 4: Straight(first - 50f, 0, length, BaseHeight, BaseHeight, BaseHeight + rise * 0.5f); Lay(t, ox, oz, 0.9f); break;
             case 5: Straight(first - 75f, 0, length, BaseHeight, BaseHeight, BaseHeight); Lay(t, ox, oz, 0); break;
             case Land: MakeLand(t); break;
+            case 8: case 9: case 10: case 11:
+                {
+                    // The ramps carry the row on to the left: level, up for two sections, level,
+                    // and down again, so a truck from either end has the same climb. One section
+                    // is not enough: a truck gets up 20 m of anything on the speed it arrives with.
+                    float up = length * Mathf.Tan((id <= 9 ? 14f : 20f) * Mathf.Deg2Rad);
+                    Straight(first - 100f - (id - 8) * 25f, 0, length, BaseHeight, BaseHeight, BaseHeight + up, BaseHeight + up * 2f, BaseHeight + up * 2f, BaseHeight + up, BaseHeight, BaseHeight);
+                    Lay(t, ox, oz, 0);
+                    break;
+                }
+            case 12: Spokes(first - 25f, 20f, length, 0, 180f, 90f); Lay(t, ox, oz, 0); break;
+            case 13: Spokes(first - 85f, 20f, length, 0, 180f, 90f, 270f); Lay(t, ox, oz, 0); break;
+            case 14: Spokes(first - 25f, -50f, length, 180f, 30f, -30f); Lay(t, ox, oz, 0); break;
+            case 15:
+                {
+                    // a rough field beside where players start, with a road staked straight across it
+                    Field(new Vector3(lane + 12f, 0, -8f), 54f, 60f, t.roughHeight * 0.5f, ox, oz);
+                    for (int i = 0; i < 3; i++) stakes.Add(new Vector3(origin.x + 16f, BaseHeight, origin.z + 10f + i * length));
+                    links.Add(new Vector2Int(0, 1));
+                    links.Add(new Vector2Int(1, 2));
+                    break;
+                }
             default:
                 {
                     // the hairpins sit behind the row, side by side
@@ -225,14 +275,15 @@ public class Plot : MonoBehaviour
         health = new byte[h.Length];
         if (IsLand) edited = new byte[h.Length];
         for (int i = 0; i < h.Length; i++) health[i] = 100;
-        if (Finished)
+        if (StartsAs > 0)
         {
-            // gravel at full depth, packed
+            // gravel at full depth, and packed if the road starts finished
+            if (id == 15) Rebuild();
             for (int i = 0; i < h.Length; i++)
             {
                 if (!Section(origin.x + i % w * Cell, origin.z + i / w * Cell, out _, out _, out float side) || Mathf.Abs(side) > lane) continue;
                 gravel[i] = (byte)FullGravel;
-                packed[i] = 100;
+                packed[i] = (byte)(StartsAs == 2 ? 100 : 0);
             }
         }
         Build();
@@ -252,6 +303,34 @@ public class Plot : MonoBehaviour
     {
         for (int i = 0; i < height.Length; i++) stakes.Add(new Vector3(x, height[i], z0 + i * length));
         for (int i = 0; i + 1 < height.Length; i++) links.Add(new Vector2Int(i, i + 1));
+    }
+
+    // A junction: a stake at x, z with a rope out to a stake at each of these bearings (degrees
+    // from +z, clockwise), all level.
+    void Spokes(float x, float z, float length, params float[] bearing)
+    {
+        stakes.Add(new Vector3(x, BaseHeight, z));
+        for (int i = 0; i < bearing.Length; i++)
+        {
+            float radians = bearing[i] * Mathf.Deg2Rad;
+            stakes.Add(new Vector3(x + Mathf.Sin(radians) * length, BaseHeight, z + Mathf.Cos(radians) * length));
+            links.Add(new Vector2Int(0, i + 1));
+        }
+    }
+
+    // A rough, roughly level field with no line, falling away to the yard at its edges.
+    void Field(Vector3 corner, float width, float depth, float rough, float ox, float oz)
+    {
+        origin = corner;
+        w = Mathf.CeilToInt(width / Cell) + 1;
+        d = Mathf.CeilToInt(depth / Cell) + 1;
+        h = new float[w * d];
+        for (int i = 0; i < h.Length; i++)
+        {
+            float u = i % w * Cell, v = i / w * Cell;
+            float edge = Mathf.Min(Mathf.Min(u, width - u), Mathf.Min(v, depth - v));
+            h[i] = Mathf.Max(0, (BaseHeight + Noise(origin.x + u, origin.z + v, ox, oz) * rough) * Mathf.SmoothStep(0, 1, Mathf.Clamp01(edge / Margin)));
+        }
     }
 
     // Stakes round a U-turn whose centre line has this radius: down one straight leg, round half a
@@ -550,8 +629,17 @@ public class Plot : MonoBehaviour
         joined = false;
         roadLength = 0;
         if (!IsLand || stakes.Count < 2) return;
-        joined = Chain(0, 1);
-        foreach (int c in chain) roadLength += segs[c < 0 ? ~c : c].len;
+        joined = PathBetween(0, 1);
+        // every rope that can be reached from the first town, branches and all
+        var reached = new bool[stakes.Count];
+        reached[0] = true;
+        for (bool more = true; more;)
+        {
+            more = false;
+            foreach (var l in links)
+                if (reached[l.x] != reached[l.y]) { reached[l.x] = reached[l.y] = true; more = true; }
+        }
+        for (int k = 0; k < links.Count; k++) if (reached[links[k].x]) roadLength += segs[k].len;
     }
 
     // a spot on some section of road, for the test tooling: a, b and c are each 0 to 1
@@ -767,6 +855,14 @@ public class Plot : MonoBehaviour
             case 4: text = "Station 5: a bad road. Trucks try it both ways."; break;
             case 5: text = "Wear: a finished road that the trucks wear out"; break;
             case 6: text = "Hairpin: stakes set round the tightest turn allowed\nlevel it and gravel it; trucks try it as it is"; break;
+            case 8: text = "A 14 degree climb, bare ground on its line.\nToo steep for a truck without gravel."; break;
+            case 9: text = "The same 14 degree climb under loose gravel."; break;
+            case 10: text = "A 20 degree climb under loose gravel.\nToo steep until the gravel is packed."; break;
+            case 11: text = "The same 20 degree climb, packed."; break;
+            case 12: text = "A junction: three ropes at one stake.\nTrucks drive from any end to any other."; at = stakes[0] + Vector3.up * 2.2f; break;
+            case 13: text = "A crossroads: four ropes at one stake."; at = stakes[0] + Vector3.up * 2.2f; break;
+            case 14: text = "A fork: two branches 60 degrees apart, the closest allowed."; at = stakes[0] + Vector3.up * 2.2f; break;
+            case 15: text = "A junction to build. Press 1, click the middle stake,\nthen click the ground to one side for a branch.\nA stake here takes up to four ropes."; at = stakes[1] + Vector3.up * 2.2f; break;
             case Land:
                 {
                     text = "Town A. Press 1, click this stake, then click the ground\ntoward the pole at town B to put stakes down.\nRope the last one to town B's stake and trucks set off.";
@@ -937,9 +1033,15 @@ public class Plot : MonoBehaviour
             seg.len = seg.d.magnitude;
             seg.d /= Mathf.Max(seg.len, 0.001f);
             seg.r = new Vector3(seg.d.z, 0, -seg.d.x);
+            // Where three or more ropes meet there is no one bend to halve. Each section runs
+            // on past the stake instead, so that between them they cover the whole junction (a
+            // point belongs to the nearest centre line), and each stays level at the stake's
+            // height until it is clear of the others.
             int before = Beyond(links[k].x, k), after = Beyond(links[k].y, k);
-            if (before >= 0) seg.kA = Slant(seg, Flat(a - stakes[before]).normalized + seg.d);
-            if (after >= 0) seg.kB = Slant(seg, seg.d + Flat(stakes[after] - b).normalized);
+            if (LinksAt(links[k].x) >= 3) { seg.eA = Reach; seg.pA = Mathf.Min(Reach, seg.len * 0.4f); }
+            else if (before >= 0) seg.kA = Slant(seg, Flat(a - stakes[before]).normalized + seg.d);
+            if (LinksAt(links[k].y) >= 3) { seg.eB = Reach; seg.pB = Mathf.Min(Reach, seg.len * 0.4f); }
+            else if (after >= 0) seg.kB = Slant(seg, seg.d + Flat(stakes[after] - b).normalized);
             segs[k] = seg;
         }
     }
@@ -951,23 +1053,36 @@ public class Plot : MonoBehaviour
         return forward < 0.2f ? 0 : -Vector3.Dot(seg.r, through) / forward;     // a bend sharper than about 160 degrees is left square
     }
 
+    // Where a section begins and ends, in metres along it from its first stake, at `off` metres
+    // right of its centre line: s0 to s1 is the ground it covers, and t0 to t1 is where its line
+    // runs from one height to the other. They differ only at a junction.
+    static void Span(Seg seg, float off, out float s0, out float s1, out float t0, out float t1)
+    {
+        s0 = seg.eA > 0 ? -seg.eA : off * seg.kA;
+        s1 = seg.eB > 0 ? seg.len + seg.eB : seg.len + off * seg.kB;
+        t0 = seg.eA > 0 ? seg.pA : s0;
+        t1 = seg.eB > 0 ? seg.len - seg.pB : s1;
+    }
+
     // Which section covers a spot, and where in it: t from 0 at its first end to 1 at its second,
     // side in metres right of the centre line. Where two overlap, the nearer centre line wins.
-    bool Section(float x, float z, out int link, out float t, out float side)
+    // Sections tied to the stakes `notA` and `notB` are left out.
+    bool Section(float x, float z, out int link, out float t, out float side, int notA = -1, int notB = -1)
     {
         link = -1; t = side = 0;
         float best = float.MaxValue, reach = Reach;
         for (int k = 0; k < segs.Length; k++)
         {
+            if (notA >= 0 && (links[k].x == notA || links[k].y == notA || links[k].x == notB || links[k].y == notB)) continue;
             var seg = segs[k];
             float px = x - seg.a.x, pz = z - seg.a.z;
             float s = px * seg.d.x + pz * seg.d.z, off = px * seg.d.z - pz * seg.d.x;
             if (Mathf.Abs(off) > reach + 0.001f || Mathf.Abs(off) >= best) continue;
-            float s0 = off * seg.kA, s1 = seg.len + off * seg.kB;
+            Span(seg, off, out float s0, out float s1, out float t0, out float t1);
             if (s1 - s0 < 0.05f || s < s0 - 0.001f || s > s1 + 0.001f) continue;
             best = Mathf.Abs(off);
             link = k; side = off;
-            t = Mathf.Clamp01((s - s0) / (s1 - s0));
+            t = Mathf.Clamp01((s - t0) / Mathf.Max(0.01f, t1 - t0));
         }
         return link >= 0;
     }
@@ -976,8 +1091,8 @@ public class Plot : MonoBehaviour
     Vector3 World(int link, float t, float side)
     {
         var seg = segs[link];
-        float s0 = side * seg.kA, s1 = seg.len + side * seg.kB;
-        return seg.a + seg.d * (s0 + t * (s1 - s0)) + seg.r * side;
+        Span(seg, side, out _, out _, out float t0, out float t1);
+        return seg.a + seg.d * (t0 + t * (t1 - t0)) + seg.r * side;
     }
 
     // level across the road; over a shoulder it falls away from the road's edge
@@ -997,7 +1112,8 @@ public class Plot : MonoBehaviour
         for (int corner = 0; corner < 4; corner++)
         {
             float edge = corner < 2 ? -Reach : Reach;
-            Vector3 p = seg.a + seg.d * (corner % 2 == 0 ? edge * seg.kA : seg.len + edge * seg.kB) + seg.r * edge;
+            Span(seg, edge, out float s0, out float s1, out _, out _);
+            Vector3 p = seg.a + seg.d * (corner % 2 == 0 ? s0 : s1) + seg.r * edge;
             x0 = Mathf.Min(x0, p.x); x1 = Mathf.Max(x1, p.x); z0 = Mathf.Min(z0, p.z); z1 = Mathf.Max(z1, p.z);
         }
         int ix0 = Mathf.Max(0, Mathf.FloorToInt((x0 - origin.x) / Cell) - 2), ix1 = Mathf.Min(w - 1, Mathf.CeilToInt((x1 - origin.x) / Cell) + 2);
@@ -1019,7 +1135,8 @@ public class Plot : MonoBehaviour
 
     static bool Same(Seg a, Seg b)
     {
-        return a.a == b.a && a.d == b.d && a.len == b.len && a.yA == b.yA && a.yB == b.yB && a.kA == b.kA && a.kB == b.kB;
+        return a.a == b.a && a.d == b.d && a.len == b.len && a.yA == b.yA && a.yB == b.yB && a.kA == b.kA && a.kB == b.kB
+            && a.eA == b.eA && a.eB == b.eB && a.pA == b.pA && a.pB == b.pB;
     }
 
     // ---- stakes
@@ -1064,11 +1181,12 @@ public class Plot : MonoBehaviour
         float distance = Vector3.Distance(a, b);
         if (distance < t.minStakeSpacing - 0.01f) return No("too close to the last stake");
         if (distance > t.sectionLength + 0.01f) return No("too far: a rope is " + t.sectionLength.ToString("0") + " m at most");
-        if (LinksAt(from) >= 2 || (toStake >= 0 && LinksAt(toStake) >= 2)) return No("a stake takes two ropes, and that one has them");
-        if (!BendAllowed(from, b) || (toStake >= 0 && !BendAllowed(toStake, a))) return No("too sharp a bend: " + t.maxBend.ToString("0") + " degrees at most");
+        int most = Junctions ? Mathf.RoundToInt(t.ropesPerStake) : 2;
+        if (LinksAt(from) >= most || (toStake >= 0 && LinksAt(toStake) >= most)) return No("a stake takes " + most + " ropes, and that one has them");
+        if (!BendAllowed(from, b) || (toStake >= 0 && !BendAllowed(toStake, a))) return false;
         if (TooSteep(stakes[from].y, to.y, distance)) return No("too steep for a truck: " + t.maxSlope.ToString("0") + " degrees at most");
         if (RockNear(a, b, Reach)) return No("a rock is in the way");
-        return Crosses(a, b) ? No("it would run over road already staked") : true;
+        return Crosses(a, b, from, toStake) ? No("it would run over road already staked") : true;
     }
 
     // would a rope between these two heights, this far apart on the flat, be too steep to drive?
@@ -1078,23 +1196,34 @@ public class Plot : MonoBehaviour
     }
 
     // would a rope from this stake to there turn the road too sharply at the stake?
+    // A stake with one rope: the second carries the road on, and may not bend it too sharply.
+    // A stake with two or more: another rope is a branch, and must leave well clear of each.
     bool BendAllowed(int stake, Vector3 to)
     {
-        int before = Beyond(stake, -1);
-        if (before < 0) return true;
+        var t = Game.I.tuning;
+        int ropes = LinksAt(stake);
+        if (ropes == 0) return true;
         Vector3 here = Flat(stakes[stake]);
-        return Vector3.Angle(here - Flat(stakes[before]), to - here) <= Game.I.tuning.maxBend + 0.01f;
+        if (ropes == 1)
+            return Vector3.Angle(here - Flat(stakes[Beyond(stake, -1)]), to - here) <= t.maxBend + 0.01f ? true : No("too sharp a bend: " + t.maxBend.ToString("0") + " degrees at most");
+        foreach (var l in links)
+        {
+            if (l.x != stake && l.y != stake) continue;
+            if (Vector3.Angle(Flat(stakes[l.x == stake ? l.y : l.x]) - here, to - here) < t.junctionAngle - 0.01f)
+                return No("a branch must leave " + t.junctionAngle.ToString("0") + " degrees or more from the other ropes");
+        }
+        return true;
     }
 
-    // Would a section from a to b run over road that is already staked out? Its two ends are let
-    // off, since sections that share a stake meet there.
-    bool Crosses(Vector3 a, Vector3 b)
+    // Would a section from a to b run over road that is already staked out? The sections tied
+    // to its own two stakes do not count: it meets those there, at a bend or a junction.
+    bool Crosses(Vector3 a, Vector3 b, int from, int toStake)
     {
-        float length = Vector3.Distance(a, b), ends = Reach;
-        for (float s = ends; s <= length - ends; s += 0.5f)
+        float length = Vector3.Distance(a, b);
+        for (float s = 1f; s <= length - 1f; s += 0.5f)
         {
             Vector3 p = Vector3.Lerp(a, b, s / length);
-            if (Section(p.x, p.z, out _, out _, out _)) return true;
+            if (Section(p.x, p.z, out _, out _, out _, from, toStake)) return true;
         }
         return false;
     }
@@ -1261,7 +1390,7 @@ public class Plot : MonoBehaviour
     void Square(Tuning tuning, int link, ref float t, ref float side, out float halfT, out float halfSide)
     {
         float cellSide = lane / Mathf.Max(1, Mathf.RoundToInt(lane / tuning.patchWidth));
-        int rows = Mathf.Max(1, Mathf.RoundToInt(segs[link].len / tuning.patchWidth));
+        int rows = Mathf.Max(1, Mathf.RoundToInt((segs[link].len - segs[link].pA - segs[link].pB) / tuning.patchWidth));
         if (Mathf.Abs(side) > lane)
         {
             side = Mathf.Sign(side) * (lane + shoulderWidth * 0.5f);
@@ -1281,7 +1410,9 @@ public class Plot : MonoBehaviour
     void Box(int link, float t, float side, float halfT, float halfSide, out int x0, out int x1, out int z0, out int z1)
     {
         Vector3 centre = World(link, t, side);
-        float radius = Mathf.Sqrt(halfT * halfT * segs[link].len * segs[link].len * 3f + halfSide * halfSide) + 1f;
+        // at a junction the end squares take in the level ground round the stake as well
+        float radius = Mathf.Sqrt(halfT * halfT * segs[link].len * segs[link].len * 3f + halfSide * halfSide) + 1f
+            + Mathf.Max(segs[link].eA + segs[link].pA, segs[link].eB + segs[link].pB);
         Box(centre.x, centre.z, radius, out x0, out x1, out z0, out z1);
     }
 
@@ -1511,32 +1642,42 @@ public class Plot : MonoBehaviour
         return Mathf.Lerp(0.6f, 1f, packed[i] * 0.01f);
     }
 
-    // Walk the ropes from one stake until they run out, or until they reach `end`. Players put
-    // stakes down in any order, so the order is found by following the ropes. Fills `chain`.
-    bool Chain(int start, int end)
+    // The shortest way along the ropes from one stake to another, as the sections in the order
+    // a truck meets them. Players put stakes down in any order and roads can branch, so the way
+    // is searched for, not assumed. Fills `chain`.
+    bool PathBetween(int start, int end)
     {
         chain.Clear();
-        int at = start, came = -1;
-        while (chain.Count <= links.Count)
+        if (start < 0 || end < 0 || start >= stakes.Count || end >= stakes.Count || start == end) return false;
+        const int Unseen = int.MinValue;
+        var by = new int[stakes.Count];     // the section each stake was reached by
+        for (int i = 0; i < by.Length; i++) by[i] = Unseen;
+        var queue = new Queue<int>();
+        queue.Enqueue(start);
+        by[start] = int.MaxValue;
+        while (queue.Count > 0 && by[end] == Unseen)
         {
-            int next = -1;
-            for (int k = 0; k < links.Count && next < 0; k++)
+            int at = queue.Dequeue();
+            for (int k = 0; k < links.Count; k++)
             {
-                if (k == came) continue;
-                if (links[k].x == at) { chain.Add(k); at = links[k].y; next = k; }
-                else if (links[k].y == at) { chain.Add(~k); at = links[k].x; next = k; }
+                int other, c;
+                if (links[k].x == at) { other = links[k].y; c = k; }
+                else if (links[k].y == at) { other = links[k].x; c = ~k; }
+                else continue;
+                if (by[other] != Unseen) continue;
+                by[other] = c;
+                queue.Enqueue(other);
             }
-            if (next < 0 || at == start || at == end) break;
-            came = next;
         }
-        return chain.Count > 0 && (end < 0 || at == end);
-    }
-
-    // the stake a truck sets off from: the first one with a single rope
-    int ChainStart()
-    {
-        for (int i = 0; i < stakes.Count; i++) if (LinksAt(i) == 1) return i;
-        return -1;
+        if (by[end] == Unseen) return false;
+        for (int at = end; at != start;)
+        {
+            int c = by[at];
+            chain.Add(c);
+            at = c < 0 ? links[~c].y : links[c].x;
+        }
+        chain.Reverse();
+        return true;
     }
 
     // The truck's way along the road: up onto the first stake, along the right-hand lane of each
@@ -1544,10 +1685,27 @@ public class Plot : MonoBehaviour
     public bool Route(List<Vector3> path, bool back)
     {
         path.Clear();
-        // on the map the road runs from one town's stake to the other's, and there is no road
-        // until the ropes join them
-        int start = !Ready ? -1 : IsLand ? 0 : ChainStart();
-        if (start < 0 || !Chain(start, IsLand ? 1 : -1)) return false;
+        if (!Ready) return false;
+        // On the map the road runs from one town's stake to the other's, and there is no road
+        // until the ropes join them. Anywhere else a truck drives from one end of the road (a
+        // stake with a single rope) to another; where a junction gives it more than two ends to
+        // choose from, it picks its two at random.
+        int start = 0, end = 1;
+        if (!IsLand)
+        {
+            var ends = new List<int>();
+            for (int i = 0; i < stakes.Count; i++) if (LinksAt(i) == 1) ends.Add(i);
+            if (ends.Count < 2) return false;
+            start = ends[0];
+            end = ends[1];
+            if (ends.Count > 2)
+            {
+                start = ends[Random.Range(0, ends.Count)];
+                do end = ends[Random.Range(0, ends.Count)]; while (end == start);
+                back = false;
+            }
+        }
+        if (!PathBetween(start, end)) return false;
         float RunUp = IsLand ? 9f : 14f;    // a town's pad is smaller than the yard
         float half = (back ? -1f : 1f) * lane * 0.5f;       // to the right of the way the chain runs
         int c0 = chain[0], c1 = chain[chain.Count - 1];
