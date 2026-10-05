@@ -154,7 +154,7 @@ exercised with simulated input events. **No human built a road, placed a block o
 | | Built | Wanted (as now stated) |
 |---|---|---|
 | View | Third person, orbit camera 6 to 8 m back, crosshair aiming past the character | First person |
-| Look | Flat solid colors, round blobs, bright sky | Low fidelity is fine (see Lethal Company); not the priority |
+| Look | Flat solid colors, bright sky | Low fidelity is fine (see Lethal Company); not the priority |
 | World | 64 m square, one 8 m hill, towns 40 m apart | Valheim scale |
 | Terrain | A grid of points 0.5 m (later 1 m) apart, moved one whole cube at a time | Valheim-like terraforming |
 | Tools | One shovel, two mouse buttons, meaning changes with what is carried | More than one tool |
@@ -227,8 +227,8 @@ The user asked for this section. These are the rigid or under-communicated parts
   the world is, how tall a person is, or what it should look like.
 - **No reference games were named** until the final message. Lethal Company, Valheim and
   Satisfactory each would have changed the first day's work.
-- **"Blobby solid-color characters", "it should be weird", "fast, simple and weird beats correct
-  and polished"** all point away from a grounded first-person game.
+- **"It should be weird" and "fast, simple and weird beats correct and polished"** point away from a
+  grounded first-person game. (The blob characters themselves were not a problem; see below.)
 - **The camera was stated as a decision**, not a question.
 - **The archive was off limits.** `docs/archive/` holds the fuller planning documents and Claude was
   told not to read them. If the Satisfactory origin or the Valheim scale is in there, it was cut
@@ -307,6 +307,8 @@ Likely to survive a redesign:
 - The truck's sprung-ray physics and road following, as a starting point for a real vehicle.
 - The live tuning panel built from one asset.
 - The solid-color shader, if the look stays flat.
+- The procedurally animated blob characters. The user said on 2026-10-04 that they were fine as
+  placeholders, were never a concern, and can stay.
 
 Likely to be thrown away:
 
@@ -315,7 +317,6 @@ Likely to be thrown away:
 - Cubes as the unit of everything; blocks as cubes on the ground grid.
 - Road as recolored grid points.
 - The 64 m map, the hill, the towns.
-- Blobs.
 - The IMGUI interface.
 
 Uncertain: the heightfield itself. A chunked heightfield with host-broadcast edits is a sound base
@@ -339,7 +340,8 @@ Claude suggests settling these, with numbers and pictures, before any system is 
    Satisfactory obstacles. Earthquakes and cave-ins were this prototype's.
 8. ~~Is multiplayer still the point from day one?~~ **Answered by the user 2026-10-04: yes.** Keep
    building and verifying every system networked from the start.
-9. **Characters**: blobs, or people?
+9. ~~Characters: blobs, or people?~~ **Answered by the user 2026-10-04: keep the blobs** as
+   placeholders. In first person their size and eye height still need choosing.
 10. **Should Claude read `docs/archive/`?** It may already answer some of these.
 
 And one process suggestion: start with a walkable grey-box at the right scale, in first person,
