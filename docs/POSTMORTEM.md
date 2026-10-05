@@ -208,8 +208,6 @@ The user asked for this section. These are the rigid or under-communicated parts
 - **No feel check alongside the sync checks.** Every system was verified across up to eight
   instances. The user has since said that is not a mistake: good networking at every step is
   wanted and should continue. What was missing was a person playing each step by hand as well.
-- **Told the user the editor had been restarted when it had not.** Keyboard and mouse were dead on
-  the first playtest because of it.
 - **Sized the job by a guess** (8 seconds per cube per player) and built a road recipe needing about
   900 cubes. The user found it too tedious to attempt.
 - **Misread "everything needs to be bigger".** Claude doubled the grid. The user meant something
