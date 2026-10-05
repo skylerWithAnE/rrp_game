@@ -270,7 +270,7 @@ public class Lorries : MonoBehaviour
         {
             if (rig.l == null || rig.l.bedPart == null) continue;
             rig.l.bedAngle = Mathf.MoveTowards(rig.l.bedAngle, rig.bed ? 48f : 0, 30f * Time.deltaTime);
-            rig.l.bedPart.localRotation = Quaternion.Euler(rig.l.bedAngle, 0, 0);
+            rig.l.bedPart.localRotation = Quaternion.Euler(-rig.l.bedAngle, 0, 0);      // its front end up, on the hinge at the back
         }
         if (!Net.IsHost)
         {

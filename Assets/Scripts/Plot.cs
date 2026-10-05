@@ -2494,6 +2494,16 @@ public class Plot : MonoBehaviour
         if (mouse == null) return;
         var eye = g.cam.transform;
 
+        // A truck that waits to be sent comes before whatever tool is in hand: the crosshair on
+        // it says what a click would do, a right click sends it, and no tool acts through it.
+        // (At the quarry with the gravel tool, the shovel has more to say: see QuarryTool.)
+        if (depots.Count > 1 && !(IsQuarry && Tool == Gravel) && Physics.Raycast(eye.position, eye.forward, out var truck, tuning.flingReach, ~0, QueryTriggerInteraction.Ignore))
+        {
+            rigLine = "";
+            if (RigTool(g, tuning, mouse, truck)) return;
+            if (rigLine.Length > 0) { Say(rigLine, false); return; }
+        }
+
         if (Tool == Stakes)
         {
             StakeTool(tuning, mouse, eye);
@@ -2510,13 +2520,6 @@ public class Plot : MonoBehaviour
             return;
         }
         if (IsQuarry && Tool == Gravel && QuarryTool(g, tuning, mouse, eye)) return;
-        // any other truck that waits to be sent: say so, and send it on a right click
-        if (depots.Count > 1 && !(IsQuarry && Tool == Gravel) && Physics.Raycast(eye.position, eye.forward, out var truck, tuning.flingReach, ~0, QueryTriggerInteraction.Ignore))
-        {
-            rigLine = "";
-            if (RigTool(g, tuning, mouse, truck)) return;
-            if (rigLine.Length > 0) { Say(rigLine, false); return; }
-        }
         if (hotPlot == this) DrawHot(tuning);
         if (!Physics.Raycast(eye.position, eye.forward, out var hit, tuning.clickReach, ~0, QueryTriggerInteraction.Ignore) || hit.collider.transform.parent != transform) return;
         Vector3 aim = hit.point;
