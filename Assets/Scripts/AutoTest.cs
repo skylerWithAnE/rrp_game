@@ -15,6 +15,9 @@ using UnityEngine;
 //   -rrpStakes          first put three linked stakes down on the station 3 hillside; on a map,
 //                       stake a road out from the first town to the second
 //   -rrpMap <n>         host: choose map n (0 is the stations)
+//   -rrpWork <percent>  on a map, after -rrpStakes: click wherever there is work, at the cap, until
+//                       the road is graded and gravelled, with that share of clicks on the hot
+//                       spot; prints RRPWORK lines with the time each took
 //
 // RunStress (also a button on the tuning panel) runs the cube experiment's pile and avalanche
 // tests on the host and prints one RRPSTRESS line per test.
@@ -26,6 +29,8 @@ public class AutoTest : MonoBehaviour
     public static bool Bot, Log;
     int clicksLeft, clicksTotal, stakesLeft;
     int mapWanted = -1;
+    int workHot = -1, workPhase, workClicks;
+    float workStart;
     float stakeTimer;
     float clickTimer;
     public static AutoTest I;
@@ -63,6 +68,7 @@ public class AutoTest : MonoBehaviour
             else if (args[i] == "-rrpClicks" && i + 1 < args.Length) { int.TryParse(args[++i], out clicksLeft); clicksTotal = clicksLeft; }
             else if (args[i] == "-rrpStakes") stakesLeft = 3;
             else if (args[i] == "-rrpMap" && i + 1 < args.Length) int.TryParse(args[++i], out mapWanted);
+            else if (args[i] == "-rrpWork" && i + 1 < args.Length) int.TryParse(args[++i], out workHot);
         }
         if (host) Game.I.Host(false);
     }
@@ -146,6 +152,23 @@ public class AutoTest : MonoBehaviour
             if (to.magnitude <= 19f) { land.RequestStake(0, 0, from, 1); return; }
             Vector3 step = to.normalized * 17f + new Vector3(land.stakes.Count % 2 == 0 ? 3f : -3f, 0, 0);
             land.RequestStake(here.x + step.x, here.z + step.z, from, -1);
+        }
+        else if (stakesLeft == 0 && workHot >= 0 && workPhase < 2 && stakeTimer > 1f && clickTimer > 1.02f / Game.I.tuning.clicksPerSecond)
+        {
+            // phase 0 grades, phase 1 gravels. If trucks pack, the gravel only has to be laid.
+            if (workClicks == 0 && workPhase == 0) workStart = Time.unscaledTime;
+            bool layOnly = Game.I.tuning.truckPacking > 0;
+            if (!land.NextWork(workPhase == 0 ? Plot.Grade : Plot.Gravel, layOnly, out Vector3 work))
+            {
+                Debug.Log("RRPWORK " + (workPhase == 0 ? "graded" : layOnly ? "gravel laid" : "gravelled and packed") + " " + Mathf.RoundToInt(land.roadLength) + " m in " + (Time.unscaledTime - workStart).ToString("0") + " s, " + workClicks + " clicks, hot " + workHot + " %, row " + Game.I.tuning.hotSpotRow + ", truck packing " + Game.I.tuning.truckPacking);
+                workPhase++;
+                workClicks = 0;
+                workStart = Time.unscaledTime;
+                return;
+            }
+            clickTimer = 0;
+            workClicks++;
+            land.RequestClick(work.x, work.z, workClicks * workHot % 100 < workHot, workPhase == 0 ? Plot.Grade : Plot.Gravel);
         }
         else if (stakesLeft == 0 && clicksLeft > 0 && stakeTimer > 1f && clickTimer > 0.05f)
         {

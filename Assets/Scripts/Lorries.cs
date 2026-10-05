@@ -304,6 +304,12 @@ public class Lorries : MonoBehaviour
                 l.wear = 0;
                 g.plots[l.plot].Wear(tr.position, touching);
             }
+            // and on a map, a truck packs the gravel it drives over
+            if (g.plots[l.plot].IsLand && l.wear >= 0.25f && touching.Count > 0)
+            {
+                l.wear = 0;
+                g.plots[l.plot].Pack(touching);
+            }
 
             Vector3 position = tr.position;
             var path = l.path;

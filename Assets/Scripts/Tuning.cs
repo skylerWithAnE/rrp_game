@@ -100,6 +100,12 @@ public class Tuning : ScriptableObject
     [Tooltip("Seconds between trucks setting off from each town, once the towns are joined.")]
     [Range(3, 60)] public float truckEvery = 12f;
 
+    [Header("Claude's additions (maps only): 0 switches each off")]
+    [Tooltip("Trucks pack the gravel they drive over: how much of the packing each truck does to the squares under its wheels, four times a second. 0.25 is one click's worth. 0: only clicks pack.")]
+    [Range(0, 1)] public float truckPacking = 0.25f;
+    [Tooltip("1: a click on the hot spot also does one ordinary click on every other square in the same row across the road. 0: the hot spot only doubles its own square.")]
+    [Range(0, 1)] public float hotSpotRow = 1f;
+
     [Header("Old: Player")]
     [Range(1, 12)] public float moveSpeed = 6f;
     [Range(0, 12)] public float jumpSpeed = 7.5f;

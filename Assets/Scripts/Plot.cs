@@ -1207,6 +1207,33 @@ public class Plot : MonoBehaviour
         hostNextClick[slot] = Time.time + 0.8f / tuning.clicksPerSecond;
 
         bool round = tuning.brushRound >= 0.5f;
+        changed.Clear();
+        float mine = side;
+        if (!round) Square(tuning, link, ref t, ref mine, out _, out _);
+        Patch(tuning, link, t, side, x, z, round, hot ? tuning.hotSpotBonus : 1f, tool);
+        // [Claude, maps only] a click on the hot spot also does one ordinary click on every
+        // other square of its row, from shoulder to shoulder
+        if (hot && IsLand && !round && tuning.hotSpotRow >= 0.5f)
+        {
+            float cellSide = lane / Mathf.Max(1, Mathf.RoundToInt(lane / tuning.patchWidth));
+            int columns = Mathf.RoundToInt(lane * 2f / cellSide);
+            for (int c = -1; c <= columns; c++)
+            {
+                // -1 and `columns` are the two shoulders
+                if ((c < 0 || c == columns) && shoulderWidth <= 0) continue;
+                float other = c < 0 ? -lane - shoulderWidth * 0.5f : c == columns ? lane + shoulderWidth * 0.5f : -lane + (c + 0.5f) * cellSide;
+                if (Mathf.Abs(other - mine) > 0.01f) Patch(tuning, link, t, other, x, z, false, 1f, tool);
+            }
+        }
+        clicks++;
+        Broadcast();
+        return true;
+    }
+
+    // host: one click's worth of work on the grid square at t, side of a section (or, for the
+    // round brush, on a disc at x, z). Points it changes are added to `changed`.
+    void Patch(Tuning tuning, int link, float t, float side, float x, float z, bool round, float strength, int tool)
+    {
         float halfT = 0, halfSide = 0, radius = tuning.patchWidth * 0.5f;
         int x0, x1, z0, z1;
         if (round) Box(x, z, radius, out x0, out x1, out z0, out z1);
@@ -1215,7 +1242,6 @@ public class Plot : MonoBehaviour
             Square(tuning, link, ref t, ref side, out halfT, out halfSide);
             Box(link, t, side, halfT, halfSide, out x0, out x1, out z0, out z1);
         }
-        changed.Clear();
         int full = FullGravel;
         for (int iz = z0; iz <= z1; iz++)
             for (int ix = x0; ix <= x1; ix++)
@@ -1235,7 +1261,7 @@ public class Plot : MonoBehaviour
                     distance = Mathf.Max(Mathf.Abs(along[i] - t) / halfT, Mathf.Abs(across[i] - side) / halfSide);
                 }
                 // a soft edge moves the rim of the patch less than the middle
-                float weight = (hot ? tuning.hotSpotBonus : 1f) * Mathf.Lerp(1f, 1f - Mathf.SmoothStep(0, 1, distance), tuning.brushSoftEdge);
+                float weight = strength * Mathf.Lerp(1f, 1f - Mathf.SmoothStep(0, 1, distance), tuning.brushSoftEdge);
                 if (tool == Grade)
                 {
                     float next = Mathf.MoveTowards(h[i], target[i], tuning.heightPerClick * weight);
@@ -1257,9 +1283,50 @@ public class Plot : MonoBehaviour
                 health[i] = 100;    // worked ground is sound again
                 changed.Add(i);
             }
-        clicks++;
-        Broadcast();
-        return true;
+    }
+
+    // [Claude, maps only] host: a truck packs the gravel under its wheels. Each wheel packs
+    // the grid square it is on, where the gravel is at full depth, by tuning.truckPacking.
+    public void Pack(List<Vector3> wheels)
+    {
+        var tuning = Game.I.tuning;
+        if (!Ready || tuning.truckPacking <= 0) return;
+        changed.Clear();
+        int full = FullGravel, add = Mathf.Max(1, Mathf.RoundToInt(tuning.truckPacking * 100f));
+        foreach (var wheel in wheels)
+        {
+            if (!Section(wheel.x, wheel.z, out int link, out float t, out float side) || Mathf.Abs(side) > lane) continue;
+            Square(tuning, link, ref t, ref side, out float halfT, out float halfSide);
+            Box(link, t, side, halfT, halfSide, out int x0, out int x1, out int z0, out int z1);
+            for (int iz = z0; iz <= z1; iz++)
+                for (int ix = x0; ix <= x1; ix++)
+                {
+                    int i = iz * w + ix;
+                    if (zone[i] != 1 || gravel[i] < full || packed[i] >= 100 || !InSquare(i, link, t, side, halfT, halfSide) || changed.Contains(i)) continue;
+                    packed[i] = (byte)Mathf.Min(100, packed[i] + add);
+                    changed.Add(i);
+                }
+        }
+        if (changed.Count > 0) Broadcast();
+    }
+
+    // For the test tooling: a spot where this tool still has work, looking on from the last one
+    // found. With `layOnly`, gravel that is down but not packed does not count.
+    int workAt;
+    public bool NextWork(int tool, bool layOnly, out Vector3 spot)
+    {
+        spot = default;
+        if (!Ready) return false;
+        for (int n = 0; n < h.Length; n++)
+        {
+            int i = (workAt + n) % h.Length;
+            if (zone[i] == 0 || (tool == Gravel && zone[i] != 1)) continue;
+            if (tool == Gravel && layOnly ? Mathf.Abs(h[i] - target[i]) >= Level || gravel[i] >= FullGravel : !Wants(i, tool)) continue;
+            workAt = i;
+            spot = new Vector3(origin.x + i % w * Cell, 0, origin.z + i / w * Cell);
+            return true;
+        }
+        return false;
     }
 
     // host: send the points in `changed` as they now are, and show them
