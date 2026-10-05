@@ -35,7 +35,10 @@ public class Plot : MonoBehaviour
     public const int Count = 9, Land = 8;
     public static readonly string[] Names = { "2", "3", "4", "5 good", "5 bad", "wear", "hairpin", "hairpin good", "map" };
     // what the host can choose. 0 is the stations; the rest are land between two towns.
-    public static readonly string[] MapNames = { "Stations", "Short, 60 m", "Middle, a hill in the way", "Long, 300 m", "Climb, 16 m up" };
+    public static readonly string[] MapNames = { "Stations", "Short, 60 m", "Middle, a hill in the way", "Long, 300 m", "Climb, 16 m up", "Switchback, rocks" };
+    const int Switchback = 5;
+    const float TierRise = 6f;              // the switchback map: each of its two banks is this high
+    const float RampDegrees = 12f;          // ...and the one way up each is this steep: more than a truck climbs on bare ground, less than it climbs on gravel
     const int ChunkCells = 32;              // cells along each side of one mesh
     const float Margin = 5f;                // ground round the edge of a plot, sloping down to the yard
     const float BaseHeight = 1.2f;          // the line of a level preset road, above the yard
@@ -73,6 +76,12 @@ public class Plot : MonoBehaviour
     int cw, cd;
     byte[] edited;                          // host, the map: points a click has changed, which is all a joiner needs sending
     float remakeAt;                         // host, the map: make the land again once the sliders have stopped moving
+    readonly List<Vector3> rocks = new List<Vector3>();     // the map: rocks nothing can move, as x, radius, z. No stake or road may touch one.
+
+    // why the rope or stake under the crosshair cannot be made, for the screen
+    public static string Why = "";
+    public static int WhyFrame;
+    static bool No(string why) { Why = why; return false; }
     bool Finished => id == 3 || id == 5 || id == 7;
 
     Vector3 origin;                         // world position of point 0,0
@@ -147,6 +156,7 @@ public class Plot : MonoBehaviour
         chunks = null;
         coarse = null;
         edited = null;
+        rocks.Clear();
         fixedStakes = 0;
         joined = false;
         roadLength = 0;
@@ -329,8 +339,8 @@ public class Plot : MonoBehaviour
     void MakeLand(Tuning t)
     {
         int map = Game.I.map;
-        float length = Mathf.Round(map == 1 ? 60f : map == 2 ? t.mapDistance : map == 3 ? 300f : 160f);
-        float width = map == 1 ? 70f : map == 4 ? 130f : 100f;
+        float length = Mathf.Round(map == 1 ? 60f : map == 2 ? t.mapDistance : map == 3 ? 300f : map == Switchback ? 150f : 160f);
+        float width = map == 1 ? 70f : map == 4 ? 130f : map == Switchback ? 110f : 100f;
         // the same seed makes the same land, so a map is the same every time until it is made again
         var random = new System.Random(Game.I.mapSeed);
         float ox = (float)random.NextDouble() * 100f, oz = (float)random.NextDouble() * 100f;
@@ -386,6 +396,22 @@ public class Plot : MonoBehaviour
                     float hollow = -3.5f * Mathf.Exp(-((x + 5f) * (x + 5f) + (z - zh) * (z - zh)) / 512f);
                     return 4f + swell * 1.5f + ridge + hollow;
                 }
+            case Switchback:
+                {
+                    // switchback: two banks across the whole map, each 6 m high and too steep
+                    // to rope, with one gentle way up apiece: on the left for the first and on
+                    // the right for the second. Rocks stand along the rest of each bank (see
+                    // PlaceRocks), so the road has to swing from one side to the other.
+                    float y = 3f + swell * 0.4f;
+                    for (int tier = 0; tier < 2; tier++)
+                    {
+                        float z0 = BankStart(tier, length), run = RampRun, middle = z0 + run * 0.5f;
+                        float gentle = Mathf.Clamp01((z - z0) / run), steep = Mathf.SmoothStep(0, 1, (z - (middle - 5f)) / 10f);
+                        float way = 1f - Mathf.SmoothStep(0, 1, (Mathf.Abs(x - WayUp(tier)) - 8f) / 7f);
+                        y += TierRise * Mathf.Lerp(steep, gentle, way);
+                    }
+                    return y;
+                }
             default:
                 {
                     // climb: the second town is 16 m higher. The rise is spread over 150 m at the
@@ -395,6 +421,80 @@ public class Plot : MonoBehaviour
                     return 3f + 16f * Mathf.SmoothStep(0, 1, (z - (mid - across * 0.5f)) / across) + swell * 0.6f;
                 }
         }
+    }
+
+    // the switchback map: where each bank's way up begins, how long it is, and which side it is on
+    static float BankStart(int tier, float length) { return length * (tier == 0 ? 0.2f : 0.63f); }
+    static float RampRun => TierRise / Mathf.Tan(RampDegrees * Mathf.Deg2Rad);
+    static float WayUp(int tier) { return tier == 0 ? -22f : 22f; }
+
+    // The switchback map's rocks: a row along each bank, from edge to edge, leaving only the
+    // way up. They are worked out from the map alone, the same on every machine, and nothing
+    // moves them.
+    void PlaceRocks(Transform root, float length)
+    {
+        var stone = Mats.Make(new Color(0.36f, 0.35f, 0.38f), true);
+        for (int tier = 0; tier < 2; tier++)
+        {
+            float middle = BankStart(tier, length) + RampRun * 0.5f;
+            int n = 0;
+            for (float x = -48f; x <= 48f; x += 6f, n++)
+            {
+                if (Mathf.Abs(x - WayUp(tier)) < 14f) continue;
+                float radius = 2.4f + (n * 5 + tier) % 4 * 0.4f, z = middle + ((n * 7 + tier * 3) % 5 - 2) * 1.2f;
+                rocks.Add(new Vector3(x, radius, z));
+                var rock = Mats.Part(root, Mats.Sphere, stone, new Vector3(x, HeightAt(x, z) + radius * 0.3f, z), new Vector3(radius * 2f, radius * 1.7f, radius * 2f));
+                rock.localRotation = Quaternion.Euler(n * 37f, n * 71f, n * 13f);
+                rock.gameObject.AddComponent<SphereCollider>();
+            }
+        }
+    }
+
+    // is there a rock within `clear` metres of the line from a to b?
+    bool RockNear(Vector3 a, Vector3 b, float clear)
+    {
+        foreach (var rock in rocks)
+        {
+            Vector3 p = new Vector3(rock.x, 0, rock.z), ab = b - a;
+            float t = ab.sqrMagnitude > 0.0001f ? Mathf.Clamp01(Vector3.Dot(p - a, ab) / ab.sqrMagnitude) : 0;
+            if (Vector3.Distance(p, a + ab * t) < rock.y + clear) return true;
+        }
+        return false;
+    }
+
+    // Test tooling, host only: a road through these points from the first town to the second,
+    // whatever the rules for ropes say.
+    public void TestRoad(List<Vector3> between)
+    {
+        if (!Ready || !IsLand) return;
+        stakes.RemoveRange(fixedStakes, stakes.Count - fixedStakes);
+        links.Clear();
+        int last = 0;
+        foreach (var p in between)
+        {
+            stakes.Add(p);
+            links.Add(new Vector2Int(last, stakes.Count - 1));
+            last = stakes.Count - 1;
+        }
+        links.Add(new Vector2Int(last, 1));
+        Net.ToClients(StakesMsg(255, -1), true);
+        StakesChanged(255, -1);
+    }
+
+    // Test tooling, host only, and clients are not told: every staked point on its line, and
+    // the road bare (0), under loose gravel (1) or packed (2).
+    public void TestFinish(int surface)
+    {
+        if (!Ready) return;
+        for (int i = 0; i < h.Length; i++)
+        {
+            if (zone[i] == 0) continue;
+            h[i] = target[i];
+            gravel[i] = (byte)(zone[i] == 1 && surface >= 1 ? FullGravel : 0);
+            packed[i] = (byte)(zone[i] == 1 && surface == 2 ? 100 : 0);
+        }
+        foreach (var chunk in chunks) chunk.dirty = true;
+        Upload(true);
     }
 
     // every machine: the ground points from the heights a metre apart, by whole-number sums
@@ -676,6 +776,7 @@ public class Plot : MonoBehaviour
                     towns.SetParent(transform, false);
                     Town(towns, stakes[0], -1f, new Color(0.85f, 0.35f, 0.3f));
                     Town(towns, stakes[1], 1f, new Color(0.3f, 0.5f, 0.85f));
+                    if (Game.I.map == Switchback) PlaceRocks(towns, stakes[1].z);
                     // the plain the land stands on, so nobody falls for ever off its edge
                     var plain = Mats.Part(towns, Mats.Cube, Mats.Make(new Color(0.33f, 0.37f, 0.31f)), new Vector3(origin.x + SizeX * 0.5f, -0.5f, origin.z + SizeZ * 0.5f), new Vector3(2000f, 1f, 2000f));
                     plain.gameObject.AddComponent<BoxCollider>();
@@ -961,10 +1062,19 @@ public class Plot : MonoBehaviour
         var t = Game.I.tuning;
         Vector3 a = Flat(stakes[from]), b = Flat(to);
         float distance = Vector3.Distance(a, b);
-        if (distance < t.minStakeSpacing - 0.01f || distance > t.sectionLength + 0.01f) return false;
-        if (LinksAt(from) >= 2 || (toStake >= 0 && LinksAt(toStake) >= 2)) return false;
-        if (!BendAllowed(from, b) || (toStake >= 0 && !BendAllowed(toStake, a))) return false;
-        return !Crosses(a, b);
+        if (distance < t.minStakeSpacing - 0.01f) return No("too close to the last stake");
+        if (distance > t.sectionLength + 0.01f) return No("too far: a rope is " + t.sectionLength.ToString("0") + " m at most");
+        if (LinksAt(from) >= 2 || (toStake >= 0 && LinksAt(toStake) >= 2)) return No("a stake takes two ropes, and that one has them");
+        if (!BendAllowed(from, b) || (toStake >= 0 && !BendAllowed(toStake, a))) return No("too sharp a bend: " + t.maxBend.ToString("0") + " degrees at most");
+        if (TooSteep(stakes[from].y, to.y, distance)) return No("too steep for a truck: " + t.maxSlope.ToString("0") + " degrees at most");
+        if (RockNear(a, b, Reach)) return No("a rock is in the way");
+        return Crosses(a, b) ? No("it would run over road already staked") : true;
+    }
+
+    // would a rope between these two heights, this far apart on the flat, be too steep to drive?
+    static bool TooSteep(float yA, float yB, float distance)
+    {
+        return Mathf.Abs(yA - yB) > Mathf.Tan(Game.I.tuning.maxSlope * Mathf.Deg2Rad) * distance + 0.005f;
     }
 
     // would a rope from this stake to there turn the road too sharply at the stake?
@@ -992,11 +1102,14 @@ public class Plot : MonoBehaviour
     // May a new stake go in at x,z, roped to stake `from` if there is one?
     bool CanAdd(float x, float z, int from)
     {
-        if (stakes.Count >= MaxStakes || !Inside(x, z, IsLand ? EdgeMargin : Margin * 0.5f)) return false;
-        if (Section(x, z, out _, out _, out _)) return false;    // not on road that is already staked out
+        if (stakes.Count >= MaxStakes) return No("no stakes left");
+        if (!Inside(x, z, IsLand ? EdgeMargin : Margin * 0.5f)) return No("too near the edge");
+        if (Section(x, z, out _, out _, out _)) return No("road is already staked here");
         var stake = new Vector3(x, 0, z);
+        if (RockNear(stake, stake, 0.5f)) return No("a rock is in the way");
         foreach (var other in stakes)
-            if (Vector3.Distance(Flat(other), stake) < Game.I.tuning.minStakeSpacing) return false;
+            if (Vector3.Distance(Flat(other), stake) < Game.I.tuning.minStakeSpacing) return No("too close to another stake");
+        stake.y = HeightAt(x, z);       // where it would stand, for the rope's slope
         return from < 0 || RopeAllowed(from, stake, -1);
     }
 
@@ -1039,7 +1152,15 @@ public class Plot : MonoBehaviour
         if (steps != 0)
         {
             Vector3 s = stakes[stake];
+            float was = s.y;
             s.y = Mathf.Clamp(s.y + steps * Game.I.tuning.heightPerClick, 0.1f, 60f);
+            // not if it would make a rope too steep, or one that already is steeper still
+            foreach (var l in links)
+            {
+                if (l.x != stake && l.y != stake) continue;
+                Vector3 other = stakes[l.x == stake ? l.y : l.x];
+                if (TooSteep(s.y, other.y, Vector3.Distance(Flat(s), Flat(other))) && Mathf.Abs(s.y - other.y) > Mathf.Abs(was - other.y)) return false;
+            }
             stakes[stake] = s;
         }
         else
@@ -1668,6 +1789,7 @@ public class Plot : MonoBehaviour
         preview.SetPosition(0, a);
         preview.SetPosition(1, b);
         preview.startColor = preview.endColor = allowed ? new Color(0.25f, 1f, 0.35f) : new Color(1f, 0.1f, 0.1f);
+        if (!allowed) WhyFrame = Time.frameCount;   // the screen says which rule it breaks
     }
 
     // the edge of the patch a click would move, draped over the ground

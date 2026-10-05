@@ -106,6 +106,15 @@ This was the risk in `PLAN.md`: a 300 m map at 0.25 m is 578,000 points. What wa
   land. The towns are stakes 0 and 1: fixed, and not removable.
 - `Survey` walks the ropes from stake 0 after every stake change and sets `joined` when they reach
   stake 1.
+- **Rocks** (the Switchback map) are a list of x, radius, z worked out in `PlaceRocks` from the
+  map's number and length alone, so they are never sent. `RockNear` is the rule: `CanAdd` and
+  `RopeAllowed` use it. The ground under a rock is ordinary ground.
+- **Why a rope is refused**: each rule in `CanAdd` and `RopeAllowed` leaves a line in `Plot.Why`,
+  and `Hud` draws it under the crosshair while the rope shows red.
+- `TestRoad` and `TestFinish` are test tooling on the host: a road through given points whatever
+  the rules say, and every staked point put on its line with the road bare, gravelled or packed.
+  Clients are not told, so they are for one instance only. The slope figures in `DESIGN.md` came
+  from them.
 
 ## The trucks
 

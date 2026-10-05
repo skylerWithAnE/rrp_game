@@ -3,8 +3,18 @@
 **Status, 2026-10-05, end of the unattended push: built.** Everything under "What this push
 builds" exists and was checked on two instances. What was built, and every choice Claude made, is
 in `DESIGN.md` under "The maps"; how the ground was solved is in `TECH_PLAN.md` under "The map's
-ground"; what to run and what was not checked is in `MORNING.md`. The next step is the user
-playing it.
+ground"; what to run and what was not checked is in `MORNING.md`.
+
+**2026-10-05, after the user's first playtest.** The user played the Short map and said it "went
+great"; notes are in `PLAYTEST.md`. The Middle, Long and Climb maps are unplayed. The user then
+asked for three things, all built the same day and described in `DESIGN.md`:
+
+- a new map for the winding road, with static pieces that cannot be destroyed, to funnel players
+  into needing turns to get up a hill;
+- a limit on how steep a rope may be, found by trying, so that no undriveable road can be staked;
+- the docs brought up to date.
+
+The next step is the user playing the Middle map and the new Switchback map.
 
 Rewritten 2026-10-05 after the user answered the first version's questions. The section "Decided
 by the user" is the user's. Everything else is Claude's proposal, and the session that builds it

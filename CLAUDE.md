@@ -5,14 +5,17 @@ truck can drive. They set stakes, bring the ground to the rope between them, lay
 and trucks drive the result, wrecking on bad road and wearing out good road.
 
 The five mechanics stations are built and were played and accepted by the user on 2026-10-05. The
-prototype itself was built that night, unattended: four maps, each with a town at either end, to
-stake, grade and gravel a road across and watch trucks try it. **The user has not played the maps
-yet**; `docs/MORNING.md` is the hand-over. There is no end, score or clock, by decision.
+prototype itself was built that night, unattended: maps, each with a town at either end, to
+stake, grade and gravel a road across and watch trucks try it. The user played the Short map the
+next morning and said it "went great" and "is looking much more like what I envisioned"; the
+other maps are unplayed. The same day the user asked for a rope steepness limit and a map with
+rocks that forces a winding road, and both were built. There is no end, score or clock, by
+decision.
 
 ## Start here
 
 0. `docs/MORNING.md` is the report from the unattended push: what to run, what was added, what
-   was checked and what was not.
+   was checked and what was not. `docs/PLAYTEST.md` is what was seen when the user played.
 1. `docs/PLAN.md` is the plan for the prototype: what the user decided, what to build, where the
    risk is, and how to work when the user is not there to play each step.
 2. `docs/DESIGN.md` is the design: the user's decisions, sizes in metres, and each station as
@@ -34,12 +37,15 @@ asking.
 
 ## Ground rules from the user
 
-- **Latitude for the prototype push (user, 2026-10-05).** The session building the maps works
-  while the user is asleep and is deliberately unrestricted: solve problems creatively, and add a
-  system if it would streamline the gameplay, without asking first. Write down each addition as
-  Claude's, with the reason, and make it something that can be switched off.
+- **Latitude for the prototype push (user, 2026-10-05).** The session building the maps worked
+  while the user was asleep and was deliberately unrestricted: solve problems creatively, and add
+  a system if it would streamline the gameplay, without asking first. Write down each addition as
+  Claude's, with the reason, and make it something that can be switched off. **That push is
+  over.** The user called it "a big success".
 - Outside that push, the older rule stands: do not add features, systems or options that are not
   in `DESIGN.md` or `PLAN.md`; if something seems missing, ask.
+- **Build and confirm each mechanic on a station first** (user, 2026-10-05: "Using stations to
+  build, test and confirm each mechanic seems like it worked out really well").
 - No end, score or clock yet. Wear is off. A second player has exactly the same controls as the
   first. Do not spend long on the towns: the first prototype's were fine.
 - It is a prototype: fast, simple and weird beats correct and polished. The user is enjoying the

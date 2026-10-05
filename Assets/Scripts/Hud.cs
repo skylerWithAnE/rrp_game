@@ -62,6 +62,9 @@ public class Hud : MonoBehaviour
             if (ShowReadout) Readout(g);
             if (g.phase == Phase.Lobby) Lobby(g, width);
             if (Playing) GUI.Label(new Rect(width / 2 - 5, height / 2 - 11, 20, 20), "+", label);
+            // under the crosshair: why the red rope cannot be made
+            if (Playing && Plot.Tool == Plot.Stakes && Plot.WhyFrame >= Time.frameCount - 1 && Plot.Why.Length > 0)
+                GUI.Label(new Rect(width / 2 - 250, height / 2 + 24, 500, 22), "<color=#ff9080>" + Plot.Why + "</color>", new GUIStyle(label) { alignment = TextAnchor.UpperCenter });
             if (g.phase == Phase.Job) Clock(g, width, height);
             if (g.phase == Phase.Job && g.local != null) Hint(g, width, height);
             else GUI.Label(new Rect(width / 2 - 150, height - 30, 300, 22), "Click to play.  Tab frees the mouse.", label);

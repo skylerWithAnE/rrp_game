@@ -61,6 +61,8 @@ public class Tuning : ScriptableObject
     [Range(3, 10)] public float minStakeSpacing = 6.5f;
     [Tooltip("The most the road may bend at one stake (degrees). 36 at the closest spacing is about the tightest turn allowed.")]
     [Range(5, 90)] public float maxBend = 36f;
+    [Tooltip("The steepest a rope may run (degrees), so that no road is staked that a truck cannot climb once it is finished.")]
+    [Range(3, 40)] public float maxSlope = 15f;
 
     [Header("Truck damage (the wear road only)")]
     [Tooltip("The most damage a truck does to a grid square each quarter second it is on it, out of 100. The amount is random up to this.")]

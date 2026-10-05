@@ -12,8 +12,22 @@ first; towns as in the first prototype, with little time spent on them; and the 
 builds it may add systems that streamline the gameplay. The detail is in `PLAN.md`.
 
 **The maps were built on the night of 2026-10-05 while the user was asleep.** They are described
-under "The maps" below. Nothing in that section has been played by the user yet: every choice in
-it is Claude's, made under the latitude the user gave for that push.
+under "The maps" below. Every choice in that section is Claude's, made under the latitude the
+user gave for that push, unless it says otherwise.
+
+**The user played the Short map the next morning** and said: "The short playtest went great. The
+game is looking much more like what I envisioned." That covers the Short map as it stood, with
+both of Claude's added systems on at their defaults; the user did not comment on either by name.
+The Middle, Long, Climb and Switchback maps have not been played. What was seen is in
+`PLAYTEST.md`.
+
+Decided by the user on 2026-10-05, after that playtest:
+
+- **A new map for the winding road**, with **static pieces that cannot be destroyed**, "to
+  encourage/funnel players into needing to use turns to navigate up a hill".
+- **A limit on how steep a rope may be**, "so that we do not allow undriveable roads". The user
+  asked for the limit to be found, not chosen.
+- **Building and confirming each mechanic on a station first worked well** and is how to go on.
 
 Everything under "Decided by the user" was said by the user. Everything marked **[Claude]** is a
 proposal that the user has seen and not objected to; it is not a decision until it has been played.
@@ -103,8 +117,8 @@ Built 2026-10-05, unattended. **The user's decisions** are the ones listed in `P
 maps to try distances, 150 m to start with the distance on a slider, the host picks, the stations
 stay as one choice, the three tools work anywhere, trucks set off once a chain of stakes joins
 the towns and keep coming in both lanes, towns are a few blocks and a pad, no end, wear off, a
-second player the same as the first. **Everything else below is [Claude]** and has not been
-played by the user.
+second player the same as the first. **Everything else below is [Claude]**. Only the Short map
+has been played by the user.
 
 What a player does: choose a map, press 1, click the thick stake in town A, walk toward the pole
 at town B clicking the ground to put stakes down, and rope the last one to town B's stake. Trucks
@@ -117,6 +131,7 @@ start at once. Then grade and gravel what they are wrecking on.
 | Middle | 150 m, on the `mapDistance` slider (40 to 400) | A 9 m hill on the straight line between the towns, a hollow to its right, flat ground to its left; 100 m wide | The starting distance. Over the hill is short and a lot of clicking; round it is longer and easy |
 | Long | 300 m | Rolling, with a 6 m ridge right across it that has one gap, to the right of the straight line, and a hollow further on; 100 m wide | Whether a long road is something a crew wants to build |
 | Climb | 160 m, and town B is 16 m higher | The rise is gentle on the left (spread over 150 m) and steepens to the right: about 31 degrees on the straight line, a cliff at the right edge; 130 m wide | Land that makes the road wind. Straight is too steep for a truck even on packed gravel |
+| Switchback | 150 m, and town B is 12 m higher | Two banks right across the map, each 6 m high, each with a row of rocks along it and one way up: on the left for the first, on the right for the second; 110 m wide | The user's winding road: the road has to swing from one side of the map to the other. See below |
 
 - **The host picks the map** from buttons at the top of the screen. Everyone starts again at town
   A. A new game starts on the Middle map; the other option was to start on the stations.
@@ -139,6 +154,55 @@ start at once. Then grade and gravel what they are wrecking on.
   are joined.
 - The land has an edge. Beyond it is a flat plain to stand on; the land slopes down to it over
   8 m, and stakes cannot go on that slope.
+
+### The rope's steepest slope, and the Switchback map
+
+Asked for by the user on 2026-10-05. How each was done is **[Claude]**, and neither has been
+played.
+
+**How steep a truck can climb** was measured, not chosen: a straight ramp of each slope, 16 m
+high, finished three ways, with eleven or twelve trucks sent up it.
+
+| Surface | Every truck arrived | Every truck wrecked |
+|---|---|---|
+| Packed gravel | every slope tried, up to 25 degrees | none |
+| Loose gravel | up to 16 degrees | 18 degrees and steeper |
+| Bare ground on its line | up to 10 degrees | 12 degrees and steeper |
+
+Going down, every truck arrived on every surface at every slope. The figures agree with the
+truck's push: 4.5 m/s2 on packed gravel, 0.6 of it on loose and 0.4 on bare.
+
+- **A rope may run at 15 degrees at most** (`maxSlope`, a slider, with the other stake rules).
+  That is the steepest a truck climbs once gravel is laid, with a degree in hand. A road at the
+  limit stops trucks while it is bare, lets them up once gravelled, and they pack it themselves.
+  The other choices were 10 degrees (driveable bare, so gravel never matters) and 25 (driveable
+  only once packed, which trucks could never reach to do).
+- The limit applies on every plot. A stake cannot be put down where the rope to it would be too
+  steep, and the wheel will not raise or lower a rope past it.
+- **The red rope now says why**: a line under the crosshair names the rule it breaks (too steep,
+  too sharp a bend, too far, too close, a rock in the way, and so on). The user asked on
+  2026-10-05 for placing a stake to show when it breaks the limits; the color did, the reason
+  did not.
+
+**The Switchback map.** The static pieces are **rocks**: dark boulders 5 to 7 m across that
+nothing moves, digs or grades. No stake may stand in one and no section may come within a
+road's half-width of one. They are the same on every machine and every time.
+
+- The land is two flat terraces and a top, separated by two banks. A bank is too steep to rope
+  (6 m up in about 10 m) and has rocks along it from edge to edge, except at its one way up: a
+  ramp 16 m wide at 12 degrees. The first bank's ramp is 22 m left of the straight line and the
+  second's is 22 m right.
+- So the road leaves town A to the left, climbs, crosses the terrace to the right, climbs again,
+  and comes back to town B. The route Claude staked to check it is 187 m in 15 ropes, with bends
+  of up to 32 degrees.
+- **What was checked:** that route can be staked within every rule; a stake in a rock and a rope
+  straight up a bank are both refused, with the reason; host and client hold the same ground and
+  see the same trucks. On the staked but ungraded road, trucks going up wrecked and trucks
+  coming down arrived. With every point put on its line by a test command, every truck arrived
+  both ways, even on bare ground, because ropes from stake to stake cut the ramps' corners and
+  come out under 12 degrees. So on this map, as on Short, a graded road is enough and gravel is
+  not needed. That is a finding, not a decision.
+- Not checked: a person finding the route, and whether the turns are fun.
 
 ### Systems Claude added, and how to switch each off
 
@@ -169,7 +233,9 @@ already does it).
 - Whether the two added systems are wanted, and at what strength.
 - A rope laid across a rise runs under the ground between its stakes, where it cannot be seen.
   The ground color still shows where the section is.
-- Nothing limits how steep a rope may be, so a road can be staked that no truck can climb.
+- **What gravel is for.** Trucks need nothing but graded ground on the flat and up to 10
+  degrees. Gravel only matters between 10 and 15, and nothing on Short or Switchback is that
+  steep once graded. See the concerns Claude raised on 2026-10-05.
 - Everyone starts at town A. A crew that wants to work from both ends has to walk.
 
 ## Stations
@@ -342,7 +408,8 @@ are still Claude's and are sliders:
 
 Open after building:
 
-- Whether a rope should have a steepest allowed slope. Nothing limits it.
+- ~~Whether a rope should have a steepest allowed slope.~~ Decided by the user 2026-10-05: yes.
+  It is 15 degrees; see "The rope's steepest slope".
 - Whether gravel and packing are fun or a second chore: station 4's question, not yet played.
 - Whether the truck works as the judge: station 5's question. It does not say why it failed; the
   player has to see it. It cannot yet drive a road the players staked out on station 3.
