@@ -29,9 +29,63 @@ Decided by the user on 2026-10-04, for the redesign:
 3. **Throwing cubes around is out of favour.** It was not as funny as hoped and is expected to become
    a problem later.
 
-**The redesign is about mechanics** (user, 2026-10-04). References to other games' looks are about
-graphic fidelity and the scale of the world, and are parked for now. Do not let them steer the
-mechanics prototype.
+**The redesign is about mechanics** (user, 2026-10-04). Do not let the look of other games steer
+the mechanics prototype.
+
+## Lethal Company as a reference: fidelity, scale, simple mechanics
+
+The user named Lethal Company as an example of three things. It is not a reference for theme,
+horror or setting.
+
+Facts from its Steam page (read 2026-10-04): first person, online co-op for up to 4, one developer
+(Zeekerss), early access since October 2023. Players collect scrap from abandoned moons and "carry
+all valuables to the ship" to meet a quota. Its tools are "lights, shovels, walkie talkies, stun
+grenades, or boomboxes". The rest of this section is Claude's recollection and reading. Claude has
+not played it; check anything that matters.
+
+**Fidelity: low, and that is enough.**
+
+- It renders at a low resolution with simple models and flat materials, and it sold enormously
+  anyway. One person made it.
+- The lesson for this project is permission, not a style to copy: nothing has to look good for the
+  mechanics to be judged. Grey boxes and flat colors are fine.
+- The prototype's looks were not its problem. Its solid colors would have been acceptable at the
+  right scale and camera.
+
+**Scale: everything is sized from a standing person's eyes.**
+
+- The camera is at eye height. A doorway, a ladder, a ship and a crewmate all read at their real
+  size because the player's body is the ruler.
+- The world is small in area. A level is a ship, a walk of a minute or two, and a building. It
+  feels big because crossing it on foot takes time and matters, and because what is carried slows
+  the player down.
+- The prototype did the opposite: a camera 6 to 8 m up and back, looking down at a 1 m character,
+  on ground whose pieces were smaller than the character. The same 64 m map would feel several
+  times larger walked at eye height.
+- So "bigger" is first a camera and proportion problem, and only second a map-size problem. Sizes
+  should be chosen in metres from eye height, then checked by walking them.
+
+**Simple mechanics: few verbs, each one obvious.**
+
+- The player walks, sprints, jumps, crouches, picks things up, carries them, and drops them. Tools
+  are separate objects, and each does one thing: a light lights, a shovel hits.
+- An object is held in the hands and seen there. Big things take both hands. Weight slows the
+  carrier. Nothing needs a tutorial or on-screen text to explain what a button will do.
+- The fun comes from the crew and the situation, not from the depth of any one mechanic: who
+  carries what, who goes back, what gets left behind.
+- The prototype had one tool whose two buttons meant eight different things depending on what was
+  carried and what was under the crosshair, plus a 14-cell table of cube-on-surface outcomes. It
+  needed a hint line to be usable. That is the clearest measure of how far it was from this
+  reference.
+- A working test for any new mechanic: can a player predict what the button will do before
+  pressing it, with no text on screen?
+
+What this suggests for the redesign, as Claude's proposals to discuss, not decisions:
+
+- Separate tools with one job each, now that the shovel is no longer the only tool.
+- Material that is carried in the hands or by a vehicle rather than thrown.
+- A short list of verbs, settled before any system is built.
+- First-person grey-box at human scale first, with fidelity left alone.
 
 ## Where the idea came from: the Satisfactory road mod
 
@@ -100,7 +154,7 @@ exercised with simulated input events. **No human built a road, placed a block o
 | | Built | Wanted (as now stated) |
 |---|---|---|
 | View | Third person, orbit camera 6 to 8 m back, crosshair aiming past the character | First person |
-| Look | Flat solid colors, round blobs, bright sky | Closer to Lethal Company (parked for now) |
+| Look | Flat solid colors, round blobs, bright sky | Low fidelity is fine (see Lethal Company); not the priority |
 | World | 64 m square, one 8 m hill, towns 40 m apart | Valheim scale |
 | Terrain | A grid of points 0.5 m (later 1 m) apart, moved one whole cube at a time | Valheim-like terraforming |
 | Tools | One shovel, two mouse buttons, meaning changes with what is carried | More than one tool |
