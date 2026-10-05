@@ -17,6 +17,8 @@ public class Tuning : ScriptableObject
     [Range(0.5f, 12)] public float walkSpeed = 4.2f;
     [Tooltip("Speed while Shift is held, as a multiple of walkSpeed.")]
     [Range(1, 4)] public float sprintMultiplier = 2f;
+    [Tooltip("Upward speed of the hop on Space (m/s). 5 lifts the feet about 0.6 m.")]
+    [Range(0, 10)] public float hopSpeed = 5f;
 
     [Header("Station 1: the truck")]
     [Range(1.5f, 3.5f)] public float truckWidth = 2.45f;
@@ -27,10 +29,68 @@ public class Tuning : ScriptableObject
 
     [Header("Station 1: the road")]
     [Range(2, 6)] public float laneWidth = 3.5f;
-    [Tooltip("Length of one section of road (m).")]
+    [Tooltip("Length of one section of road (m). Two stakes can be linked up to this far apart.")]
     [Range(5, 40)] public float sectionLength = 20f;
     [Tooltip("How far across each of the three hairpins is (m): measured at the outside edge, the centre line and the inside edge.")]
     [Range(8, 30)] public float hairpinAcross = 15f;
+
+    [Header("Stations 2 and 3: ground clicking")]
+    [Tooltip("How far across the patch of ground one click moves (m).")]
+    [Range(0.5f, 8)] public float patchWidth = 2f;
+    [Tooltip("How far one click moves the ground toward the line (m).")]
+    [Range(0.02f, 0.5f)] public float heightPerClick = 0.1f;
+    [Tooltip("The most clicks a player gets per second. Faster clicks are ignored.")]
+    [Range(1, 20)] public float clicksPerSecond = 4f;
+    [Tooltip("0: a square patch that snaps to cells one patch wide. 1: a round patch wherever the click lands.")]
+    [Range(0, 1)] public float brushRound = 0f;
+    [Tooltip("0: the whole patch moves the same amount. 1: the rim barely moves.")]
+    [Range(0, 1)] public float brushSoftEdge = 0f;
+    [Tooltip("How far away the ground can be clicked (m).")]
+    [Range(2, 20)] public float clickReach = 6f;
+    [Tooltip("How far above and below the line the rough ground starts (m). Used when the ground is made again.")]
+    [Range(0.2f, 1.2f)] public float roughHeight = 1f;
+    [Tooltip("How far the climbing section rises, and the falling one drops, over one section (m).")]
+    [Range(0, 5)] public float sectionRise = 2f;
+    [Tooltip("Width of the shoulder outside each edge of the road (m). It is one cell.")]
+    [Range(0, 4)] public float shoulderWidth = 1.75f;
+    [Tooltip("How far the shoulder's line falls from the road's edge to its outside (m).")]
+    [Range(0, 1)] public float shoulderDrop = 0.3f;
+
+    [Header("Stakes")]
+    [Tooltip("The closest two stakes may stand (m).")]
+    [Range(3, 10)] public float minStakeSpacing = 6.5f;
+    [Tooltip("The most the road may bend at one stake (degrees). 36 at the closest spacing is about the tightest turn allowed.")]
+    [Range(5, 90)] public float maxBend = 36f;
+
+    [Header("Truck damage (the wear road only)")]
+    [Tooltip("The most damage a truck does to a grid square each quarter second it is on it, out of 100. The amount is random up to this.")]
+    [Range(0, 100)] public float truckDamage = 30f;
+    [Tooltip("A square worn below this starts to rut under the wheels.")]
+    [Range(0, 100)] public float damageThreshold = 50f;
+    [Tooltip("The deepest a wheel cuts each time (m).")]
+    [Range(0.01f, 0.3f)] public float rutDepth = 0.05f;
+
+    [Header("Station 4: gravel")]
+    [Tooltip("Full depth of gravel on the road (m).")]
+    [Range(0.05f, 0.25f)] public float gravelDepth = 0.15f;
+    [Tooltip("Depth one click of gravel adds (m).")]
+    [Range(0.01f, 0.25f)] public float gravelPerClick = 0.05f;
+    [Tooltip("How much of the packing one click does, once the gravel is at full depth. 0.25 packs it in four clicks.")]
+    [Range(0.05f, 1)] public float compactPerClick = 0.25f;
+
+    [Header("Hot spot")]
+    [Tooltip("A click with the crosshair on the hot spot moves the ground this many times as far.")]
+    [Range(1, 4)] public float hotSpotBonus = 2f;
+    [Tooltip("Radius of the hot spot (m).")]
+    [Range(0.1f, 1.5f)] public float hotSpotSize = 0.35f;
+
+    [Header("Station 5: the truck")]
+    [Tooltip("The speed it tries to hold (m/s).")]
+    [Range(2, 15)] public float lorrySpeed = 6f;
+    [Tooltip("The hardest it can push on packed gravel (m/s2): 4.5 climbs about 27 degrees. Loose gravel gives 0.6 of it and bare ground 0.4.")]
+    [Range(1, 9)] public float lorryPower = 4.5f;
+    [Tooltip("Seconds without moving before it gives up and blows up.")]
+    [Range(1, 15)] public float lorryStuckSeconds = 4f;
 
     [Header("Old: Player")]
     [Range(1, 12)] public float moveSpeed = 6f;

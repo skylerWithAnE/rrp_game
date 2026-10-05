@@ -64,7 +64,8 @@ public class Yard : MonoBehaviour
         string[] names = { "the outside edge", "the centre line", "the inside edge" };
         float total = -HairpinGap;
         foreach (float r in centreRadius) total += (r + t.laneWidth) * 2f + HairpinGap;
-        float x = -total * 0.5f, z = t.sectionLength + HairpinStart;
+        // past the far end of station 2's plot, which is three sections long
+        float x = -total * 0.5f, z = t.sectionLength * Plot.PresetSections + HairpinStart;
         for (int k = 0; k < 3; k++)
         {
             float outer = centreRadius[k] + t.laneWidth;
@@ -167,9 +168,19 @@ public class Yard : MonoBehaviour
     // follows from them.
     void Truck(Tuning t, Vector3 position)
     {
+        MakeTruck(transform, t, true).localPosition = position;
+        labels.Add(new Label
+        {
+            at = position + Vector3.up * (t.truckHeight + 0.4f),
+            text = "Truck: " + t.truckWidth.ToString("0.##") + " wide, " + t.truckLength.ToString("0.##") + " long, " + t.truckHeight.ToString("0.##") + " tall, wheels " + t.truckWheel.ToString("0.##"),
+        });
+    }
+
+    // The truck's shape, standing on the ground at its parent's origin. solid: it can be walked into.
+    public Transform MakeTruck(Transform parent, Tuning t, bool solid)
+    {
         var root = new GameObject("Truck").transform;
-        root.SetParent(transform, false);
-        root.localPosition = position;
+        root.SetParent(parent, false);
         float w = t.truckWidth, l = t.truckLength, h = t.truckHeight, wheel = t.truckWheel;
         float back = -l * 0.5f, front = l * 0.5f;
         float deck = Mathf.Min(wheel + 0.1f, h * 0.4f);     // cargo floor: U-Haul gives 33 in (0.84 m)
@@ -180,10 +191,10 @@ public class Yard : MonoBehaviour
         float cabTop = Mathf.Min(h, 2.15f);
         float cargoFront = back + cargo, cabFront = front - hood;
 
-        Box(root, bodyMaterial, -w * 0.5f, w * 0.5f, deck, h, back, cargoFront, true);
+        Box(root, bodyMaterial, -w * 0.5f, w * 0.5f, deck, h, back, cargoFront, solid);
         Box(root, tyreMaterial, -w * 0.35f, w * 0.35f, floor, deck, back + 0.2f, cargoFront, false);
-        Box(root, bodyMaterial, -cabWidth * 0.5f, cabWidth * 0.5f, floor, cabTop, cargoFront, cabFront, true);
-        Box(root, bodyMaterial, -cabWidth * 0.5f, cabWidth * 0.5f, floor, cabTop * 0.62f, cabFront, front, true);
+        Box(root, bodyMaterial, -cabWidth * 0.5f, cabWidth * 0.5f, floor, cabTop, cargoFront, cabFront, solid);
+        Box(root, bodyMaterial, -cabWidth * 0.5f, cabWidth * 0.5f, floor, cabTop * 0.62f, cabFront, front, solid);
         // the windows: a dark band round the front of the cab, its bottom edge at 1.45 m
         float sill = cabTop * 0.675f;
         Box(root, glassMaterial, -cabWidth * 0.5f - 0.01f, cabWidth * 0.5f + 0.01f, sill, cabTop - 0.12f, cabFront - 0.9f, cabFront + 0.01f, false);
@@ -195,11 +206,7 @@ public class Yard : MonoBehaviour
             Wheel(root, new Vector3(side * (w * 0.5f - 0.26f), wheel * 0.5f, rearAxle), wheel, 0.5f);   // twin rear tyres
         }
 
-        labels.Add(new Label
-        {
-            at = position + Vector3.up * (h + 0.4f),
-            text = "Truck: " + w.ToString("0.##") + " wide, " + l.ToString("0.##") + " long, " + h.ToString("0.##") + " tall, wheels " + wheel.ToString("0.##"),
-        });
+        return root;
     }
 
     void Box(Transform parent, Material material, float x0, float x1, float y0, float y1, float z0, float z1, bool solid)

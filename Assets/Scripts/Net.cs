@@ -11,6 +11,10 @@ public enum Op : byte
     // host -> clients
     Welcome, Roster, Players, StartJob, GroundEdit, CubeSpawn, CubeRemove, CubeRest, CubeSnap,
     Load, VerbFx, Tuning, Stats, Quake, Sound, Truck, Boom, Win, ToLobby, Block,
+    // stations 2 and 3
+    Click, Stake, StakeEdit,    // client -> host
+    PlotState, PlotRows, PlotEdit, PlotStakes,
+    Lorry,      // station 5
 }
 
 // A byte buffer with the few field types the game sends.

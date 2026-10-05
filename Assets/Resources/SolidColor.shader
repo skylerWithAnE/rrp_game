@@ -6,6 +6,7 @@ Shader "RRP/SolidColor"
     {
         _Color ("Color", Color) = (1,1,1,1)
         _Flat ("Flat shading", Float) = 0
+        _Unlit ("Unlit", Float) = 0
     }
     SubShader
     {
@@ -18,6 +19,7 @@ Shader "RRP/SolidColor"
         CBUFFER_START(UnityPerMaterial)
             half4 _Color;
             half _Flat;
+            half _Unlit;
         CBUFFER_END
         ENDHLSL
 
@@ -59,6 +61,8 @@ Shader "RRP/SolidColor"
 
             half4 frag(Varyings i) : SV_Target
             {
+                // _Unlit = 1 shows the color as it is: for outlines and markers that must read in any light
+                if (_Unlit > 0.5) return half4(i.color.rgb, 1);
                 float3 n = normalize(i.normalWS);
                 if (_Flat > 0.5)
                 {

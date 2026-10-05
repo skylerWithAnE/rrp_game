@@ -29,6 +29,17 @@ public static class Mats
         return m;
     }
 
+    // white, and not shaded by the sun: for lines whose color is set per line
+    static Material unlit;
+    public static Material Unlit
+    {
+        get
+        {
+            if (unlit == null) { unlit = Make(Color.white); unlit.SetFloat("_Unlit", 1); }
+            return unlit;
+        }
+    }
+
     public static Mesh Cube => cube != null ? cube : cube = Primitive(PrimitiveType.Cube);
     public static Mesh Cylinder => cylinder != null ? cylinder : cylinder = Primitive(PrimitiveType.Cylinder);
     public static Mesh Sphere => sphere != null ? sphere : sphere = Primitive(PrimitiveType.Sphere);

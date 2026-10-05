@@ -1,46 +1,59 @@
 # rrp_game
 
 Online co-op Unity prototype, first person: a crew of solid-color blobs builds a road that a box
-truck can drive. They set a survey line, bring the ground to it, lay and compact gravel, and a truck
-drives the result. It is a mechanics prototype made of five stations that together take about 30
-minutes to try. There is no job, map, score or clock yet.
+truck can drive. They set stakes, bring the ground to the rope between them, lay and pack gravel,
+and trucks drive the result, wrecking on bad road and wearing out good road.
+
+The five mechanics stations are built and were played and accepted by the user on 2026-10-05. The
+next thing is the prototype itself: one job on one map. There is no job, map, score or clock yet.
 
 ## Start here
 
-**The game was redesigned on 2026-10-04.** A first prototype (blobs building a road out of physics
-cubes with a shovel, third person) was built through milestone 6 and the user did not want it. Its
-code is still in the repository. Do not continue its milestone list.
+1. `docs/PLAN.md` is the plan for the prototype: the steps, and the questions the user has to
+   answer before some of them can be built. Build one step at a time and have the user play it by
+   hand before starting the next.
+2. `docs/DESIGN.md` is the design: the user's decisions, sizes in metres, and each station as
+   built. It keeps the user's decisions apart from Claude's proposals.
+3. `docs/TECH_PLAN.md` describes the code as it stands.
+4. `docs/NOTES.md` is what was learned building the stations: how the user works, and the
+   technical traps. Read it before the first build of a session.
+5. `docs/SETUP.md` is tooling and how to run two instances.
 
-1. `docs/DESIGN.md` is the plan: the user's decisions, sizes in metres, the five stations and the
-   first build step. Build one station at a time and have the user play it by hand before starting
-   the next.
-2. `docs/POSTMORTEM.md` says what the first prototype was, why it missed, and what is reusable.
-   Read it before reusing or deleting old code.
-3. `docs/TECH_PLAN.md` describes the first prototype as built. Treat it as a record, not a plan.
-   `docs/SETUP.md` is still current for tooling.
+**Do not read `docs/archive/` unless the user asks you to.** It holds superseded documents: the
+first prototype's design, technical plan and post-mortem, and earlier planning full of ideas that
+were cut or deferred. Nothing in it is current, and it must not be used as a source of features or
+requirements.
 
-**Do not read `docs/archive/` unless the user asks you to.** It holds superseded planning documents
-full of ideas that were cut or deferred. Nothing in it is current, and it must not be used as a
-source of features or requirements.
+The first prototype (third person, blobs building a road from physics cubes with a shovel) was
+rejected on 2026-10-04. Its code is still in `Assets/Scripts` (`Cubes`, `Quake`, `Blocks`, `Road`,
+`Truck`, `Verbs`, `Ground`, `Sfx`), switched off. Do not continue it and do not delete it without
+asking.
 
 ## Ground rules from the user
 
-- **Fight scope creep.** Do not add features, systems or options that are not in `DESIGN.md`. If
-  something seems missing, ask. Do not add a feature to solve a design problem.
-- It is a prototype: fast, simple and weird beats correct and polished.
+- **Fight scope creep.** Do not add features, systems or options that are not in `DESIGN.md` or
+  `PLAN.md`. If something seems missing, ask. Do not add a feature to solve a design problem.
+- It is a prototype: fast, simple and weird beats correct and polished. The user is enjoying the
+  trucks' explosions and jank (2026-10-05): do not smooth them out.
 - First person. Several tools, each with one job. Throwing cubes around is out.
 - Solid-color shaders, no textures. Blobby solid-color characters, 1.6 m tall. Look and fidelity
   are parked.
 - All animation is procedural. No animation clips, no Animator controllers.
 - Multiplayer is the point. Build and verify every system networked from the start.
 - Every size is chosen in metres against the 1.6 m blob and is not settled until the user has stood
-  next to it. Make the numbers adjustable during play and check in with the user after each station.
+  next to it. Make the numbers adjustable during play.
+- Questions about feel are answered by playing, not on paper. Build the simplest version of a
+  proposal, say plainly that it is a proposal, and let the user play it.
 
 ## Working conventions
 
 - Code-first: generate the world from scripts at runtime rather than hand-authoring scenes and prefabs.
-- Every gameplay number lives in one tuning asset.
+- Every gameplay number lives in the one tuning asset (`Tuning.cs`), which makes it a slider.
+- The host decides everything and sends results, not operations.
 - When the user decides something, update the docs. Keep the user's decisions distinct from
   Claude's proposals.
 - Before committing to a rule, say what follows from it, especially for sizes. Ask open questions,
   not multiple-choice ones that steer toward small fixes.
+- Before asking the user to play something new: check it across two instances, say how, say what
+  was not checked, and send a screenshot from the blob's eyes.
+- Commit when the user says a step is accepted.

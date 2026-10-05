@@ -1,6 +1,6 @@
 # Setup
 
-Machine: Windows 11. Project: `C:\Users\skyle\source\repos\rrp_game`. State as of 2026-10-04.
+Machine: Windows 11. Project: `C:\Users\skyle\source\repos\rrp_game`. State as of 2026-10-05.
 
 ## Done
 
@@ -56,15 +56,21 @@ count as different players. **This path has never connected**, so expect to fix 
 
 ## Testing with several players on one machine
 
-- **Multiplayer Play Mode**: *Window > Multiplayer > Multiplayer Play Mode*, tick Players 2 to 4.
-  Press Play in the main editor, click "Host (direct)", then click Join in each clone (the box
-  already says 127.0.0.1).
+- **The way the stations were played and checked**: press Play in the editor, click in the Game
+  view, click "Host (direct)". Run `Builds\rrp_game\rrp_game.exe` and click Join (the box already
+  says 127.0.0.1). Anyone can join at any time.
 - **Builds**: *RRP > Build Windows Player* writes `Builds/rrp_game/rrp_game.exe`. This is also the
-  build to send to other players. The one on disk was built after the bigger-grid change.
-- **Bots and logs**: see the flags at the top of `Assets/Scripts/AutoTest.cs`. Example, a host and
-  a bot client: `rrp_game.exe -rrpHost -rrpStart 2` and `rrp_game.exe -rrpJoin 127.0.0.1 -rrpBot`.
+  build to send to other players. It has to be rebuilt after every code change, or host and client
+  will not agree.
+- **Multiplayer Play Mode** (clones inside the editor) was not used for the stations. It should
+  still work: *Window > Multiplayer > Multiplayer Play Mode*, tick Players 2 to 4.
+- **Test flags**: see the top of `Assets/Scripts/AutoTest.cs`. A client that joins, puts three
+  stakes on the hillside, clicks 150 times across the plots and logs its state every second:
+  `rrp_game.exe -rrpJoin 127.0.0.1 -rrpLog -rrpStakes -rrpClicks 150 -logFile client.log`.
   Clones in the editor read the same flags from `rrp_autotest.txt` in the system temp folder; delete
   that file when done or the clones will keep joining by themselves.
+- **Controls**: WASD, mouse, Shift toggles sprint, Space hops, Tab frees the mouse, F1 tuning
+  (host), F3 readout. Keys 1, 2 and 3 are the stake, grade and gravel tools.
 - **Driving the editor from a script**: play mode does not start ticking until the editor window
   has had focus once. After that it keeps running in the background.
 - With clones attached, each clone also registers with the Unity MCP server, so every MCP call has

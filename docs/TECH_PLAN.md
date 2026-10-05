@@ -1,308 +1,92 @@
-# Technical plan
+# Technical description
 
-> **Superseded 2026-10-04.** This is the plan the first prototype was built from, with notes on
-> what was built and tested. The game is being redesigned: see `POSTMORTEM.md`. Do not continue
-> the milestone list below.
-
-Final trim 2026-10-04. Claude's proposals for building what `DESIGN.md` describes, except where
-marked **[User]**. Build only what the current milestone needs.
+Written 2026-10-05, after the five stations. This says how the code works now. The plan for what
+comes next is `PLAN.md`. The first prototype's technical plan is in `archive/TECH_PLAN_badscale.md`.
 
 ## Stack
 
-- Unity `6000.3.25f1` [User], URP, new Input System.
-- Netcode for GameObjects in **host mode** with Unity Transport [User: online, peer-to-peer, one
-  player hosts, no dedicated server].
-- **Unity Relay join codes** [User: join code now, Steam later]. Needs a Unity Cloud project linked
-  to this project. Keep session setup in one small class so it can be swapped.
-- Multiplayer Play Mode for testing several players in one editor.
-- Code-first: one bootstrap scene, world generated at runtime, materials and meshes made in code,
-  every tunable number in one `Tuning` asset.
+- Unity `6000.3.25f1`, URP, the new Input System.
+- Netcode for GameObjects in host mode over Unity Transport. One player hosts; there is no
+  dedicated server. Direct connection on port 7777 works. Relay join codes are written and have
+  never connected (no Unity Cloud project is linked).
+- One empty scene. Everything is made at runtime from scripts. Meshes and materials are made in
+  code. One shader, `Resources/SolidColor.shader`: a solid color times vertex color, one sun,
+  shadows, optional flat shading, optional unlit.
 
-## Terrain
+## Files in use
 
-- **Heightfield** [User], split into chunks. One cell is one cube wide: 1 m, as tall as a blob
-  [User 2026-10-04: everything bigger; the 1 m figure is Claude's].
-- Per cell: ground height, depth of sand over rock, any pocket (oil, paint), road surface (none,
-  gravel, asphalt, painted), and a cosmetic paint color.
-- **Scoop** removes one cube's volume and puts a cube of that material on the digger's shovel
-  [User, 2026-10-04]. **Smack** applies the
-  interaction grid in `DESIGN.md`; on bare ground with no cube it flattens.
-- **Collapse:** after digging and during earthquakes, the host finds walls steeper and taller than a
-  threshold and slides that material downhill. Reinforced walls are skipped.
-- One mesh and MeshCollider per chunk, rebuilt (throttled) when changed. Vertex colors for materials.
+| File | What it does |
+|---|---|
+| `Game.cs` | Boot, the session flow (menu, connecting, yard), the roster, and the one message handler |
+| `Session.cs` | Host and join. The only place that knows how players find each other |
+| `Net.cs` | The message buffer (`Msg`), the list of messages (`Op`), and sending with byte counts |
+| `Tuning.cs` | Every gameplay number. Float fields only; each is synced and is a slider |
+| `Player.cs`, `Blob.cs` | The blob: walk, sprint toggle, hop; pose sync; procedural animation |
+| `CameraRig.cs` | First-person camera at eye height, horizontal field of view |
+| `Yard.cs` | Station 1: flat ground, the parked truck, the road strip, three painted hairpins. Also the truck's shape |
+| `Plot.cs` | Stations 2 to 4 and the example roads: ground, stakes, sections, the tools, wear |
+| `Lorries.cs` | Station 5: the trucks |
+| `Hud.cs` | Menu, readout (F3), tuning panel (F1), labels over things, tool keys |
+| `AutoTest.cs` | Test tooling: command-line flags for self-hosting, self-joining, clicking and logging |
+| `Mats.cs` | Materials and primitive meshes |
 
-## Cubes
+Switched off, from the first prototype: `Cubes`, `Quake`, `Blocks`, `Road`, `Truck`, `Verbs`,
+`Ground`, `Sfx`. `Game` still creates them and disables them, and `Phase.Job` and its code paths
+are never entered. `Truck.Boom` and `Sfx` are still used for the trucks' explosions.
 
-- Simulated by the host; clients see smoothed copies.
-- A cube on a shovel is attached to the player, not simulated.
-- Only moving cubes cost network traffic. Pool them.
-- **Earthquake:** triggered by the host when loose cubes pass a hidden threshold. One event; the
-  results are ordinary terrain changes.
-- Fallback if cubes prove unworkable: a scoop goes straight onto the shovel with no loose object.
+## Networking
 
-### The cube experiment (milestone 3) [User: cubes are an experiment]
+- NGO is used only for connections and one named message. There are no NetworkObjects, no RPCs
+  and no networked prefabs. Every message starts with an `Op` byte.
+- Players move themselves and send their pose 20 times a second. The host relays all poses.
+- Everything else is decided by the host. A client asks (`Click`, `Stake`, `StakeEdit`); the host
+  checks, applies, and sends the result (`PlotEdit`, `PlotStakes`). Clients never generate or
+  change ground themselves.
+- Anyone can join at any time. A joiner is sent the tuning, then every plot whole: a header
+  (`PlotState`), the ground in messages of 4,000 points (`PlotRows`: height in millimetres as two
+  bytes, gravel and packing as one byte each), then the stakes (`PlotStakes`). The plot is built
+  when the stakes land.
+- Trucks are simulated on the host and sent 20 times a second, unreliably (`Lorry`).
+- The hot spot is local to each player and is not sent: a click carries the player's own word that
+  it was on the hot spot.
 
-Purpose: learn whether loose physics cubes work online, and their limits, before more is built on them.
+## The plot
 
-- **Setup:** the test hill over a real internet connection through Relay, with 4 players and then
-  as close to 8 as can be gathered.
-- **Adjustable during play:** maximum loose cubes, earthquake threshold, cube weight / friction /
-  bounce, how quickly a resting cube sleeps, sync rate for moving cubes, digging speed.
-- **On-screen readout:** loose cubes, moving cubes, data per second per player, host frame rate.
-- **Tests:**
-  1. *Normal play.* Four players dig a cut for ten minutes. How many cubes pile up?
-  2. *Resting pile.* Spawn 100, 200, 400, 800 cubes. Where does the host slow down?
-  3. *Avalanche.* Disturb the whole pile at once. Where does it fall apart for clients?
-  4. *Fling and catch.* Does catching a teammate's cube feel fair with real lag?
-  5. *Earthquake.* Try different thresholds. Funny and punishing, or just annoying?
-  6. *Oil split.* A failed oil cube becomes five quarter-height cubes.
-- **Outcome:** keep as designed, keep with fewer and bigger cubes, or fall back. The user decides
-  after playing. The earthquake threshold sits between what normal play produces and what the game
-  can carry.
+`Plot` is one rectangle of ground with its own stakes. There are eight, made by `Generate` from
+their index (the list is at the top of `Plot.cs`).
 
-## Blocks, tunnels and towns (milestone 6)
+- **Ground:** a height per point, points 0.25 m apart, plus a byte of gravel (millimetres) and a
+  byte of packing (0 to 100) per point. The surface drawn and walked on is ground plus gravel.
+  Meshes are strips of 32 rows, each with its own collider; an edit rebuilds only the strips it
+  touches.
+- **Stakes and ropes:** a list of stakes (position, with y as the height of the line there) and a
+  list of ropes between them. A stake takes two ropes.
+- **Sections:** `Rebuild` turns each rope into a `Seg`: start, direction, length, the two heights,
+  and the slant of each end. Where two sections meet, both ends are cut along the line that halves
+  the bend. `Section(x, z)` says which section covers a spot and where in it: `t` from 0 to 1
+  between the two cuts, and `side` in metres right of the centre line. `World` goes the other way.
+- **What a point is:** `Resolve` fills, for every point, its zone (none, road, shoulder), its
+  section, its place in it, and its target height. It runs again whenever stakes change.
+- **The grid:** a section has a whole number of squares to a lane and to its length, as near the
+  patch width as possible; each shoulder is one square. `Square` snaps a spot to its square.
+- **A click** (`HostClick`) is capped per player, then applied to every point in the square (or
+  in a disc, for the round brush): grading moves the height toward the target, gravel adds depth
+  and then packing. Changed points go out in one `PlotEdit`.
+- **Wear** (`Wear`) is host only. Health is a byte per point and is not sent; ruts are ordinary
+  edits.
 
-- A sparse grid of static blocks aligned to the ground cells, synced as place/remove events.
-- A rock cube set down becomes a block; a block scooped up becomes a rock cube again.
-- No structural rules: blocks never fall and ignore earthquakes.
-- **Ground above a roof:** a cell with a roof block can hold a second layer of earth on top of the
-  roof (packed sand, or collapse debris). This is the one special case in the heightfield, and it is
-  what makes a tunnel look like a tunnel.
-- Towns are prebuilt, indestructible arrangements of blocks.
+## The trucks
 
-## Networking rules
+`Lorries` holds two trucks per plot, one each way. Each is a rigidbody the size of the real truck
+on four rays with springs, steering toward a point a few metres ahead on a path that `Plot.Route`
+builds along the right-hand lane. Its push is scaled by `Plot.Going` (the surface under it). Still
+for too long or on its side, it is thrown up and blows up. `Route` assumes the stakes are in order
+along the road, which is true of the roads the game lays out and not of ones players stake.
 
-- Players move themselves; everything else is decided by the host.
-- Terrain: client requests, host applies and broadcasts, everyone applies the same change.
-- No mid-game joining [User]. Lobby, then the host starts the job and everyone loads a fresh map
-  together; after that the host refuses new connections. Keep terrain changes as a replayable list
-  so late joining can be added later.
+## Verifying
 
-## Road check and truck
-
-- A grid path search over road cells requiring a strip 3 cells wide [User], town to town, rerun when
-  road cells change.
-- Asphalt path found: spawn the truck. Painted path found: win, stop the timer.
-- The truck is a host-simulated physics vehicle steering along the found path. Stuck or flipped: it
-  is launched away, explodes, and a new one spawns at a town.
-
-## Procedural animation [User: for everything]
-
-No clips, no Animator. A damped spring, sine/noise wobble, and volume-preserving squash and stretch,
-reused for blobs, shovel swings, cubes, the truck and earthquakes. Remote players run the same code
-from synced state.
-
-## Milestones
-
-Tick these off as they are finished. Check in with the user for a playtest after each one.
-
-- [ ] **0. Setup.** Finish `SETUP.md`: Unity MCP connected, packages added, URP on, first commit.
-  - *Built 2026-10-04, awaiting the user's check.* Everything except linking a Unity Cloud project,
-    which only the user can do (steps in `SETUP.md`).
-- [ ] **1. Online blobs.** Lobby, host and join by code, third-person camera, animated blobs on test ground.
-  - *Built 2026-10-04, awaiting the user's playtest.* Direct host/join verified with 4 editor
-    instances (Multiplayer Play Mode) and 8 standalone instances. The Relay join-code path is
-    written and fails cleanly without a cloud project, but has never connected: untested.
-- [ ] **2. Diggable hill.** Heightfield with a hill, scoop to cube, fling and catch, set down, smack
-  to pack. Debug readout.
-  - *Built 2026-10-04, awaiting the user's playtest.* Ground, cubes, players and shovel loads were
-    compared across instances and matched exactly. How it feels in the hand is untested: only bots
-    and scripts have played it.
-- [ ] **3. Cube experiment.** As described above, including earthquake and collapse. User decides
-  whether cubes stay.
-  - *Tooling built 2026-10-04, awaiting the user's tests.* Readout, live tuning, spawner, avalanche,
-    earthquake, collapse and oil split all work and sync. Single-machine numbers are below. The
-    tests that need real people on a real connection (1, 4, 5 and the feel of 6) are not done.
-- [ ] **4. Road recipe.** Rock, oil and paint in the ground; the interaction grid with its fail
-  noises; gravel, asphalt and paint surfaces; road check.
-  - *Built 2026-10-04, awaiting the user's playtest.* All 14 cells of the smack table were run on
-    the host and behave as `DESIGN.md` says. The road check rejects a 2-wide strip, accepts a 3-wide
-    one, tracks asphalt and paint separately, and notices a dug-out point. Surfaces and links match
-    on a client. An earthquake cracks road near loose cubes. The three fail noises have not been
-    heard by anyone: they are generated in code and untested by ear.
-- [ ] **5. The Hill.** Two towns, the truck, win on paint, timer. Size the map to 20 to 30 minutes.
-  - *Built 2026-10-04, awaiting the user's playtest.* With a scripted road and one client: the truck
-    shuttles town to town around the hill (about 25 s each way) and matches on the client; straight
-    over the hill it stalls, bounces away and blows up; breaking the road stops it; painting the
-    route wins on both machines and stops the clock; Enter returns everyone to the lobby and a
-    second job starts. **The 20 to 30 minute sizing is an estimate, not a measurement** (see
-    decision 26): nobody has built a road by hand yet.
-- [ ] **6. Reinforcement.** Blocks, reinforced walls, tunnels with ground above the roof.
-  - *Built 2026-10-04, awaiting the user's playtest.* Checked on a host with one client, by script:
-    a trench lined with block walls and a roof keeps its shape while an identical bare trench
-    slumps; sand packs onto a roof and can be scooped off; removing the roof block under earth
-    drops it to the floor; an earthquake leaves blocks alone and puts its lumps on the roof;
-    blocks scoop up as rock and go back against a face; town blocks cannot be taken; the truck
-    drives through a covered stretch of road. **Nobody has placed a block with the mouse yet**:
-    the crosshair ray was tested, the hands-on feel was not.
-- [ ] **7. Tuning.**
-  - *Not done: this one needs people playing.* What exists for it: every number is a live slider
-    (F1), "Save these numbers" writes them to the asset, and the list below says which defaults are
-    guesses. A regression run of the finished game (8 standalone bots, 120 s, three earthquakes)
-    ended identical on all 8 with no errors, and the real keyboard and mouse path was exercised
-    with simulated input events.
-  - **Numbers most in need of a human**: `quakeThreshold` (8 fling-happy bots hit 150 every 40 s),
-    `digInterval`, `collapseSlope` / `collapseHeight` (the user could not trigger a cave-in at the
-    defaults by digging naturally), `truckPower`, `gravelFlatness`, the count and depth of oil and
-    paint pockets, and whether one cube should surface more than one road point (decision 26).
-
-## How it was built (milestones 0 to 3) [Claude]
-
-- **No networked prefabs.** Netcode for GameObjects runs in host mode over Unity Transport, but
-  the game sends everything through one named message (`Net.cs`) instead of NetworkObjects and
-  RPCs. That keeps the world code-first (no prefab assets), lets cubes be sent as compact batches,
-  and means every byte is counted for the readout.
-- **Session setup** is `Session.cs`: direct connection (port 7777) and Relay join codes. The menu's
-  one text box takes either an address or a join code.
-- **Ground** stores a height per grid point, 0.5 m apart. Lowering one point by 0.5 m removes
-  exactly one cube's volume. The host sends the resulting heights, not the operation.
-- **Cubes**: awake cubes go out in unreliable snapshots (12 bytes per cube) at the tunable sync
-  rate; a cube that falls asleep gets one reliable final pose. Clients ease toward the latest pose.
-- **Lobby**: a small flat map where blobs can run about. The shovel does nothing until the host
-  starts the job.
-- **Tuning**: `Assets/Resources/Tuning.asset`. F1 in play shows a slider for every number; the host's
-  changes reach everyone live. "Save these numbers" (editor only) writes them back to the asset.
-- **Test tooling**: `AutoTest.cs` (command-line flags for self-hosting, self-joining bots and state
-  logging) and the "Run stress series" button. `tools/umcp.py` drives the editor over HTTP.
-
-## Cube experiment: single-machine results (2026-10-04) [Claude]
-
-One PC, loopback network, so there is no lag or packet loss in any of this. Default tuning.
-
-**Stress series**: editor as host with 3 editor clients (Multiplayer Play Mode), uncapped frame rate.
-
-| Test | Settle time | Host fps while moving | Host fps at rest | Peak data per client |
-|---|---|---|---|---|
-| Pile of 100 | 4.4 s | 499 | 555 | 27 kB/s |
-| Pile of 200 | 5.3 s | 435 | 522 | 48 kB/s |
-| Pile of 400 | 6.7 s | 449 | 520 | 96 kB/s |
-| Pile of 800 | 8.2 s | 408 | 455 | 190 kB/s |
-| Avalanche of 800 | one cube never slept in 60 s | 454 | 455 | 192 kB/s |
-
-- **The host does not slow down** in this range. Worst single frames were 22 to 27 ms in every
-  test including the smallest, so that is four editors sharing one machine, not the cubes.
-- **Data is the limit, not physics.** It is about 0.24 kB/s per moving cube per client at 20
-  snapshots a second. 800 moving cubes is 190 kB/s to each client, so about 570 kB/s of upload for
-  a crew of 4 and 1.3 MB/s for 8. Resting cubes cost nothing. Halving the sync rate halves it.
-- **Clients kept up**: after every test all cubes were at exactly the host's positions. While
-  falling, the worst cube on a client trailed its true position by 0.25 to 0.7 m (the smoothing).
-- Not checked: whether Relay limits throughput per connection. Check before trusting an
-  800-cube avalanche over Relay.
-
-**Eight players**: 8 standalone builds, all bots, 90 s of digging, flinging and smacking.
-
-- All 8 ended with the same ground, the same 22 cubes in the same places, and the same loads.
-- Cubes piled up at about 3.8 a second, so the default threshold of 150 brought an earthquake
-  every 40 s (two in 90 s). Host held 60 fps (capped); peak 116 kB/s out in total to 7 clients.
-- A human digging non-stop at the default 0.35 s per scoop makes 171 cubes a minute. One digger
-  alone reaches 150 loose cubes in under a minute if nobody packs them. **The default threshold
-  and digging speed are placeholders**; finding the real ones is the point of tests 1 and 5.
-
-**Also verified across instances**: collapse after digging, pack, set down, oil split and
-re-collecting five bits, the earthquake (merge, slump, knock-down, dropped loads), and a late
-joiner being refused once the job has started.
-
-## Decisions awaiting the user [Claude]
-
-Choices the docs did not cover. Each is the simplest option found; confirm or change.
-
-1. **Controls.** Left mouse: scoop with an empty shovel, fling with a loaded one. Right mouse:
-   smack with an empty shovel, set down with a loaded one. WASD to move, mouse to look.
-   Tab or Esc frees the mouse, F1 is the tuning panel, F3 the readout, Enter starts the job.
-2. **A hop** (Space). Not in the verb list. Added because a blob has no other way out of a
-   steep-sided hole or onto a cube.
-3. ~~Digging pops the cube out loose.~~ **Decided by the user 2026-10-04: a dug cube goes straight
-   onto the shovel.** Still open: nobody can catch a cube they flung themselves.
-4. **Catching is automatic**: a flying cube that passes within the catch radius of an empty
-   shovel lands on it. No button.
-5. **At the maximum loose cubes, fling and set down do nothing** (the cube stays on the shovel).
-   Only reachable if the earthquake threshold is set above the maximum.
-6. **Quarter-height oil bits** are flat slabs, five to a cube. A partly filled shovel (1 to 4 bits)
-   can only scoop more bits, or set them all back down.
-7. **Smacking a sand cube packs it in even when it is resting on another cube**; it goes into the
-   ground underneath.
-8. **Earthquake sequence**: 3 s of shaking; players go down at once and drop their loads; after 1 s
-   the cubes sink in as lumps; walls then slump under stricter slope limits until still. The shovel
-   does nothing during the 3 s.
-9. **A wall is "steep" and "tall" by two tunable numbers** (`collapseSlope`, `collapseHeight`), with
-   a stricter pair for earthquakes. Walls shorter than the limit never collapse.
-10. **The lobby is a small flat map** and the shovel is off there.
-11. **Blobs bump into each other on the host only.** Clients walk through other blobs.
-12. **Roads and blocks later** (milestones 4 and 6) will sit on ground *points*, since that is where
-    heights live. Flag now if cells must be squares instead.
-
-Added in milestone 4:
-
-13. **"Flat" means smooth, not level.** A point takes gravel if it sits on the line between its
-    neighbours in both directions (within `gravelFlatness`), so a road can climb a steady slope.
-14. **One cube surfaces one ground point** (0.5 m square). The straight route between the posts is
-    about 110 points long, so a 3-wide road needs roughly 330 rock, 330 oil and 330 paint cubes.
-    That is probably too much for a 20 to 30 minute job; milestone 5 sizes the map against it.
-15. **Gravel adds no height.** The rock cube is smashed flat into the surface.
-16. **Digging a road point destroys the road there.** Smack-flattening never moves a road point.
-17. ~~A rock cube set down is still a loose cube.~~ Superseded by milestone 6: it becomes a block.
-18. **Pockets**: 8 oil and 7 paint (6 colors), round, 2 to 3.5 m across, sitting in the rock just
-    under the sand, placed at random from the job seed. Exposed rock, oil and paint show as the
-    color of the ground. Nothing hints at where they are.
-19. ~~The two town sites are red posts.~~ Superseded by milestone 5: they are towns.
-20. **Earthquake cracking**: road within `quakeCrackRadius` (2 m) of any loose cube drops one tier.
-21. **Cosmetic paint** is a wash of color over bare ground or gravel; packing sand on it removes it.
-
-Added in milestone 5:
-
-22. **A town** is five solid houses and a 3 m square pad of finished painted road. The pad cannot
-    be dug, smacked, cracked or buried. The players' road must touch both pads.
-23. **The truck** is small (0.9 by 1.6 m, to fit a 3-wide road), there is only ever one, and it
-    reverses back along the road rather than turning round. A new one sets off from the first
-    town 3 s after a wreck, and only while the towns are joined by asphalt.
-24. **The truck cannot climb more than about 20 degrees** (`truckPower`). The hill's face is 28
-    degrees, so a road straight over wrecks it until someone cuts a ramp.
-25. **Winning** stops the clock and shows the time and this machine's best. The host presses Enter
-    to take everyone back to the lobby, where joining is open again. "Back to lobby" is also a
-    button on the tuning panel, to abandon a job.
-26. **Map size.** The map stays 64 m square with the towns 40 m apart. A route curving round the
-    hill is about 50 m, so roughly 300 road points and 900 cubes (rock, oil and paint). At a guessed
-    8 s per delivered cube per player, a crew of 4 takes about 30 minutes; a ramp cut straight over
-    is shorter in road but costs digging. The guess is the weak part. If it runs long, the cheapest
-    lever is letting one cube surface more than one point.
-27. **When the road breaks** the truck brakes, sits for `truckStuckSeconds`, and blows up.
-
-Added in milestone 6:
-
-28. **Where a block goes.** Aim at a block and it goes against the face under the crosshair.
-    Aim at anything else and it goes on top of that column, at the nearest half-metre level, so on
-    a slope it may sit up to a quarter metre proud or sunk.
-29. **A block may be placed anywhere it touches another block**, so hanging chains have no limit.
-    Nothing checks whether a blob or the truck is standing there.
-30. **Earth on a roof** is drawn as a plain box per ground point. It can be scooped off, and it
-    drops to the ground if the block under it is removed.
-31. **Reinforced** means the blocks beside a wall stand as high as the wall. If they are shorter,
-    the earth above them spills onto their tops.
-32. **On top of blocks only sand does anything** (it packs). Rock and oil fail with their noise;
-    paint does nothing there.
-33. **Gravel now needs a flung rock.** Setting a rock cube down makes a block, as designed, so to
-    get a loose rock cube to smack, fling it.
-34. **The camera moves in** rather than look through a hill, a house or a roof.
-35. **Town houses** are blocks that cannot be removed, about 300 per town.
-
-After the second playtest (2026-10-04). The user found the world felt small, the pace tedious and
-the rock rule confusing, and decided: make everything the shovel touches bigger; keep the map size
-and town distance for testing; keep the rock rule but show it.
-
-37. **The grid is 1 m** (was 0.5 m). Ground faces, cubes, blocks and each scoop are twice the size
-    next to a blob. The map is still 64 m with towns 40 m apart. Reach, hop, pick-up radius, the
-    collapse limits and the truck were rescaled to match; the earthquake threshold dropped to 60
-    because cubes are bigger. All still guesses.
-38. **`roadSpread`: one smacked cube surfaces a 3 by 3 patch**, a full road width. Claude added
-    this because the bigger grid alone only halved the cube count. A scripted crew joined the
-    towns and won with 39 cubes (13 each of rock, oil and paint) instead of about 900. Set the
-    slider to 0 for one point per cube. Supersedes decisions 14 and 26.
-39. **The hint** under the crosshair names what each mouse button will do right now, including
-    why a smack would fail ("ground is not flat", "oil needs gravel under it"). Loose rock is pale;
-    blocks are steel blue.
-
-Added in milestone 7:
-
-36. **Hold to dig, click to let go.** Digging and smacking repeat while the button is held.
-    Flinging and setting down need a fresh click, so holding the button to dig does not throw
-    every cube away.
+- `AutoTest` prints one `RRPSTATE` line a second with `-rrpLog`: player positions, the tuning, and
+  for each plot a hash of its ground, gravel, packing and stakes, its level and gravel shares, its
+  clicks and its stake count.
+- The method: host in the editor, a standalone build as the client, drive both, stop the action,
+  and compare the two lines. See `SETUP.md` for the flags and `NOTES.md` for the traps.

@@ -25,6 +25,7 @@ public class Player : MonoBehaviour
     public float hostNextVerb;  // host: rate limit
     public System.Func<Controls> bot; // test driver; replaces keyboard and mouse
 
+    public static bool Sprinting;   // the local player's sprint toggle
     public Vector3 netPos;
     public float netYaw;
 
@@ -146,7 +147,7 @@ public class Player : MonoBehaviour
         if (controller.isGrounded)
         {
             verticalSpeed = -2f;
-            // station 1 is walk and look only: the hop (c.jump, t.jumpSpeed) is switched off
+            if (c.jump) verticalSpeed = t.hopSpeed;
         }
         verticalSpeed -= t.gravity * dt;
         float speed = t.walkSpeed * (c.sprint ? t.sprintMultiplier : 1f);
@@ -214,7 +215,9 @@ public class Player : MonoBehaviour
         {
             c.move = new Vector2((kb.dKey.isPressed ? 1 : 0) - (kb.aKey.isPressed ? 1 : 0), (kb.wKey.isPressed ? 1 : 0) - (kb.sKey.isPressed ? 1 : 0));
             c.jump = kb.spaceKey.isPressed;
-            c.sprint = kb.leftShiftKey.isPressed || kb.rightShiftKey.isPressed;
+            // Shift switches sprinting on and off
+            if (kb.leftShiftKey.wasPressedThisFrame || kb.rightShiftKey.wasPressedThisFrame) Sprinting = !Sprinting;
+            c.sprint = Sprinting;
         }
         if (mouse != null)
         {

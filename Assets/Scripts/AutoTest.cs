@@ -11,6 +11,8 @@ using UnityEngine;
 //   -rrpBot             the local blob wanders and uses the shovel by itself
 //   -rrpBotTime <s>     bots stand still once the job is this many seconds old
 //   -rrpLog             print one RRPSTATE line every second
+//   -rrpClicks <n>      ask for n clicks on random spots of the station 2 and 3 plots, twenty a second
+//   -rrpStakes          first put three linked stakes down on the station 3 hillside
 //
 // RunStress (also a button on the tuning panel) runs the cube experiment's pile and avalanche
 // tests on the host and prints one RRPSTRESS line per test.
@@ -20,6 +22,9 @@ using UnityEngine;
 public class AutoTest : MonoBehaviour
 {
     public static bool Bot, Log;
+    int clicksLeft, clicksTotal, stakesLeft;
+    float stakeTimer;
+    float clickTimer;
     public static AutoTest I;
     public bool stressRunning;
 
@@ -52,6 +57,8 @@ public class AutoTest : MonoBehaviour
             else if (args[i] == "-rrpBot") Bot = true;
             else if (args[i] == "-rrpBotTime" && i + 1 < args.Length) float.TryParse(args[++i], out botTime);
             else if (args[i] == "-rrpLog") Log = true;
+            else if (args[i] == "-rrpClicks" && i + 1 < args.Length) { int.TryParse(args[++i], out clicksLeft); clicksTotal = clicksLeft; }
+            else if (args[i] == "-rrpStakes") stakesLeft = 3;
         }
         if (host) Game.I.Host(false);
     }
@@ -67,6 +74,28 @@ public class AutoTest : MonoBehaviour
         if (host && startAt > 0 && g.phase == Phase.Lobby && g.PlayerCount >= startAt) g.StartJob();
 
         if (g.local != null) g.local.bot = Bot ? (Func<Controls>)BotControls : null;
+        clickTimer += Time.unscaledDeltaTime;
+        bool plotsReady = g.plots[0].Ready && g.plots[1].Ready && g.plots[2].Ready;
+        stakeTimer += Time.unscaledDeltaTime;
+        if (stakesLeft > 0 && plotsReady && stakeTimer > 1f)
+        {
+            // each links to the one before, which the host's answer has made this player's chosen stake
+            stakeTimer = 0;
+            stakesLeft--;
+            var hill = g.plots[1];
+            Vector3 spot = hill.Spot(0.3f + 0.15f * stakesLeft, 0.7f - 0.25f * stakesLeft);
+            hill.RequestStake(spot.x, spot.z, hill.selected, -1);
+        }
+        else if (stakesLeft == 0 && clicksLeft > 0 && plotsReady && stakeTimer > 1f && clickTimer > 0.05f)
+        {
+            clickTimer = 0;
+            clicksLeft--;
+            // grade stations 2 and 3; lay and pack gravel on station 4
+            var plot = g.plots[clicksLeft % 3];
+            int tool = plot.id != 2 ? Plot.Grade : Plot.Gravel;
+            Vector3 spot = plot.Spot(UnityEngine.Random.value, UnityEngine.Random.value);
+            plot.RequestClick(spot.x, spot.z, clicksLeft % 5 == 0, tool);
+        }
 
         float dt = Time.unscaledDeltaTime;
         worstMs = Mathf.Max(worstMs, dt * 1000f);
@@ -124,6 +153,10 @@ public class AutoTest : MonoBehaviour
         var t = g.tuning;
         s.Append(" eye=").Append(t.eyeHeight).Append(" fov=").Append(t.fieldOfView).Append(" walk=").Append(t.walkSpeed).Append(" sprint=").Append(t.sprintMultiplier);
         s.Append(" truck=").Append(t.truckWidth).Append('x').Append(t.truckLength).Append('x').Append(t.truckHeight).Append(" yardParts=").Append(g.yard.GetComponentsInChildren<MeshRenderer>().Length);
+        foreach (var plot in g.plots)
+            s.Append(" plot").Append(plot.id).Append('=').Append(plot.Hash().ToString("x8")).Append(" level=").Append((plot.roadShare * 100f).ToString("0.0")).Append('/').Append((plot.shoulderShare * 100f).ToString("0.0"))
+                .Append('/').Append((plot.gravelShare * 100f).ToString("0.0")).Append('/').Append((plot.packedShare * 100f).ToString("0.0")).Append(" clicks=").Append(plot.clicks).Append(" stakes=").Append(plot.stakes.Count).Append('+').Append(plot.links.Count);
+        s.Append(" lorries=").Append(g.lorries.State());
         s.Append(" blocks=").Append(g.blocks.Count);
         s.Append(" cubes=").Append(g.cubes.Loose).Append(" moving=").Append(Net.IsHost ? g.cubes.Moving : g.cubes.clientMoving);
         s.Append(" rest=").Append(g.cubes.RestHash().ToString("x8"));

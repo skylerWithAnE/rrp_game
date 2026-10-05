@@ -29,6 +29,10 @@ public class Hud : MonoBehaviour
             if (kb.f3Key.wasPressedThisFrame) ShowReadout = !ShowReadout;
             if (kb.escapeKey.wasPressedThisFrame || kb.tabKey.wasPressedThisFrame) Playing = !Playing;
             if (kb.enterKey.wasPressedThisFrame && g.won) g.BackToLobby();
+            // one tool in the hands at a time
+            if (kb.digit1Key.wasPressedThisFrame) Plot.Tool = Plot.Stakes;
+            if (kb.digit2Key.wasPressedThisFrame) Plot.Tool = Plot.Grade;
+            if (kb.digit3Key.wasPressedThisFrame) Plot.Tool = Plot.Gravel;
         }
         if (!inGame) { Playing = false; ShowPanel = false; }
         Cursor.lockState = Playing ? CursorLockMode.Locked : CursorLockMode.None;
@@ -57,6 +61,7 @@ public class Hud : MonoBehaviour
             if (ShowPanel) Panel(g, panel);
             if (ShowReadout) Readout(g);
             if (g.phase == Phase.Lobby) Lobby(g, width);
+            if (Playing) GUI.Label(new Rect(width / 2 - 5, height / 2 - 11, 20, 20), "+", label);
             if (g.phase == Phase.Job) Clock(g, width, height);
             if (g.phase == Phase.Job && g.local != null) Hint(g, width, height);
             else GUI.Label(new Rect(width / 2 - 150, height - 30, 300, 22), "Click to play.  Tab frees the mouse.", label);
@@ -195,6 +200,16 @@ public class Hud : MonoBehaviour
         text.Append("host fps ").Append(Mathf.RoundToInt(g.hostFps));
         if (!Net.IsHost) text.Append("   my fps ").Append(Mathf.RoundToInt(g.fps));
         text.Append('\n');
+        // the readout is about whichever plot the player is on or nearest
+        Plot near = null;
+        if (g.local != null)
+            foreach (var candidate in g.plots)
+                if (candidate.Ready && (near == null || candidate.Distance(g.local.transform.position) < near.Distance(g.local.transform.position))) near = candidate;
+        foreach (var plot in g.plots)
+            if (plot == near) text.Append("<size=12>").Append(Plot.Names[plot.id]).Append(": level ").Append(Mathf.FloorToInt(plot.roadShare * 100f)).Append("  shoulder ").Append(Mathf.FloorToInt(plot.shoulderShare * 100f))
+                .Append("  gravel ").Append(Mathf.FloorToInt(plot.gravelShare * 100f)).Append("  packed ").Append(Mathf.FloorToInt(plot.packedShare * 100f)).Append(" %   clicks ").Append(plot.clicks).Append("</size>\n");
+        if (near != null) g.lorries.Readout(text, near.id);
+        text.Append("holding: <b>").Append(Plot.Tool == Plot.Stakes ? "1 stakes" : Plot.Tool == Plot.Grade ? "2 grade" : "3 gravel").Append("</b>   sprint ").Append(Player.Sprinting ? "ON" : "off").Append('\n');
         if (g.phase == Phase.Job) text.Append("towns joined by asphalt: ").Append(g.road.asphaltLinked ? "YES" : "no").Append("   by paint: ").Append(g.road.paintedLinked ? "YES" : "no").Append('\n');
         if (g.phase == Phase.Job) text.Append("truck: ").Append(g.truck.alive ? "driving" : "none").Append('\n');
 
@@ -217,10 +232,10 @@ public class Hud : MonoBehaviour
             text.Append("from host ").Append(Kb(host.receivedRate)).Append("  to host ").Append(Kb(host.sentRate));
             text.Append("  rtt ").Append(g.utp.GetCurrentRtt(NetworkManager.ServerClientId)).Append(" ms\n");
         }
-        text.Append("<size=11>F1 tuning   F3 readout   Tab mouse\nWASD walk   Shift sprint   mouse look</size>");
+        text.Append("<size=11>F1 tuning   F3 readout   Tab mouse\nWASD walk   Shift sprint on/off   Space hop   1 2 3 tools\nstakes: left click places or chooses, wheel moves\nthe chosen rope, X removes, right click lets go</size>");
 
-        GUI.Box(new Rect(8, 8, 330, 225), GUIContent.none, box);
-        GUI.Label(new Rect(16, 12, 320, 220), text.ToString(), label);
+        GUI.Box(new Rect(8, 8, 360, 230), GUIContent.none, box);
+        GUI.Label(new Rect(16, 12, 350, 225), text.ToString(), label);
     }
 
     // What each thing in the yard is and how big, written over it.
@@ -228,7 +243,9 @@ public class Hud : MonoBehaviour
     {
         var cam = g.cam.GetComponent<Camera>();
         var style = new GUIStyle(label) { alignment = TextAnchor.MiddleCenter };
-        foreach (var l in g.yard.labels)
+        var all = new System.Collections.Generic.List<Yard.Label>(g.yard.labels);
+        foreach (var plot in g.plots) all.AddRange(plot.labels);
+        foreach (var l in all)
         {
             Vector3 s = cam.WorldToScreenPoint(l.at);
             if (s.z < 0.5f || s.z > 60f) continue;
@@ -266,6 +283,19 @@ public class Hud : MonoBehaviour
             GUILayout.BeginHorizontal();
             if (GUILayout.Button(AutoTest.I.stressRunning ? "Running..." : "Run stress series")) AutoTest.I.RunStress();
             if (GUILayout.Button("Back to lobby")) g.BackToLobby();
+            GUILayout.EndHorizontal();
+        }
+
+        if (host && GUILayout.Button("Make all the ground again"))
+        {
+            g.lorries.Clear();
+            foreach (var plot in g.plots) plot.Generate();
+        }
+        if (host)
+        {
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Send trucks: station 2")) g.lorries.Send(0);
+            if (GUILayout.Button("station 4")) g.lorries.Send(2);
             GUILayout.EndHorizontal();
         }
 

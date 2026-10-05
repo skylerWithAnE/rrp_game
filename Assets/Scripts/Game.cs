@@ -22,6 +22,8 @@ public class Game : MonoBehaviour
     public Road road;
     public Truck truck;
     public Yard yard;
+    public Lorries lorries;
+    public Plot[] plots;    // see the list at the top of Plot
     public CameraRig cam;
 
     public Phase phase = Phase.Menu;
@@ -91,6 +93,10 @@ public class Game : MonoBehaviour
         // The first prototype's systems are kept but switched off: none of them runs in station 1.
         ground.enabled = cubes.enabled = quake.enabled = blocks.enabled = road.enabled = truck.enabled = false;
         yard = Child<Yard>("Yard");
+        plots = new Plot[Plot.Count];
+        for (int i = 0; i < plots.Length; i++) plots[i] = Child<Plot>("Plot " + Plot.Names[i]);
+        lorries = Child<Lorries>("Lorries");
+        for (int i = 0; i < plots.Length; i++) plots[i].id = i;
         cam = Child<CameraRig>("Camera");
         Child<Hud>("Hud");
         Child<AutoTest>("AutoTest");
@@ -166,6 +172,8 @@ public class Game : MonoBehaviour
         ground.Clear();
         ground.h = null;
         yard.Clear();
+        lorries.Clear();
+        foreach (var plot in plots) plot.Clear();
         blocks.Clear();
         road.Setup(false);
         truck.Clear();
@@ -186,6 +194,9 @@ public class Game : MonoBehaviour
         blocks.Clear();
         road.Setup(false);
         yard.Refresh();
+        lorries.Clear();
+        // the host makes the rough ground; a client is sent it
+        foreach (var plot in plots) { if (Net.IsHost) plot.Generate(); else plot.Clear(); }
         AddPlayer(localSlot, true);
         cam.yaw = local.yaw = Yard.SpawnYaw;
         cam.pitch = 0;
@@ -248,6 +259,7 @@ public class Game : MonoBehaviour
         m.U8((byte)slot);
         tuning.Write(m);
         Net.Send(id, m, true);
+        foreach (var plot in plots) plot.SendState(id);
         SendRoster();
     }
 
@@ -338,7 +350,7 @@ public class Game : MonoBehaviour
         }
     }
 
-    public void TuningChanged() { tuningDirty = true; cubes.ApplyTuning(); yard.Refresh(); }
+    public void TuningChanged() { tuningDirty = true; cubes.ApplyTuning(); yard.Refresh(); foreach (var plot in plots) plot.TuningChanged(); }
 
     // ---- messages
 
@@ -350,6 +362,26 @@ public class Game : MonoBehaviour
             if (!slotOf.TryGetValue(sender, out int slot) || players[slot] == null) return;
             var p = players[slot];
             if (op == Op.PlayerState) ReadPose(p, m);
+            else if (op == Op.Click)
+            {
+                int plot = m.U8();
+                float x = m.F32(), z = m.F32();
+                bool hot = m.U8() != 0;
+                int tool = m.U8();
+                if (plot < plots.Length && tool <= Plot.Gravel) plots[plot].HostClick(slot, x, z, hot, tool);
+            }
+            else if (op == Op.StakeEdit)
+            {
+                int plot = m.U8(), stake = m.U8(), steps = m.U8() - 128;
+                if (plot < plots.Length) plots[plot].HostStakeEdit(stake, Mathf.Clamp(steps, -1, 1));
+            }
+            else if (op == Op.Stake)
+            {
+                int plot = m.U8();
+                float x = m.F32(), z = m.F32();
+                int from = m.U8(), to = m.U8();
+                if (plot < plots.Length) plots[plot].HostStake(slot, x, z, from == 255 ? -1 : from, to == 255 ? -1 : to);
+            }
             else if (op == Op.Verb)
             {
                 byte verb = m.U8();
@@ -395,6 +427,11 @@ public class Game : MonoBehaviour
                 LoadJob(m.I32());
                 break;
             case Op.GroundEdit: ground.ApplyEdits(m); break;
+            case Op.PlotState: plots[m.U8()].OnState(m); break;
+            case Op.PlotRows: plots[m.U8()].OnRows(m); break;
+            case Op.PlotEdit: plots[m.U8()].OnEdit(m); break;
+            case Op.PlotStakes: plots[m.U8()].OnStakes(m); break;
+            case Op.Lorry: lorries.OnState(m); break;
             case Op.CubeSpawn: cubes.OnSpawn(m); break;
             case Op.CubeRemove: cubes.OnRemove(m); break;
             case Op.CubeRest: cubes.OnRest(m); break;

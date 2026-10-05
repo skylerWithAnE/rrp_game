@@ -14,3 +14,5 @@ map, and more). The current design is in `docs/DESIGN.md`, `docs/TECH_PLAN.md` a
 | `SETUP_log_2026-10-04.md` | Setup log as it stood before the Unity project was created |
 | `CLAUDE_2026-10-04.md` | The earlier `CLAUDE.md` |
 | `PLAN_draft_2026-10-04.md` | Draft build plan written in plan mode; its milestone list was superseded |
+| `POSTMORTEM_badscale.md` | Post-mortem of the first prototype (third person, physics cubes), rejected 2026-10-04 for its scale, camera and verbs |
+| `TECH_PLAN_badscale.md` | The first prototype's technical plan, as built through milestone 6 |

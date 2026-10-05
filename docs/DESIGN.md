@@ -1,7 +1,10 @@
 # Game design
 
-Written 2026-10-04 in the redesign session. This replaces the design of the first prototype, which
-is in git history (commit `4348b8e`) and is summarised in `POSTMORTEM.md`.
+Written 2026-10-04 in the redesign session and added to as each station was built. This replaces
+the design of the first prototype, which is in git history (commit `4348b8e`).
+
+**All five stations were built, played and accepted by the user by 2026-10-05.** What comes next
+is in `PLAN.md`. How the code works is in `TECH_PLAN.md`.
 
 Everything under "Decided by the user" was said by the user. Everything marked **[Claude]** is a
 proposal that the user has seen and not objected to; it is not a decision until it has been played.
@@ -63,6 +66,8 @@ road sizes look good. Eye height and field of view were not commented on.
 | Tightest corner | 15 across the inside edge: radii 7.5 inside, 11 centre line, 14.5 outside; 29 across the outside | Decided by the user after walking station 1. Seven seconds to walk across the outside |
 | One section of road | 20 long (three truck lengths), 140 m² | Five seconds to walk along, two and a half to sprint |
 | One click | 0.1 of height | Ankle height; ten clicks is knee to mid-thigh |
+| Hop | 0.6 high | Feet to mid-shin. [Claude] |
+| Shoulder | 1.75 wide, falling 0.3 | One more cell outside each edge of the road. [Claude's numbers] |
 
 Truck figures were checked against U-Haul's published figures on 2026-10-04:
 
@@ -107,10 +112,10 @@ Needed before the stations can be built. The user said to use discretion; change
 - **Earth is free.** A click below the line adds ground from nowhere; a click above removes it.
   There is no hauling until flinging comes back.
 - **The ground never passes the line.** Clicks per second is a slider.
-- **Gravel and compaction are two tools**, one job each. Their details are left until station 3
-  has been played.
+- **Gravel and compaction are two tools**, one job each. Built on 2026-10-05; see stations 2, 3
+  and 4 below.
 - **The truck drives itself** and fails for a visible reason. Carried over from the first
-  prototype, where it was the part that worked.
+  prototype, where it was the part that worked. Built on 2026-10-05; see stations 2 to 5 below.
 - **Build and verify for 4 players.** Carried over from the first prototype.
 - Every number on this page lives in the one tuning asset and is adjustable during play.
 
@@ -125,6 +130,143 @@ Needed before the stations can be built. The user said to use discretion; change
 - What the land fights back with (rocks, trees, steepness, water). Not asked for; not in this
   prototype.
 - Oil, steamrolling, asphalt.
+
+## Stations 2 to 5: ground clicking, setting the line, gravel, the truck
+
+Station 2 was played by the user on 2026-10-04 in its first form (one level strip, one press per
+click) and station 3 in its first form on 2026-10-05, and kept playing as stations 4 and 5, the
+wear road and the hairpins were added. On 2026-10-05 the user tested the last unverified parts
+(mitred corners, the green and red rope, the one gravel tool, the hot spot stopping) and said
+**"they look good"**. The user also said: **"I'm enjoying the explosions and
+jank-ness right now."** Keep the trucks' wrecks and rough physics; do not smooth them out.
+
+Decided by the user after playing station 2:
+
+- **The clicking "looks great. Much more satisfying than the old system."**
+- **Holding the button repeats clicks.**
+- **A shoulder: one extra square outside each edge of the road, where the road is crowned off.**
+  It is a bonus for making a better road, not a requirement.
+- **The stakes look good.**
+- **Each stake must be able to be linked to another road section.**
+- **Inclines and declines must be tested with this system.**
+- **The hop is back** (Space).
+- **The rope at a stake is raised and lowered with the mouse wheel, at the stake.**
+- **Stakes must not be able to overlap** (said of two stakes 2 m apart with their sections lying
+  over each other).
+- **A hot spot:** a click on it doubles the action. Wanted for levelling "and probably future
+  steps". It appears after a first click in a grid square and stays still. It jumps to a new place
+  only when it is clicked, or when the player clicks into a different grid square. "The goal is
+  to give value to individual clicks."
+- **Trucks drive in both lanes, in opposite directions.**
+- **"The trucks are perfect. I like that they run on the incomplete road."** The two limits (they
+  cannot drive a road staked out on station 3, and do not say why they failed) are fine for now.
+- **Joining two sections at a stake was not working.** The user wants to see a road as a curve,
+  "exactly like we saw in the hairpin examples", but chose to **see the mitred corner first**
+  before committing to curved sections, with the bend restricted by angle if needed.
+- **Placing a stake must show when it breaks those limits.**
+- **A station with stakes laid out round the hairpin, to level in game**, and hairpin roads for
+  the trucks.
+- **The hot spot stops when the current stage is complete.**
+- **Switching tools for gravel felt bad: gravel and packing are one tool.** Textures and particle
+  effects will make it more convincing later.
+- **Trucks damage the road, on one example station only for now, as an experiment.** A truck
+  deals a random amount of damage to a square; if that takes the square's health below a
+  threshold, the terrain changes where the wheels touch. The damage factor is to be turned up
+  high to see results, then down for balance.
+- **Sprint is a toggle.**
+- **Stake work depends on the selected stake:** select a stake, move away from it, and place the
+  next one with left click. After the two are linked, further changes are made from there,
+  including the height of the line.
+- The user asked how to remove a stake and did not answer the proposal of the X key; it was built
+  that way. **[Claude]**
+- The user asked why one lane had a half-sized tile. A 2 m cell does not divide a 7 m road. Cells
+  now come in whole numbers to a lane and to a section, as near the patch width as that allows:
+  at the 2 m setting they are 1.75 m across the road and 2 m along it.
+
+As built **[Claude]**. The user has played all of it and accepted it; the particular numbers
+are still Claude's and are sliders:
+
+- **A section is two linked stakes.** The line runs straight between the two stake heights. The
+  road is level across; each shoulder is 1.75 m wide and its line falls 0.3 m from the road's edge
+  to its outside. Two stakes can be linked from 7 m up to 20 m apart.
+- **Corners are mitred.** Where two sections meet at a stake, both are cut along the line that
+  halves the bend, so they meet edge to edge with no gap and no overlap. The grid squares at the
+  cut are wedges, and the line's height is the stake's height all along the cut.
+- **The limits on a rope:** stakes stand at least 6.5 m apart and at most one section (20 m); a
+  stake takes two ropes, so a road is a chain with no junctions; the road bends at most 36 degrees
+  at a stake; a stake cannot go on ground a section already covers, and a section cannot run over
+  another. 36 degrees at 6.5 m is about the user's tightest turn. The spacing and the bend are
+  sliders. The rope that would be made shows green if it is allowed and red if it is not.
+- **A stake can be linked to any number of others**, so sections share stakes and a road is a
+  chain of them. Where two sections overlap, each point belongs to the one whose centre line is
+  nearer.
+- **Station 2** is rough ground with four stakes already set: a level section, one climbing 2 m in
+  20 m, and one falling 2 m.
+- **Station 3** is a bare hillside, 44 m by 54 m, beside where players start.
+- **Stakes are their own tool**, and everything it does starts from the chosen stake, shown
+  white. Left click on the ground puts a stake down at the height of the ground there, roped to
+  the chosen stake, and the new stake becomes the chosen one. Left click on a stake ropes the
+  chosen stake to it and chooses it. The wheel moves the chosen stake's rope 0.1 m a notch and X
+  pulls the chosen stake out with every rope tied to it, wherever the player is looking; the
+  ground stays as it is. Right click lets go of the chosen stake. A white string shows a rope
+  before it is made, and a dark one means it cannot be.
+- The host's "Make the ground again" button starts stations 2, 3 and 4 over.
+- **Three tools, one in the hands at a time,** on keys 1 to 3: stakes, grading and gravel. The
+  last two use the same held left click, patch and hot spot.
+- **Gravel** goes only on road that is on its line, 0.05 m a click up to 0.15 m deep. It is free,
+  like earth. Shoulders take none. Once a point's gravel is at full depth the same clicks pack
+  it, four to finish, and packed gravel sits a quarter lower and darker.
+- **Station 4** is one 20 m section that is already level, behind and to the left of where
+  players start, so gravel can be tried without grading first.
+- **The hot spot** is a yellow ring 0.35 m in radius. A click with the crosshair on it counts
+  double. It goes when its square has nothing left for the tool in hand to do. Each player has
+  their own, and it is not sent to anyone else: the host takes the clicking player's word for it.
+- **The wear road** is a finished 40 m road, the furthest left. Four times a second each truck on
+  it takes a random amount, up to 30 out of 100, off the health of the square under it. Below 50,
+  each wheel cuts up to 0.05 m where it touches: packing is lost, gravel is scattered, then the
+  ground ruts. Working a point with a tool makes it sound again. In a check it went from fully
+  packed to half packed in about a minute. All three numbers are sliders.
+- **The hairpins** are two more roads behind the row: eight stakes round the tightest turn the
+  user allows (7.5 m inside radius), in five mitred sections of 36 degrees. One is on rough ground
+  for the players to level and gravel; the other is finished. Trucks run on both.
+- **Station 5** is two roads, 40 m each with a gentle climb, further left than station 2: one
+  finished (level, gravelled, packed) and one bad (rough bare ground). Two trucks run on each, and
+  on the wear road and the hairpins, one each way in its own right-hand lane, and a new one sets
+  off 3 seconds after the last arrived or was wrecked. The host can also send a pair down station
+  2 or station 4 from the panel.
+- **The truck** is the real size, 3,600 kg, on four sprung rays, and steers itself along its lane
+  at 6 m/s. **Its wheels bite according to the surface:** full push on packed gravel, 0.6 of it on
+  loose gravel, 0.4 on bare road. So a hump it climbs on a finished road stops it on a bad one.
+  Still for 4 seconds, or on its side, it bounces away and blows up.
+- In the checks the finished road passed every truck, the bad road wrecked every truck, and rough
+  station 2 wrecked one of two.
+- **Left click, held, on ground inside a section** moves one patch 0.1 m toward the line and never
+  past it, at most 4 times a second per player. Ground outside every section cannot be changed.
+- A square patch is one cell of its section's grid; each shoulder is one cell wide. A round patch
+  sits wherever the click lands. A white outline shows the patch before the click.
+- Ground on its line turns a lighter color. The readout shows, for each station, how much of the
+  road and of the shoulders is on the line, and the clicks taken.
+- Sliders: patch width, height per click, clicks per second, square or round, soft edge, reach,
+  starting roughness, the climb per section, shoulder width and shoulder drop, hop speed, gravel
+  depth, gravel per click, packing per click, the hot spot's bonus and size, the truck's speed,
+  push and patience, stake spacing, the bend limit, and the three truck-damage numbers.
+- Ground points are 0.25 m apart. The host decides every click and every stake and sends the
+  results; a player who joins later is sent both plots as they stand.
+- Not asked for, added by Claude to make the stations usable: the patch outline, the link preview,
+  the lighter color for finished ground, the level and click counts, the soft-edge slider, the
+  reach limit.
+
+Open after building:
+
+- Whether a rope should have a steepest allowed slope. Nothing limits it.
+- Whether gravel and packing are fun or a second chore: station 4's question, not yet played.
+- Whether the truck works as the judge: station 5's question. It does not say why it failed; the
+  player has to see it. It cannot yet drive a road the players staked out on station 3.
+- What a player sees of the tool in their hands. Only the readout and the outline's color say.
+- Curved sections in place of mitred corners. The user has now played the mitre and has not
+  said which to keep.
+- Junctions. A stake takes two ropes, so roads cannot branch or cross.
+- Whether stakes should be movable sideways as well as up and down.
 
 ## First build step: station 1, the scale yard
 
