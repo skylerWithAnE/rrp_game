@@ -70,6 +70,14 @@ public class Tuning : ScriptableObject
     [Tooltip("The least angle between a new branch and each rope already at the stake (degrees).")]
     [Range(30, 90)] public float junctionAngle = 60f;
 
+    [Header("Quarry (the Quarry test ground only)")]
+    [Tooltip("Shovels of gravel the truck carries. Full, it sets off for the drop.")]
+    [Range(5, 100)] public float haulLoad = 30f;
+    [Tooltip("How many clicks of laying one shovel is worth once it is unloaded. 3 lays one square to full depth.")]
+    [Range(1, 10)] public float shovelWorth = 3f;
+    [Tooltip("1: gravel laid at the quarry comes off the heap at the drop, and none can be laid when it is empty. 0: gravel is free, as everywhere else.")]
+    [Range(0, 1)] public float gravelFromStock = 1f;
+
     [Header("Truck damage (the wear road only)")]
     [Tooltip("The most damage a truck does to a grid square each quarter second it is on it, out of 100. The amount is random up to this.")]
     [Range(0, 100)] public float truckDamage = 30f;

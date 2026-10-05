@@ -75,6 +75,8 @@ session would otherwise learn again the slow way.
   with them on, and the Long map's 306 m in 11 with them on.
 - A truck climbs 25 degrees and more on packed gravel, 16 on loose gravel and 10 on bare ground
   that is on its line; it wrecks at 18 on loose and 12 on bare. Downhill it does not care.
+- A truck gets up 20 m of any slope on the speed it arrives with. A ramp that is meant to stop
+  one has to be two sections long.
 - To time anything with trucks, `Time.timeScale = 4` works: the physics steps are the same
   length, there are just more of them a frame. Put it back to 1.
 - The maps: Short is 135,000 points, Middle at 150 m 337,000, Climb 459,000, Long 578,000. The

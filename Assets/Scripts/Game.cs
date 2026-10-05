@@ -409,6 +409,16 @@ public class Game : MonoBehaviour
                 int from = m.U8(), to = m.U8();
                 if (plot < plots.Length) plots[plot].HostStake(slot, x, z, from == 255 ? -1 : from, to == 255 ? -1 : to);
             }
+            else if (op == Op.Zone)
+            {
+                int plot = m.U8(), link = m.U8(), role = m.U8();
+                if (plot < plots.Length) plots[plot].HostZone(link, role);
+            }
+            else if (op == Op.Shovel)
+            {
+                int plot = m.U8(), what = m.U8();
+                if (plot < plots.Length) plots[plot].HostShovel(slot, what);
+            }
             else if (op == Op.Verb)
             {
                 byte verb = m.U8();

@@ -16,6 +16,7 @@ public enum Op : byte
     PlotState, PlotRows, PlotEdit, PlotStakes,
     Lorry,      // station 5
     Map, PlotCoarse, PlotPoints,    // the maps: which one, its land a height every metre, and the points changed since
+    Zone, Shovel,                   // client -> host: give a section a role; a shovel of gravel on or off the truck
 }
 
 // A byte buffer with the few field types the game sends.

@@ -8,9 +8,10 @@ The five mechanics stations are built and were played and accepted by the user o
 prototype itself was built that night, unattended: maps, each with a town at either end, to
 stake, grade and gravel a road across and watch trucks try it. The user played the Short map the
 next morning and said it "went great" and "is looking much more like what I envisioned"; the
-other maps are unplayed. The same day the user asked for a rope steepness limit and a map with
-rocks that forces a winding road, and both were built. There is no end, score or clock, by
-decision.
+other maps are unplayed. The same day the user asked for, and got: a rope steepness limit, a map
+with rocks that forces a winding road, the Stations map cut into focused test grounds, junctions,
+service roads with a zoning tool, and a quarry where gravel is shovelled into a truck. None of
+those has been played. There is no end, score or clock, by decision.
 
 ## Start here
 

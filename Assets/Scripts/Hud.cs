@@ -33,6 +33,7 @@ public class Hud : MonoBehaviour
             if (kb.digit1Key.wasPressedThisFrame) Plot.Tool = Plot.Stakes;
             if (kb.digit2Key.wasPressedThisFrame) Plot.Tool = Plot.Grade;
             if (kb.digit3Key.wasPressedThisFrame) Plot.Tool = Plot.Gravel;
+            if (kb.digit4Key.wasPressedThisFrame) Plot.Tool = Plot.Zone;
         }
         if (!inGame) { Playing = false; ShowPanel = false; }
         Cursor.lockState = Playing ? CursorLockMode.Locked : CursorLockMode.None;
@@ -62,9 +63,9 @@ public class Hud : MonoBehaviour
             if (ShowReadout) Readout(g);
             if (g.phase == Phase.Lobby) Lobby(g, width);
             if (Playing) GUI.Label(new Rect(width / 2 - 5, height / 2 - 11, 20, 20), "+", label);
-            // under the crosshair: why the red rope cannot be made
-            if (Playing && Plot.Tool == Plot.Stakes && Plot.WhyFrame >= Time.frameCount - 1 && Plot.Why.Length > 0)
-                GUI.Label(new Rect(width / 2 - 250, height / 2 + 24, 500, 22), "<color=#ff9080>" + Plot.Why + "</color>", new GUIStyle(label) { alignment = TextAnchor.UpperCenter });
+            // under the crosshair: why the red rope cannot be made, or what a click here would do
+            if (Playing && Plot.WhyFrame >= Time.frameCount - 1 && Plot.Why.Length > 0)
+                GUI.Label(new Rect(width / 2 - 300, height / 2 + 24, 600, 22), (Plot.WhyBad ? "<color=#ff9080>" : "<color=#ffffff>") + Plot.Why + "</color>", new GUIStyle(label) { alignment = TextAnchor.UpperCenter });
             if (g.phase == Phase.Job) Clock(g, width, height);
             if (g.phase == Phase.Job && g.local != null) Hint(g, width, height);
             else GUI.Label(new Rect(width / 2 - 150, height - 30, 300, 22), "Click to play.  Tab frees the mouse.", label);
@@ -230,8 +231,9 @@ public class Hud : MonoBehaviour
             if (plot == near) text.Append("<size=12>").Append(Plot.Names[plot.id]).Append(": level ").Append(Mathf.FloorToInt(plot.roadShare * 100f)).Append("  shoulder ").Append(Mathf.FloorToInt(plot.shoulderShare * 100f))
                 .Append("  gravel ").Append(Mathf.FloorToInt(plot.gravelShare * 100f)).Append("  packed ").Append(Mathf.FloorToInt(plot.packedShare * 100f)).Append(" %   clicks ").Append(plot.clicks).Append("</size>\n");
         if (near != null && near.IsLand) text.Append("<size=12>road staked from town A: ").Append(Mathf.RoundToInt(near.roadLength)).Append(" m   towns joined: ").Append(near.joined ? "<b>YES</b>" : "no").Append("</size>\n");
+        if (near != null && near.IsQuarry) text.Append("<size=12>gravel at the drop: ").Append(near.stock).Append(" clicks' worth</size>\n");
         if (near != null) g.lorries.Readout(text, near.id);
-        text.Append("holding: <b>").Append(Plot.Tool == Plot.Stakes ? "1 stakes" : Plot.Tool == Plot.Grade ? "2 grade" : "3 gravel").Append("</b>   sprint ").Append(Player.Sprinting ? "ON" : "off").Append('\n');
+        text.Append("holding: <b>").Append(Plot.Tool == Plot.Stakes ? "1 stakes" : Plot.Tool == Plot.Grade ? "2 grade" : Plot.Tool == Plot.Zone ? "4 zoning" : "3 gravel").Append("</b>   sprint ").Append(Player.Sprinting ? "ON" : "off").Append('\n');
         if (g.phase == Phase.Job) text.Append("towns joined by asphalt: ").Append(g.road.asphaltLinked ? "YES" : "no").Append("   by paint: ").Append(g.road.paintedLinked ? "YES" : "no").Append('\n');
         if (g.phase == Phase.Job) text.Append("truck: ").Append(g.truck.alive ? "driving" : "none").Append('\n');
 
@@ -254,7 +256,7 @@ public class Hud : MonoBehaviour
             text.Append("from host ").Append(Kb(host.receivedRate)).Append("  to host ").Append(Kb(host.sentRate));
             text.Append("  rtt ").Append(g.utp.GetCurrentRtt(NetworkManager.ServerClientId)).Append(" ms\n");
         }
-        text.Append("<size=11>F1 tuning   F3 readout   Tab mouse\nWASD walk   Shift sprint on/off   Space hop   1 2 3 tools\nstakes: left click places or chooses, wheel moves\nthe chosen rope, X removes, right click lets go</size>");
+        text.Append("<size=11>F1 tuning   F3 readout   Tab mouse\nWASD walk   Shift sprint on/off   Space hop   1 2 3 4 tools\nstakes: left click places or chooses, wheel moves\nthe chosen rope, X removes, right click lets go</size>");
 
         GUI.Box(new Rect(8, 8, 360, 246), GUIContent.none, box);
         GUI.Label(new Rect(16, 12, 350, 241), text.ToString(), label);

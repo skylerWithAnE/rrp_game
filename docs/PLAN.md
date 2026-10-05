@@ -14,7 +14,14 @@ asked for three things, all built the same day and described in `DESIGN.md`:
 - a limit on how steep a rope may be, found by trying, so that no undriveable road can be staked;
 - the docs brought up to date.
 
-The next step is the user playing the Middle map and the new Switchback map.
+**2026-10-05, later.** The user asked for the Stations map to be cut into focused test grounds,
+a system for junctions on a test ground of its own, a quarry where players load gravel into a
+truck that drives a service road to a drop, and zoning tools that give road sections roles. All
+are built, checked on two instances, and described in `DESIGN.md` under "Test grounds,
+junctions, roles and the quarry". None has been played.
+
+The next step is the user playing: the Junctions and Quarry test grounds, the Middle map and
+the Switchback map.
 
 Rewritten 2026-10-05 after the user answered the first version's questions. The section "Decided
 by the user" is the user's. Everything else is Claude's proposal, and the session that builds it

@@ -29,6 +29,21 @@ Decided by the user on 2026-10-05, after that playtest:
   asked for the limit to be found, not chosen.
 - **Building and confirming each mechanic on a station first worked well** and is how to go on.
 
+Decided by the user later on 2026-10-05:
+
+- **The Stations map is cut into several, each with its own focus**, grouped sensibly and not one
+  per station: "a test for trucks with road types and turns, a test for building roads, and so on".
+- **A system for making junctions**, on a new test ground of its own. How is left to Claude:
+  "If questions come up, create stations demonstrating each desirable answer."
+- **A quarry station**, "where players load gravel into a truck. Trucks will then drive on a
+  service road to a location where it will wait for players to unload it."
+- **A service road** is "a road that the crew uses that should not be used by the trucks
+  traveling between towns".
+- **Zoning tools** "that will let them assign roles to road segments".
+
+How each of these was done is Claude's, is described under "Test grounds, junctions, roles and
+the quarry" below, and has not been played.
+
 Everything under "Decided by the user" was said by the user. Everything marked **[Claude]** is a
 proposal that the user has seen and not objected to; it is not a decision until it has been played.
 Do not add anything that is not on this page. If something seems missing, ask.
@@ -111,6 +126,95 @@ Truck figures were checked against U-Haul's published figures on 2026-10-04:
   line and the inside edge of a 7 m road. Their inside edges have radii of 0.5, 4 and 7.5 m. The
   user walked them and chose the third.
 
+## Test grounds, junctions, roles and the quarry
+
+Built 2026-10-05 at the user's request (see the decisions above). **Everything in this section
+is [Claude]'s way of doing what was asked, and none of it has been played.**
+
+### The test grounds
+
+The host's choices are now two rows of buttons: five test grounds and five maps. A test ground
+is flat yard with a few plots on it, each plot one thing to try.
+
+| Test ground | What is on it | What it is for |
+|---|---|---|
+| Yard | The parked truck, the road strip, the three painted hairpins (station 1) | Sizes against the blob |
+| Building | Clicking to a line: level, climb and fall (station 2). The bare hillside to stake (station 3). The level section to gravel (station 4). The hairpin's stakes on rough ground | The three tools |
+| Trucks | The finished road and the bad road (station 5). The wear road. The finished hairpin. Four ramps | What a truck can and cannot drive |
+| Junctions | A T, a crossroads and a fork, finished, with trucks. A rough field with a road across it to rope a branch to | Junctions |
+| Quarry | A quarry, a service road, a drop, and a road that needs gravel | Loading and hauling gravel, service roads, zoning |
+
+- **The four ramps** each climb for two sections, level off and come down, so trucks from both
+  ends meet the same climb. 14 degrees bare: every truck wrecks. 14 degrees under loose gravel:
+  every truck arrives. 20 degrees under loose gravel: every truck wrecks. 20 degrees packed:
+  every truck arrives. They are steeper than `maxSlope` lets a player rope, because they are
+  there to show the limits. A ramp one section long showed nothing: a truck gets up 20 m of
+  anything on the speed it arrives with.
+- Players start beside the parked truck's place on every test ground but Trucks, where they
+  start at the near end of the row of roads.
+- Trucks can now be sent down the hillside's road from the F1 panel, as well as the clicking
+  and gravel plots'.
+
+### Junctions
+
+- **A stake takes up to four ropes** (`ropesPerStake`; 2 switches junctions off, 3 allows a T or
+  a fork but no crossroads). **On the Junctions and Quarry test grounds only**, until the user
+  has played it: everywhere else a stake still takes two.
+- **A branch must leave at least 60 degrees from every rope already at the stake**
+  (`junctionAngle`). The bend limit is for a road carrying on through a stake; this is for a
+  road leaving one.
+- To make one: with the stake tool, choose a stake that already has two ropes and click the
+  ground to one side, or click another stake.
+- **The ground at a junction.** There is no one bend to mitre, so each section runs on 5.25 m
+  past the stake and they overlap; a point belongs to the nearest centre line, as it always
+  has. Each section stays level at the stake's height for its first 5.25 m, so the junction is
+  flat. The far side of a T comes out square, a road's width, not shouldered.
+- **Trucks at a junction.** A truck drives from one end of the road to another, and where there
+  are more than two ends it picks its two at random each time. It cuts straight across the
+  junction from its lane to its new one. Nothing gives way to anything.
+- **The questions this raised, and the stations that answer them:** which junctions to allow
+  (the T, the crossroads and the fork stand side by side, each with trucks); how close two
+  branches may be (the fork is at the 60 degree limit); whether a junction can be built by
+  hand (the field). In a check all three finished junctions passed every truck.
+- Not built: curved or widened junctions, rules for who goes first, and junctions on the maps.
+
+### Roles, and the zoning tool
+
+- **Every section of road has a role**: a road for everyone, or a **service road**. A new rope
+  is a road for everyone.
+- **Trucks driving from end to end, or from town to town, never use a service road.** It is not
+  part of their road at all: the ends they drive between are the ends of the roads for everyone,
+  and on a map the towns are joined only when roads for everyone join them.
+- **The zoning tool is key 4.** The section under the crosshair is outlined, red for everyone or
+  blue for service, a line under the crosshair says which it is, and a left click gives it the
+  other role. It works on every plot and map.
+- A service road is drawn in blue where a road for everyone is tan: its rope, its bare ground
+  and its shoulders. Gravel looks the same on both.
+
+### The quarry
+
+- **The loop:** an empty gravel truck stands at the quarry. With the gravel tool, hold left
+  click on the quarry's rock: each click is a shovel into the truck. At 30 (`haulLoad`) it
+  drives off by itself along the service road to the drop, and stands there. Hold left click on
+  the truck to shovel it off; each shovel adds to the heap at the drop. Empty, the truck
+  leaves along the road for everyone and off its end, and a new one comes to the quarry three
+  seconds later.
+- **The gravel is the gravel.** On this test ground only, gravel laid on a road comes off the
+  heap: a click that lays any takes one from it, and with the heap empty none can be laid.
+  Packing is still free. A shovel is worth three clicks (`shovelWorth`), which lays one square
+  to full depth. `gravelFromStock` at 0 makes gravel free again here, to compare.
+- **The ground:** a service road, finished, runs 60 m from the quarry past the drop to a T
+  junction with a 40 m road for everyone, which is on its line and bare. That road is the work:
+  about 80 squares, so three truckloads.
+- The quarry's stake and the drop's stake cannot be pulled out. Every other stake can, and the
+  truck finds whatever way there is from one to the other, by any road. With no way, no truck
+  comes, and its label says so.
+- **Questions this raises that are not answered by a station yet** (say which matter and Claude
+  will build the alternatives side by side): whether loading should be clicking the rock or
+  carrying something; whether a full truck should leave by itself or be sent; whether the
+  truck should come back the way it came for another load; whether gravel should be limited
+  on the maps too; whether the heap should be anywhere the truck stops or one fixed place.
+
 ## The maps
 
 Built 2026-10-05, unattended. **The user's decisions** are the ones listed in `PLAN.md`: several
@@ -126,7 +230,7 @@ start at once. Then grade and gravel what they are wrecking on.
 
 | Map | Between the towns | The land | What it is for |
 |---|---|---|---|
-| Stations | | The five stations, as accepted | The reference for how each mechanic felt |
+| (the test grounds) | | The five stations as accepted, in four groups: see above | The reference for how each mechanic felt |
 | Short | 60 m | Nearly flat, 70 m wide | One player finishing a whole road in a sitting |
 | Middle | 150 m, on the `mapDistance` slider (40 to 400) | A 9 m hill on the straight line between the towns, a hollow to its right, flat ground to its left; 100 m wide | The starting distance. Over the hill is short and a lot of clicking; round it is longer and easy |
 | Long | 300 m | Rolling, with a 6 m ridge right across it that has one gap, to the right of the straight line, and a hollow further on; 100 m wide | Whether a long road is something a crew wants to build |

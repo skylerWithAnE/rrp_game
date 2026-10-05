@@ -44,8 +44,8 @@ are never entered. `Truck.Boom` and `Sfx` are still used for the trucks' explosi
   checks, applies, and sends the result (`PlotEdit`, `PlotStakes`). Clients never generate or
   change ground themselves.
 - The host chooses the map (`Game.SetMap`, sent as `Map`). Everyone throws their ground away; the
-  host makes the new and sends it. Map 0 is the stations (plots 0 to 7 and the yard); any other is
-  one plot of land (plot 8, `Plot.Land`).
+  host makes the new and sends it. Choices 1 to 5 are maps: one plot of land (`Plot.Land`).
+  Choices 0 and 6 to 9 are test grounds: the flat yard and the plots `Plot.MapOf` gives them.
 - Anyone can join at any time. A joiner is sent the map number and the tuning, then every plot
   that exists. A station plot goes whole: a header (`PlotState`), the ground in messages of 4,000
   points (`PlotRows`: height in millimetres as two bytes, gravel and packing as one byte each),
@@ -59,8 +59,9 @@ are never entered. `Truck.Boom` and `Sfx` are still used for the trucks' explosi
 
 ## The plot
 
-`Plot` is one rectangle of ground with its own stakes. There are nine, made by `Generate` from
-their index (the list is at the top of `Plot.cs`): eight for the stations and one for a map.
+`Plot` is one rectangle of ground with its own stakes. There are eighteen, made by `Generate`
+from their index (the list is at the top of `Plot.cs`): seventeen small ones shared out among
+the test grounds, and one for a map's land.
 
 - **Ground:** a height per point, points 0.25 m apart, plus a byte of gravel (millimetres) and a
   byte of packing (0 to 100) per point. The surface drawn and walked on is ground plus gravel.
@@ -83,6 +84,13 @@ their index (the list is at the top of `Plot.cs`): eight for the stations and on
 - **A click** (`HostClick`) is capped per player, then applied to every point in the square (or
   in a disc, for the round brush): grading moves the height toward the target, gravel adds depth
   and then packing. Changed points go out in one `PlotEdit`.
+- **Junctions.** A stake with three or more ropes has no mitre. `Rebuild` gives each of its
+  sections an extension past the stake (`eA`, `eB`) and a level stretch (`pA`, `pB`), and `Span`
+  turns those into where the section's ground and its line begin and end. Everything that
+  places a point in a section goes through `Span`.
+- **Roles.** A rope is three numbers: its two stakes and its role (0 for everyone, 1 service),
+  sent with the stakes. `HostZone` changes one. `PathBetween` can be told to leave service roads
+  out, and is for every truck that is not the gravel truck.
 - **Wear** (`Wear`) is host only. Health is a byte per point and is not sent; ruts are ordinary
   edits. Only the wear road has it.
 
@@ -124,10 +132,19 @@ metres ahead on a path that `Plot.Route` builds along the right-hand lane. Its p
 `Plot.Going` (the surface under it). On its side, or getting no further along its path for
 `lorryStuckSeconds`, it is thrown up and blows up.
 
-`Route` follows the ropes (`Chain`), so stakes can be put down in any order. On a station it
-starts from the first stake with one rope. On a map it runs from stake 0 to stake 1 and there is
-no route until they are joined; then a truck leaves each town every `truckEvery` seconds. A truck
-keeps the path it set off with, even if the stakes change under it.
+`Route` searches the ropes for the shortest way (`PathBetween`), so stakes can be put down in any
+order and roads can branch. On a test ground it runs between two ends of the roads for
+everyone, picked at random if there are more than two. On a map it runs from stake 0 to stake 1
+and there is no route until they are joined; then a truck leaves each town every `truckEvery`
+seconds. `Lane` turns the sections found into the points a truck steers at. A truck keeps the
+path it set off with, even if the stakes change under it.
+
+**The gravel truck** is one more lorry, the last in the list, with a state (`haulState`:
+loading, hauling, unloading, leaving) and a load. While loading or unloading it is held still
+and is never stuck. `Plot.HaulRoute` is its way from stake 0 to stake 1 of the quarry's plot and
+`Plot.LeaveRoute` its way out. Shovels are asked for with `Shovel` messages and decided by the
+host; the load, the state and the heap at the drop go to clients on the end of every truck
+snapshot.
 
 ## Verifying
 

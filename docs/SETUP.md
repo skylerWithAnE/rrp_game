@@ -69,13 +69,16 @@ count as different players. **This path has never connected**, so expect to fix 
   `rrp_game.exe -rrpJoin 127.0.0.1 -rrpLog -rrpStakes -rrpClicks 150 -logFile client.log`.
   Clones in the editor read the same flags from `rrp_autotest.txt` in the system temp folder; delete
   that file when done or the clones will keep joining by themselves.
+- **The host's choices by number** (for `-rrpMap` and `Game.SetMap`): 0 Yard, 1 Short, 2 Middle,
+  3 Long, 4 Climb, 5 Switchback, 6 Building, 7 Trucks, 8 Junctions, 9 Quarry. The old station
+  flags (`-rrpStakes`, `-rrpClicks` off a map) work on 6.
 - **Test flags on a map**: `-rrpMap 3` makes a host choose map 3. On a map `-rrpStakes` stakes a
   road from town A to town B, `-rrpClicks 300` clicks at random along it, and `-rrpWork 50`
   grades and gravels all of it at the click cap with half the clicks on the hot spot, printing an
   `RRPWORK` line with the time each took.
 - **Controls**: WASD, mouse, Shift toggles sprint, Space hops, Tab frees the mouse, F1 tuning
-  (host), F3 readout. Keys 1, 2 and 3 are the stake, grade and gravel tools. The host picks the
-  map with the buttons at the top of the screen.
+  (host), F3 readout. Keys 1, 2, 3 and 4 are the stake, grade, gravel and zoning tools. The host
+  picks the test ground or map with the buttons at the top of the screen.
 - **Driving the editor from a script**: play mode does not start ticking until the editor window
   has had focus once. After that it keeps running in the background.
 - With clones attached, each clone also registers with the Unity MCP server, so every MCP call has

@@ -17,6 +17,11 @@ using UnityEngine;
 // On a map there is one road, from town to town, and nothing drives until the ropes join the two
 // towns' stakes. From then on a truck sets off from each town every few seconds, whatever state
 // the road is in, up to six on the way in each lane.
+//
+// The quarry has one truck more, the gravel truck, which does not drive until it is full. It
+// waits at the quarry's loading bay while players shovel gravel into it, drives to the drop by
+// any road, service roads included, waits there while they shovel it off, and then leaves by a
+// road for everyone. A new one comes to the bay a few seconds later.
 public class Lorries : MonoBehaviour
 {
     const float Travel = 1.1f;              // length of a wheel's ray: spring travel plus the wheel's radius
@@ -46,6 +51,11 @@ public class Lorries : MonoBehaviour
     Lorry[] lorries;
     float sendTimer;
     readonly float[] landWait = new float[2];   // host: seconds until the next truck sets off from each town
+
+    public const int Loading = 1, Hauling = 2, Unloading = 3, Leaving = 4;
+    Lorry hauler;                   // the quarry's gravel truck
+    public int haulLoad, haulState; // shovels on it, and which of the four it is doing (0: there is none)
+    float haulWait;                 // host: seconds until the next one comes to the bay
     readonly Msg snapshot = new Msg(512);
     readonly List<Vector3> touching = new List<Vector3>();
 
@@ -54,8 +64,9 @@ public class Lorries : MonoBehaviour
         if (lorries != null) return;
         // two for each station's plot, then the map's
         int stations = Plot.Land * 2;
-        lorries = new Lorry[stations + LandLorries];
+        lorries = new Lorry[stations + LandLorries + 1];
         for (int i = 0; i < lorries.Length; i++) lorries[i] = new Lorry { plot = i < stations ? i / 2 : Plot.Land, back = i % 2 == 1 };
+        hauler = lorries[lorries.Length - 1] = new Lorry { plot = Plot.Quarry };
     }
 
     public void Clear()
@@ -69,11 +80,59 @@ public class Lorries : MonoBehaviour
             l.launch = -1;
             l.wait = Wait + (l.back ? 1.5f : 0);
             // the example roads always have trucks on the way
-            l.wanted = l.plot >= 3 && l.plot != Plot.Land;
+            l.wanted = l.plot >= 3 && l.plot != Plot.Land && l != hauler;
             l.once = false;
         }
         landWait[0] = 2f;
         landWait[1] = 3.5f;
+        haulLoad = haulState = 0;
+        haulWait = 2f;
+    }
+
+    // ---- the gravel truck
+
+    public bool IsHauler(Collider collider) { return hauler != null && hauler.Alive && collider.gameObject == hauler.body; }
+    public Vector3 HaulerAt => hauler != null && hauler.Alive ? hauler.body.transform.position : Game.I.plots[Plot.Quarry].stakes[0];
+    public string HaulerSays
+    {
+        get
+        {
+            int full = Mathf.RoundToInt(Game.I.tuning.haulLoad);
+            switch (haulState)
+            {
+                case Loading: return "Gravel truck: " + haulLoad + " of " + full + " shovels.\nPress 3 and hold left click on the quarry's rock.";
+                case Hauling: return "Gravel truck: full, on its way to the drop.";
+                case Unloading: return "Gravel truck: " + haulLoad + " shovels to unload.\nPress 3 and hold left click on the truck.";
+                case Leaving: return "Gravel truck: empty, leaving.";
+                default: return "The next gravel truck is on its way.\n(If none comes, no road joins the quarry to the drop.)";
+            }
+        }
+    }
+
+    // host: a shovel of gravel into the truck at the quarry (0), or off it at the drop (1)
+    public bool Shovel(Plot quarry, int what)
+    {
+        var t = Game.I.tuning;
+        if (hauler == null || !hauler.Alive || hauler.launch >= 0) return false;
+        if (what == 0)
+        {
+            if (haulState != Loading) return false;
+            if (++haulLoad >= Mathf.RoundToInt(t.haulLoad)) haulState = Hauling;
+            return true;
+        }
+        if (haulState != Unloading || haulLoad <= 0) return false;
+        haulLoad--;
+        quarry.stock += Mathf.RoundToInt(t.shovelWorth);
+        if (haulLoad > 0) return true;
+        // empty: away by a road for everyone, if there is one
+        if (quarry.LeaveRoute(hauler.path))
+        {
+            haulState = Leaving;
+            hauler.index = hauler.reached = 0;
+            hauler.stuck = 0;
+        }
+        else Remove(hauler);
+        return true;
     }
 
     // host: a truck each way along this road
@@ -155,6 +214,7 @@ public class Lorries : MonoBehaviour
         l.launch = -1;
         l.wait = Wait;
         if (l.once) l.wanted = l.once = false;
+        if (l == hauler) { haulState = haulLoad = 0; haulWait = Wait; }
     }
 
     void Update()
@@ -192,6 +252,19 @@ public class Lorries : MonoBehaviour
             }
         }
 
+        // the quarry: an empty truck comes to the loading bay whenever there is none
+        var quarry = g.plots[Plot.Quarry];
+        if (quarry.Ready && !hauler.Alive)
+        {
+            haulWait -= Time.deltaTime;
+            if (haulWait <= 0 && quarry.HaulRoute(hauler.path))
+            {
+                SetOff(hauler);
+                haulState = Loading;
+                haulLoad = 0;
+            }
+        }
+
         // the map: once the towns are joined, a truck from each every few seconds
         var land = g.plots[Plot.Land];
         for (int lane = 0; lane < 2; lane++)
@@ -222,6 +295,9 @@ public class Lorries : MonoBehaviour
             snapshot.V3(l.body.transform.position);
             snapshot.Rot(l.body.transform.rotation);
         }
+        snapshot.U8((byte)haulLoad);
+        snapshot.U8((byte)haulState);
+        snapshot.U16((ushort)Mathf.Clamp(quarry.stock, 0, 65535));
         Net.ToClients(snapshot, false);
     }
 
@@ -263,6 +339,9 @@ public class Lorries : MonoBehaviour
             l.netPos = position;
             l.netRot = rotation;
         }
+        haulLoad = m.U8();
+        haulState = m.U8();
+        Game.I.plots[Plot.Quarry].stock = m.U16();
     }
 
     static Vector3 Flat(Vector3 v) { v.y = 0; return v; }
@@ -296,6 +375,13 @@ public class Lorries : MonoBehaviour
                 rb.AddForceAtPosition(-tr.right * Vector3.Dot(v, tr.right) * Grip * mass * 0.25f, origin);
             }
             if (l.launch >= 0) continue;
+            if (l == hauler && (haulState == Loading || haulState == Unloading))
+            {
+                // standing while it is shovelled into or out of
+                rb.AddForce(-Flat(rb.linearVelocity) * 5f * mass);
+                l.stuck = 0;
+                continue;
+            }
 
             // four times a second, a truck on the wear road damages the square it is on
             l.wear += Time.fixedDeltaTime;
@@ -323,6 +409,7 @@ public class Lorries : MonoBehaviour
             if (l.index >= path.Count - 2)
             {
                 // it made it
+                if (l == hauler && haulState == Hauling) { haulState = Unloading; continue; }
                 l.trips++;
                 Remove(l);
                 continue;
