@@ -265,7 +265,7 @@ public class Hud : MonoBehaviour
         {
             Vector3 s = cam.WorldToScreenPoint(l.at);
             if (s.z < 0.5f || s.z > 60f) continue;
-            GUI.Label(new Rect(s.x / scale - 200, (Screen.height - s.y) / scale - 20, 400, 40), l.text, style);
+            GUI.Label(new Rect(s.x / scale - 220, (Screen.height - s.y) / scale - 30, 440, 60), l.text, style);
         }
     }
 

@@ -1,7 +1,8 @@
-# Notes from building the stations
+# Notes from building the stations and the maps
 
-Written by Claude on 2026-10-05, at the end of the session that built stations 1 to 5. These are
-things the next session would otherwise learn again the slow way.
+Written by Claude on 2026-10-05, at the end of the session that built stations 1 to 5, and added
+to that night after the unattended session that built the maps. These are things the next
+session would otherwise learn again the slow way.
 
 ## How the user works
 
@@ -36,6 +37,12 @@ things the next session would otherwise learn again the slow way.
 | A test "froze" wear by setting damage to 0, and the road kept rutting | Squares already below the threshold keep rutting. Set the threshold to 0 to stop it |
 | A script-driven player would not move | `AutoTest` resets the player's driver every frame. Disable `AutoTest` first |
 | A two-instance comparison disagreed | The client's last log line was a second older than the host's reading. Stop the action, wait, then compare |
+| The client lost its connection the moment a script changed the map on the host | A message sent from `umcp.py code` goes out from outside the game's frame and is never delivered. Hand the work to `AutoTest.Next.Enqueue(() => ...)`, which runs it in `Update` |
+| Trucks on a map were magenta | Their materials were made when the scale yard was built, and a map has no yard. `Yard.MakeTruck` makes them itself now |
+| Trucks queued on a hill for ever instead of wrecking | They slid back and crept up, never still for 4 seconds. Stuck now also means no further along the path |
+| The editor was not in play mode after a build | A build stops play mode, and a play request sent as the build ends can be lost. Check the state and ask again |
+| The host went deaf: clients dropped and nobody could join, with nothing in the log | A client process had been killed, not closed. About 30 s later the host hears no one until it is restarted. Cause not found; it is not the map code. In tests, close clients with `CloseMainWindow()`, never `Stop-Process` |
+| A new stake on the map needed its height before the gravel arrays existed | `HeightAt` reads gravel. While making ground, read the heights directly |
 
 ## Driving Unity from Claude Code
 
@@ -46,6 +53,11 @@ things the next session would otherwise learn again the slow way.
   with compile errors says `RRP build: Unknown`.
 - Check whether the editor is in play mode before changing a script, and stop it if so.
 - Shell heredocs mangle backslashes in C# and Python. Write scripts to a file and run the file.
+- **Play mode does keep ticking while the editor is in the background** (about 600 frames a
+  second on this machine), so a whole night can be driven without anyone touching the window.
+- `umcp.py code` compiles with an old C# compiler: no `out var`, no string interpolation.
+- JSON arguments with a space in them do not survive PowerShell. Put them in a file and pass
+  `@file`.
 - Screenshots taken through the MCP camera tool land in `Assets/Screenshots`. Delete them after.
 
 ## Numbers worth knowing
@@ -58,3 +70,9 @@ things the next session would otherwise learn again the slow way.
 - A finished 40 m road passes a truck in about 15 seconds. The wear road went from fully packed to
   half packed in about a minute at the default damage.
 - Eight plots are about 250,000 ground points. A joiner receives about a megabyte.
+- A script clicking at the cap, half its clicks on the hot spot, built the Middle map's 153 m
+  (straight over the hill, shoulders included) in 13 minutes with Claude's two systems off and 5
+  with them on, and the Long map's 306 m in 11 with them on.
+- The maps: Short is 135,000 points, Middle at 150 m 337,000, Climb 459,000, Long 578,000. The
+  host makes the Long map in 0.3 s. A joiner is sent 30 to 70 kB plus ten bytes for each point a
+  click has changed.

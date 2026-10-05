@@ -1,5 +1,11 @@
 # Plan for the prototype
 
+**Status, 2026-10-05, end of the unattended push: built.** Everything under "What this push
+builds" exists and was checked on two instances. What was built, and every choice Claude made, is
+in `DESIGN.md` under "The maps"; how the ground was solved is in `TECH_PLAN.md` under "The map's
+ground"; what to run and what was not checked is in `MORNING.md`. The next step is the user
+playing it.
+
 Rewritten 2026-10-05 after the user answered the first version's questions. The section "Decided
 by the user" is the user's. Everything else is Claude's proposal, and the session that builds it
 is free to change it.
@@ -49,8 +55,11 @@ trucks try it.**
   from the road; ground made from a seed on every machine with only the edits sent; working out
   sections only near the stake that changed; a map as a strip of plots. Pick by trying. The result
   must still be the same on every machine.
+  **Done [Claude]:** the points stay 0.25 m apart; the host sends a height every metre and every
+  machine fills in between with whole-number sums; only edits are sent after that; sections are
+  worked out only where a stake changed. See `TECH_PLAN.md`.
 - **`Plot.Route` assumes the stakes are in order.** Players place them in any order and can leave
-  gaps, so the trucks need the chain walked from one town to the other.
+  gaps, so the trucks need the chain walked from one town to the other. **Done.**
 - **A road a crew cannot finish is no demonstration.** By arithmetic one 20 m section is about two
   minutes of clicking for one player. A 300 m road is then half an hour of clicking alone. This is
   exactly where a streamlining system may earn its place. The user has said such systems are

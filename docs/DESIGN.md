@@ -11,6 +11,10 @@ try different distances; no end, score or clock; wear off; a second player ident
 first; towns as in the first prototype, with little time spent on them; and the session that
 builds it may add systems that streamline the gameplay. The detail is in `PLAN.md`.
 
+**The maps were built on the night of 2026-10-05 while the user was asleep.** They are described
+under "The maps" below. Nothing in that section has been played by the user yet: every choice in
+it is Claude's, made under the latitude the user gave for that push.
+
 Everything under "Decided by the user" was said by the user. Everything marked **[Claude]** is a
 proposal that the user has seen and not objected to; it is not a decision until it has been played.
 Do not add anything that is not on this page. If something seems missing, ask.
@@ -21,7 +25,7 @@ An online co-op crew builds a road that a box truck can drive. In first person, 
 survey line, brings the ground to that line, lays and compacts gravel, and a truck drives the
 result.
 
-This is a mechanics prototype. It has no job, map, towns, score or clock yet.
+This is a mechanics prototype. It has maps with a town at each end, and no job, score or clock.
 
 ## Decided by the user
 
@@ -92,6 +96,81 @@ Truck figures were checked against U-Haul's published figures on 2026-10-04:
   about visualizing decisions").** Each is 15 m across, measured at the outside edge, the centre
   line and the inside edge of a 7 m road. Their inside edges have radii of 0.5, 4 and 7.5 m. The
   user walked them and chose the third.
+
+## The maps
+
+Built 2026-10-05, unattended. **The user's decisions** are the ones listed in `PLAN.md`: several
+maps to try distances, 150 m to start with the distance on a slider, the host picks, the stations
+stay as one choice, the three tools work anywhere, trucks set off once a chain of stakes joins
+the towns and keep coming in both lanes, towns are a few blocks and a pad, no end, wear off, a
+second player the same as the first. **Everything else below is [Claude]** and has not been
+played by the user.
+
+What a player does: choose a map, press 1, click the thick stake in town A, walk toward the pole
+at town B clicking the ground to put stakes down, and rope the last one to town B's stake. Trucks
+start at once. Then grade and gravel what they are wrecking on.
+
+| Map | Between the towns | The land | What it is for |
+|---|---|---|---|
+| Stations | | The five stations, as accepted | The reference for how each mechanic felt |
+| Short | 60 m | Nearly flat, 70 m wide | One player finishing a whole road in a sitting |
+| Middle | 150 m, on the `mapDistance` slider (40 to 400) | A 9 m hill on the straight line between the towns, a hollow to its right, flat ground to its left; 100 m wide | The starting distance. Over the hill is short and a lot of clicking; round it is longer and easy |
+| Long | 300 m | Rolling, with a 6 m ridge right across it that has one gap, to the right of the straight line, and a hollow further on; 100 m wide | Whether a long road is something a crew wants to build |
+| Climb | 160 m, and town B is 16 m higher | The rise is gentle on the left (spread over 150 m) and steepens to the right: about 31 degrees on the straight line, a cliff at the right edge; 130 m wide | Land that makes the road wind. Straight is too steep for a truck even on packed gravel |
+
+- **The host picks the map** from buttons at the top of the screen. Everyone starts again at town
+  A. A new game starts on the Middle map; the other option was to start on the stations.
+- **Each map is the same every time**, so two sessions can be compared. "Make new land for this
+  map" on the F1 panel makes a different one; choosing the map again brings the first back.
+- **The land's humps and hollows are 0.35 m** (`landRoughness`), against 1 m on the stations. The
+  stations' roughness was chosen to show the clicking; on a long road it is most of the work.
+- **A town** is a fixed stake, twice as thick as the players', on level ground 13 m in radius;
+  behind it a painted pad, five blocks and a 26 m pole in the town's color, to walk toward. Town
+  A is red and town B is blue. A town's stake cannot be pulled out or raised.
+- **The road is the chain of ropes from town A's stake to town B's.** Stakes can go down in any
+  order; all the stations' rules for ropes still hold. Up to 250 stakes.
+- **Trucks:** once the chain is whole, one leaves each town every 12 seconds (`truckEvery`), up to
+  six on the way in each lane, whatever the road is like. Break the chain and no more set off;
+  the ones on the road carry on along the road as it was.
+- **A truck is stuck when it gets no further along the road for 4 seconds** (`lorryStuckSeconds`),
+  as well as when it stands still. Without this, trucks that could not climb an unfinished hill
+  slid back and forth for ever, and queued. This applies on the stations too.
+- **The readout** says how many metres of road are staked out from town A and whether the towns
+  are joined.
+- The land has an edge. Beyond it is a flat plain to stand on; the land slopes down to it over
+  8 m, and stakes cannot go on that slope.
+
+### Systems Claude added, and how to switch each off
+
+The user asked for these to be recorded, explained and switchable. Both work on maps only, so
+the stations still play exactly as accepted. Both are sliders at the bottom of the F1 panel.
+
+1. **Trucks pack the gravel they drive over** (`truckPacking`, 0.25; 0 switches it off). Four
+   times a second, each wheel packs the grid square it is on by a quarter, where the gravel is at
+   full depth. *Why:* packing was four of the seven clicks every square of gravel takes, the
+   largest single part of the work, and the trucks are already driving over it. It also gives a
+   reason to join the towns early: lay the gravel and the traffic finishes it.
+2. **A click on the hot spot also works the rest of its row** (`hotSpotRow`, 1; 0 switches it
+   off). The hot click still doubles its own square, and does one ordinary click on every other
+   square across the road at that point, shoulders included. *Why:* it is the user's own idea
+   ("give value to individual clicks") turned up: aiming well does six squares, so a careful
+   player grades several times faster than one holding the button down.
+
+What they do to the time a road takes is in `MORNING.md`, measured with a script that clicks at
+the cap.
+
+Not built, and why: helpers that click for the players (it stops being the players' road),
+bigger patches on maps (`patchWidth` already does it), a faster click cap (`clicksPerSecond`
+already does it).
+
+### Open after building the maps
+
+- Whether any of the four maps is the right distance. That is what they are for.
+- Whether the two added systems are wanted, and at what strength.
+- A rope laid across a rise runs under the ground between its stakes, where it cannot be seen.
+  The ground color still shows where the section is.
+- Nothing limits how steep a rope may be, so a road can be staked that no truck can climb.
+- Everyone starts at town A. A crew that wants to work from both ends has to walk.
 
 ## Stations
 

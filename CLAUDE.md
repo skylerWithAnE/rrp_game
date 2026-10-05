@@ -5,11 +5,14 @@ truck can drive. They set stakes, bring the ground to the rope between them, lay
 and trucks drive the result, wrecking on bad road and wearing out good road.
 
 The five mechanics stations are built and were played and accepted by the user on 2026-10-05. The
-next thing is the prototype itself: several maps, each with a town at either end, to stake, grade
-and gravel a road across and watch trucks try it. There is no end, score or clock, by decision.
+prototype itself was built that night, unattended: four maps, each with a town at either end, to
+stake, grade and gravel a road across and watch trucks try it. **The user has not played the maps
+yet**; `docs/MORNING.md` is the hand-over. There is no end, score or clock, by decision.
 
 ## Start here
 
+0. `docs/MORNING.md` is the report from the unattended push: what to run, what was added, what
+   was checked and what was not.
 1. `docs/PLAN.md` is the plan for the prototype: what the user decided, what to build, where the
    risk is, and how to work when the user is not there to play each step.
 2. `docs/DESIGN.md` is the design: the user's decisions, sizes in metres, and each station as

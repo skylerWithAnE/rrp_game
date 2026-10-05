@@ -419,7 +419,7 @@ public class Plot : MonoBehaviour
     public Vector3 SpawnAt(int slot)
     {
         if (!Ready || stakes.Count == 0) return new Vector3(0, 5f, 0);
-        Vector3 at = stakes[0] + new Vector3(3f + slot * 1.3f, 0, -3f);
+        Vector3 at = stakes[0] + new Vector3(-2f - slot * 1.3f, 0, -6f);    // the stake and its label are ahead and a little to the right, clear of the readout
         return new Vector3(at.x, HeightAt(at.x, at.z) + 0.2f, at.z);
     }
 
@@ -669,7 +669,7 @@ public class Plot : MonoBehaviour
             case 6: text = "Hairpin: stakes set round the tightest turn allowed\nlevel it and gravel it; trucks try it as it is"; break;
             case Land:
                 {
-                    text = "Town A. Press 1 and left click this stake, then click the ground toward the pole at the other town.\nEach stake is roped to the last. Rope the last one to town B's stake and the trucks set off.";
+                    text = "Town A. Press 1, click this stake, then click the ground\ntoward the pole at town B to put stakes down.\nRope the last one to town B's stake and trucks set off.";
                     at = stakes[0] + Vector3.up * 2.2f;
                     labels.Add(new Yard.Label { at = stakes[1] + Vector3.up * 2.2f, text = "Town B. Rope the road to this stake." });
                     var towns = new GameObject("Towns").transform;
