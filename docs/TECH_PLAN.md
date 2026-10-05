@@ -59,12 +59,14 @@ are never entered. `Truck.Boom` and `Sfx` are still used for the trucks' explosi
 
 ## The plot
 
-`Plot` is one rectangle of ground with its own stakes. There are eighteen, made by `Generate`
-from their index (the list is at the top of `Plot.cs`): seventeen small ones shared out among
+`Plot` is one rectangle of ground with its own stakes. There are twenty, made by `Generate`
+from their index (the list is at the top of `Plot.cs`): nineteen small ones shared out among
 the test grounds, and one for a map's land.
 
-- **Ground:** a height per point, points 0.25 m apart, plus a byte of gravel (millimetres) and a
-  byte of packing (0 to 100) per point. The surface drawn and walked on is ground plus gravel.
+- **Ground:** a height per point, points 0.25 m apart, plus a byte of gravel (millimetres), a
+  byte of packing (0 to 100) and a byte for what is on top (`top`: 0 nothing, under 100 asphalt
+  as dumped, 100 spread, up to 200 as it is rolled, 255 painted). All three bytes travel with
+  every edit. The surface drawn and walked on is ground plus gravel plus asphalt.
   Meshes are squares of 32 by 32 cells (8 m), each with its own collider; an edit rebuilds only
   the squares it touches, so a click costs the same on a 300 m map as on a station.
 - **Stakes and ropes:** a list of stakes (position, with y as the height of the line there) and a
@@ -139,12 +141,20 @@ and there is no route until they are joined; then a truck leaves each town every
 seconds. `Lane` turns the sections found into the points a truck steers at. A truck keeps the
 path it set off with, even if the stakes change under it.
 
-**The gravel truck** is one more lorry, the last in the list, with a state (`haulState`:
-loading, hauling, unloading, leaving) and a load. While loading or unloading it is held still
-and is never stuck. `Plot.HaulRoute` is its way from stake 0 to stake 1 of the quarry's plot and
-`Plot.LeaveRoute` its way out. Shovels are asked for with `Shovel` messages and decided by the
-host; the load, the state and the heap at the drop go to clients on the end of every truck
-snapshot.
+**Rigs** are trucks that wait to be sent: the quarry's gravel truck, and the paving ground's dump
+truck and roller. Each is one more lorry at the end of the list, with a `Rig` beside it: the
+depot it stands at, the one it is going to, and its load. A plot names some of its stakes as
+depots; `Plot.DepotRoute` is the way from one to another by any road, and `Lorries.Send` puts
+the truck at the start of that way and lets it go. A standing rig is held still and is never
+stuck. As it drives, a dump truck calls `Plot.Dump` and a roller `Plot.Roll` four times a second.
+
+Everything a player does with a shovel or a rig is one `Shovel` message (`Plot.HostShovel`):
+load the shovel, fling it into the truck, take from the truck, fling to the heap, place the
+heap, send a rig. The host decides each. The rigs' states and loads, whose shovels are loaded,
+and the heap's place and size go to clients on the end of every truck snapshot.
+
+The dev tool is a `Finish` message: `Plot.HostFinish` does a section's next stage and sends the
+points like any other edit.
 
 ## Verifying
 

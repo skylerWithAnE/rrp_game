@@ -41,8 +41,31 @@ Decided by the user later on 2026-10-05:
   traveling between towns".
 - **Zoning tools** "that will let them assign roles to road segments".
 
-How each of these was done is Claude's, is described under "Test grounds, junctions, roles and
-the quarry" below, and has not been played.
+How each of these was done is Claude's and is described under "Test grounds, junctions, roles and
+the quarry" below.
+
+Decided by the user on 2026-10-05, after trying the test grounds:
+
+- **Building junctions "looks good, and intuitive".** Zoning was not tried by hand but "clearly
+  worked" in the example. The things Claude reported as looking off "are fine".
+- **Trucks at junctions turn too tightly: keep them in their right-hand lanes.**
+- **A dev tool to complete work instantly**: unlevelled to levelled in one click, and levelled
+  to compacted gravel in one click. **And a flying, no-clip mode** for the debug controller.
+- **The quarry is bigger, and an actual dug-out part of the world**, and trucks take **a winding
+  road in and out of it**.
+- **In the quarry, click once to load your shovel, then click again to fling the gravel to the
+  truck.** Unloading: the first click on the truck starts **placing the pile**; the player
+  places it, then uses one click to unload from the truck and one to fling to the pile.
+  Nothing has to show the gravel in the air yet.
+- **Trucks are sent to destinations.** Players will create truck depots and pick one when
+  sending a truck. On the Quarry test ground the player controls for that are not built: there
+  is one static drop-off, the only place to send the truck.
+- **Gravel is unlimited, but has to be sourced from quarries.** Smaller finite sources for
+  before a crew has a quarry are for the next prototype.
+- **A final process for paving and painting the roads, on a new test ground**, at Claude's
+  discretion: "I'm imagining the use of dump trucks, shovels, steam rollers, but would like to
+  see where your initial design decisions lead us".
+- **Notes are kept for the next prototype**: `NEXT_PROTOTYPE.md`.
 
 Everything under "Decided by the user" was said by the user. Everything marked **[Claude]** is a
 proposal that the user has seen and not objected to; it is not a decision until it has been played.
@@ -129,11 +152,13 @@ Truck figures were checked against U-Haul's published figures on 2026-10-04:
 ## Test grounds, junctions, roles and the quarry
 
 Built 2026-10-05 at the user's request (see the decisions above). **Everything in this section
-is [Claude]'s way of doing what was asked, and none of it has been played.**
+is [Claude]'s way of doing what was asked.** The user has tried the junction ground and said
+building junctions is good; the reworked quarry, the dev tool, flying and the paving ground
+have not been played.
 
 ### The test grounds
 
-The host's choices are now two rows of buttons: five test grounds and five maps. A test ground
+The host's choices are now two rows of buttons: six test grounds and five maps. A test ground
 is flat yard with a few plots on it, each plot one thing to try.
 
 | Test ground | What is on it | What it is for |
@@ -142,7 +167,8 @@ is flat yard with a few plots on it, each plot one thing to try.
 | Building | Clicking to a line: level, climb and fall (station 2). The bare hillside to stake (station 3). The level section to gravel (station 4). The hairpin's stakes on rough ground | The three tools |
 | Trucks | The finished road and the bad road (station 5). The wear road. The finished hairpin. Four ramps | What a truck can and cannot drive |
 | Junctions | A T, a crossroads and a fork, finished, with trucks. A rough field with a road across it to rope a branch to | Junctions |
-| Quarry | A quarry, a service road, a drop, and a road that needs gravel | Loading and hauling gravel, service roads, zoning |
+| Quarry | A quarry pit, a winding service road, a drop, and a road that needs gravel | Loading and hauling gravel, sending trucks, service roads, zoning |
+| Paving | A gravel road to pave with a dump truck and a roller, and the same road finished | Paving and painting |
 
 - **The four ramps** each climb for two sections, level off and come down, so trucks from both
   ends meet the same climb. 14 degrees bare: every truck wrecks. 14 degrees under loose gravel:
@@ -170,8 +196,10 @@ is flat yard with a few plots on it, each plot one thing to try.
   has. Each section stays level at the stake's height for its first 5.25 m, so the junction is
   flat. The far side of a T comes out square, a road's width, not shouldered.
 - **Trucks at a junction.** A truck drives from one end of the road to another, and where there
-  are more than two ends it picks its two at random each time. It cuts straight across the
-  junction from its lane to its new one. Nothing gives way to anything.
+  are more than two ends it picks its two at random each time. **It keeps to its right-hand
+  lane up to the level ground round the stake and turns there**, on a curve from the end of its
+  lane to the start of the next, swinging a little wide on a right turn (user, 2026-10-05; it
+  used to cut straight across). Nothing gives way to anything.
 - **The questions this raised, and the stations that answer them:** which junctions to allow
   (the T, the crossroads and the fork stand side by side, each with trucks); how close two
   branches may be (the fork is at the 60 degree limit); whether a junction can be built by
@@ -193,27 +221,83 @@ is flat yard with a few plots on it, each plot one thing to try.
 
 ### The quarry
 
-- **The loop:** an empty gravel truck stands at the quarry. With the gravel tool, hold left
-  click on the quarry's rock: each click is a shovel into the truck. At 30 (`haulLoad`) it
-  drives off by itself along the service road to the drop, and stands there. Hold left click on
-  the truck to shovel it off; each shovel adds to the heap at the drop. Empty, the truck
-  leaves along the road for everyone and off its end, and a new one comes to the quarry three
-  seconds later.
-- **The gravel is the gravel.** On this test ground only, gravel laid on a road comes off the
-  heap: a click that lays any takes one from it, and with the heap empty none can be laid.
-  Packing is still free. A shovel is worth three clicks (`shovelWorth`), which lays one square
-  to full depth. `gravelFromStock` at 0 makes gravel free again here, to compare.
-- **The ground:** a service road, finished, runs 60 m from the quarry past the drop to a T
-  junction with a 40 m road for everyone, which is on its line and bare. That road is the work:
-  about 80 squares, so three truckloads.
-- The quarry's stake and the drop's stake cannot be pulled out. Every other stake can, and the
-  truck finds whatever way there is from one to the other, by any road. With no way, no truck
-  comes, and its label says so.
-- **Questions this raises that are not answered by a station yet** (say which matter and Claude
-  will build the alternatives side by side): whether loading should be clicking the rock or
-  carrying something; whether a full truck should leave by itself or be sent; whether the
-  truck should come back the way it came for another load; whether gravel should be limited
-  on the maps too; whether the heap should be anywhere the truck stops or one fixed place.
+Rebuilt the same day to the user's second description. What the user decided is in the list at
+the top; the sizes and the details here are Claude's.
+
+- **The pit.** The quarry's ground is 8 m higher than the yard, and the quarry is a cone dug
+  down into it: 60 m across at the top, 28 m across at its floor, 8 m deep. The rock is in the
+  middle of the floor.
+- **The winding road.** A service road, finished, leaves a junction with the road for everyone,
+  swings north in an S, runs along the pit's rim and winds down inside it three quarters of
+  the way round to the floor: about 185 m in all, at 4 degrees in the pit. The cone falls
+  exactly as fast as the road does, so the road is a bench cut into its side.
+- **Loading.** With the gravel tool: a click on the rock, from within reach, loads your shovel.
+  A click on the truck, from up to 16 m (`flingReach`), flings it in. The truck holds 12
+  shovels (`haulLoad`). Holding the button and swinging between the two works.
+- **Sending.** A truck stands at a depot until it is sent. Right click it, with any tool in
+  hand, and it drives to the other depot by any road. The line under the crosshair says where
+  it would go. The quarry's floor and the drop are the two depots here, both fixed. The truck
+  can be sent with any load, including none.
+- **Unloading.** At the drop, the first click on a truck with gravel aboard asks where the heap
+  should go: a ring follows the crosshair on the ground, a left click puts the heap there, a
+  right click cancels. After that a click on the truck, from within reach, loads your shovel,
+  and a click on the heap flings it on. The heap can be moved only when it is empty.
+- **Gravel.** The rock never runs out. A shovel on the heap is worth 8 clicks of laying
+  (`shovelWorth`). On this ground gravel laid on a road comes off the heap, and with the heap
+  empty none can be laid; `gravelFromStock` at 0 makes it free again, to compare.
+- **Turning round.** There is nowhere to turn at the end of a road, so a truck that is sent is
+  put at the start of its way, facing along it.
+- Players start on top, beside the road that needs the gravel: a 40 m road for everyone, on
+  its line and bare.
+
+### The dev tool, and flying
+
+Asked for by the user. Neither is part of the game.
+
+- **Key 7 is the dev tool.** The section under the crosshair is outlined in magenta, from up to
+  60 m away, and a left click does its next stage whole: every point onto its line; then gravel
+  at full depth, packed; then (Claude's addition, for the paving ground) asphalt, rolled; then
+  paint. The line under the crosshair says which is next.
+- **V toggles flying.** No gravity and nothing is solid. The way the camera looks is forward,
+  Space is up and Ctrl is down, at three times walking speed, six with sprint on.
+
+### Paving and painting
+
+Asked for by the user, with the process left to Claude: "would like to see where your initial
+design decisions lead us". **This is a first proposal and has not been played.**
+
+The process, on a road that is already gravelled and packed:
+
+1. **A dump truck tips asphalt.** It stands at the yard end with a load. Right click it and it
+   drives the road to the far end, tipping a ridge of asphalt down the middle of its lane as it
+   goes. It tips only on packed gravel that has none yet. One load is about 90 m of ridge
+   (`dumpLoad`), and it fills again whenever it is back at the yard.
+2. **Players spread it with the asphalt tool, key 5.** Hold left click on the road, as with
+   gravel: two clicks spread a square (`spreadPerClick`). A square can be spread only if there
+   is asphalt somewhere in its row across the road, so the work goes outward from the ridge,
+   and a lane the truck has not driven cannot be started.
+3. **A roller rolls it.** It stands off the road at the far end. Right click it and it drives
+   the road in its lane, slowly (`rollerSpeed`), rolling the spread asphalt under it; send it
+   back and it rolls the other lane. Asphalt it has rolled is blacker and lies lower.
+4. **Players paint the lines with the paint tool, key 6.** Hold left click on rolled asphalt:
+   one click paints a square's share of the lines, a white line inside each edge and a broken
+   yellow one down the middle.
+
+- **What it is for:** trucks drive half as fast again on rolled asphalt (`pavedSpeed`). That is
+  the only effect; the lines are for looks.
+- The second road on the ground is the same road finished, with trucks on it, to see where it
+  is going.
+- The hot spot works for spreading and painting as it does for grading and gravel.
+- In a check by script one load, 240 spreading clicks, two passes of the roller and 240
+  painting clicks paved and painted the whole 60 m road.
+- **Why these choices:** each machine does the part a machine does (bring the stuff, press it
+  flat) and is sent, not driven, which is the system trucks already have; each hand job is the
+  hold-to-click on squares that grading and gravel already are. The row rule is there so that
+  where the truck drove matters.
+- **Open, for the user:** whether the roller should be driven by a player; whether the truck
+  should tip one heap to be shovelled from, as gravel is, and not a ridge; whether asphalt
+  needs gravel to be packed first or just laid; what else paving should do. More are in
+  `NEXT_PROTOTYPE.md`.
 
 ## The maps
 

@@ -65,8 +65,16 @@ public class Lorries : MonoBehaviour
         public float wait;              // host: seconds until a new one stands at home, when there is none
         internal Lorry l;
     }
-    public const int GravelTruck = 0;
-    public Rig[] rigs = { new Rig { plot = Plot.Quarry, kind = GravelTruck, home = 0 } };
+    public const int GravelTruck = 0, DumpTruck = 1, Roller = 2;
+    public Rig[] rigs =
+    {
+        new Rig { plot = Plot.Quarry, kind = GravelTruck, home = 0 },
+        new Rig { plot = Plot.Paving, kind = DumpTruck, home = 0 },
+        new Rig { plot = Plot.Paving, kind = Roller, home = 1 },
+    };
+    // the roller stands off the road, to its right, so that a truck can stand at the same end
+    static float Aside(Rig rig) { return rig.kind == Roller ? 5.5f : 0; }
+    public string RigName(int rig) { return rigs[rig].kind == GravelTruck ? "Gravel truck" : rigs[rig].kind == DumpTruck ? "Dump truck" : "Roller"; }
 
     void Ensure()
     {
@@ -89,7 +97,7 @@ public class Lorries : MonoBehaviour
             l.launch = -1;
             l.wait = Wait + (l.back ? 1.5f : 0);
             // the example roads always have trucks on the way
-            l.wanted = l.plot >= 3 && l.plot != Plot.Land && l.rig == null;
+            l.wanted = l.plot >= 3 && l.plot != Plot.Land && l.plot != Plot.Paving && l.rig == null;
             l.once = false;
         }
         landWait[0] = 2f;
@@ -120,7 +128,9 @@ public class Lorries : MonoBehaviour
         var r = rigs[rig];
         var plot = Game.I.plots[r.plot];
         if (r.l == null || !r.l.Alive) return "The next truck is on its way.\n(If none comes, no road joins the depots.)";
-        string what = "Gravel truck: " + r.load + " of " + Mathf.RoundToInt(Game.I.tuning.haulLoad) + " shovels aboard.";
+        string what = r.kind == GravelTruck ? "Gravel truck: " + r.load + " of " + Mathf.RoundToInt(Game.I.tuning.haulLoad) + " shovels aboard."
+            : r.kind == DumpTruck ? "Dump truck: " + (r.load > 0 ? "asphalt aboard. It tips as it drives." : "empty. It fills at the yard.")
+            : "Roller: it rolls spread asphalt as it drives.";
         return r.at < 0 ? what + "\nOn its way to " + plot.DepotName(r.to) + "." : what + "\nStanding at " + plot.DepotName(r.at) + ". Right click it to send it on.";
     }
 
@@ -202,7 +212,12 @@ public class Lorries : MonoBehaviour
         l.body.transform.SetPositionAndRotation(position, rotation);
         l.netPos = position;
         l.netRot = rotation;
-        g.yard.MakeTruck(l.body.transform, t, false);
+        if (l.rig != null && l.rig.kind == Roller) g.yard.MakeRoller(l.body.transform, t);
+        else
+        {
+            var truck = g.yard.MakeTruck(l.body.transform, t, false);
+            if (l.rig != null && l.rig.kind == DumpTruck) g.yard.MarkDumpTruck(truck, t);
+        }
 
         float w = t.truckWidth, length = t.truckLength, h = t.truckHeight, clearance = t.truckWheel * 0.6f;
         var box = l.body.AddComponent<BoxCollider>();
@@ -275,11 +290,11 @@ public class Lorries : MonoBehaviour
         {
             if (rig.l.Alive || !g.plots[rig.plot].Ready) continue;
             rig.wait -= Time.deltaTime;
-            if (rig.wait > 0 || !g.plots[rig.plot].DepotStand(rig.home, out Vector3 stand, out Quaternion facing)) continue;
+            if (rig.wait > 0 || !g.plots[rig.plot].DepotStand(rig.home, out Vector3 stand, out Quaternion facing, Aside(rig))) continue;
             Build(rig.l, stand, facing);
             rig.at = rig.home;
             rig.to = -1;
-            rig.load = 0;
+            rig.load = rig.kind == DumpTruck ? Mathf.RoundToInt(g.tuning.dumpLoad) : 0;
         }
 
         // the map: once the towns are joined, a truck from each every few seconds
@@ -419,6 +434,13 @@ public class Lorries : MonoBehaviour
 
             // four times a second, a truck on the wear road damages the square it is on
             l.wear += Time.fixedDeltaTime;
+            // the dump truck tips behind it as it goes, and the roller rolls what is under it
+            if (l.rig != null && l.rig.kind != GravelTruck && l.wear >= 0.25f)
+            {
+                l.wear = 0;
+                if (l.rig.kind == Roller) g.plots[l.plot].Roll(touching);
+                else if (l.rig.load > 0 && g.plots[l.plot].Dump(tr.position - Flat(tr.forward).normalized * 3.2f)) l.rig.load--;
+            }
             if (g.plots[l.plot].Wears && l.wear >= 0.25f && touching.Count > 0)
             {
                 l.wear = 0;
@@ -443,7 +465,19 @@ public class Lorries : MonoBehaviour
             if (l.index >= path.Count - 2)
             {
                 // it made it
-                if (l.rig != null) { l.rig.at = l.rig.to; continue; }
+                if (l.rig != null)
+                {
+                    l.rig.at = l.rig.to;
+                    if (Aside(l.rig) > 0)
+                    {
+                        // off the road it goes, to stand
+                        rb.position += tr.right * Aside(l.rig) + Vector3.up * 0.3f;
+                        rb.linearVelocity = rb.angularVelocity = Vector3.zero;
+                    }
+                    // the dump truck fills again whenever it is back at the yard
+                    if (l.rig.kind == DumpTruck && l.rig.at == l.rig.home) l.rig.load = Mathf.RoundToInt(t.dumpLoad);
+                    continue;
+                }
                 l.trips++;
                 Remove(l);
                 continue;
@@ -459,6 +493,8 @@ public class Lorries : MonoBehaviour
                 float turn = Mathf.Clamp(angle * 0.06f, -1.5f, 1.5f);
                 rb.AddTorque(Vector3.up * (turn - rb.angularVelocity.y) * 6f, ForceMode.Acceleration);
                 float wanted = t.lorrySpeed * Mathf.Lerp(1f, 0.35f, Mathf.Clamp01(bend / 40f));
+                if (l.rig != null && l.rig.kind == Roller) wanted *= t.rollerSpeed;
+                else if (g.plots[l.plot].IsPaved(position.x, position.z)) wanted *= t.pavedSpeed;
                 float speed = Vector3.Dot(rb.linearVelocity, tr.forward);
                 // the wheels only bite as well as the surface lets them
                 float push = t.lorryPower * g.plots[l.plot].Going(position.x, position.z);

@@ -80,6 +80,18 @@ public class Tuning : ScriptableObject
     [Tooltip("1: gravel laid at the quarry comes off the heap at the drop, and none can be laid when it is empty. 0: gravel is free, as everywhere else.")]
     [Range(0, 1)] public float gravelFromStock = 1f;
 
+    [Header("Paving (the Paving test ground only)")]
+    [Tooltip("How far the dump truck's load of asphalt goes: quarter-seconds of tipping. 60 is about 90 m of road.")]
+    [Range(5, 200)] public float dumpLoad = 60f;
+    [Tooltip("How much of spreading a square one click does. 0.5 spreads it in two clicks.")]
+    [Range(0.1f, 1)] public float spreadPerClick = 0.5f;
+    [Tooltip("How much of the rolling the roller does to a square each quarter second it is on it.")]
+    [Range(0.05f, 1)] public float rollPerPass = 0.5f;
+    [Tooltip("How fast the roller drives, as a share of a truck's speed.")]
+    [Range(0.1f, 1)] public float rollerSpeed = 0.4f;
+    [Tooltip("How much faster a truck drives on road that is paved and rolled.")]
+    [Range(1, 3)] public float pavedSpeed = 1.5f;
+
     [Header("Truck damage (the wear road only)")]
     [Tooltip("The most damage a truck does to a grid square each quarter second it is on it, out of 100. The amount is random up to this.")]
     [Range(0, 100)] public float truckDamage = 30f;

@@ -30,7 +30,9 @@ using UnityEngine.InputSystem;
 //  14  Y                a finished junction with two branches 60 degrees apart
 //  15  junction         rough ground with a road across it, to rope a branch to
 //  16  quarry           a quarry, a service road from it to a drop, and a road that needs gravel
-//  17  the map          one big piece of land with a town at each end: see "the map" below
+//  17  paving           a finished gravel road to pave: a dump truck, a roller, and paint
+//  18  paved            the same road paved and painted, with trucks on it
+//  19  the map          one big piece of land with a town at each end: see "the map" below
 //
 // Each belongs to one of the host's choices (see MapOf) and exists only while that is chosen:
 // the test grounds for building, for trucks, for junctions and for the quarry, or the land of
@@ -46,15 +48,15 @@ public class Plot : MonoBehaviour
 {
     public const float Cell = 0.25f;        // distance between ground points
     public const int PresetSections = 3;    // station 2: level, climbing, falling
-    public const int Count = 18, Quarry = 16, Land = 17;
+    public const int Count = 20, Quarry = 16, Paving = 17, Paved = 18, Land = 19;
     public static readonly string[] Names = { "clicking", "hillside", "gravel", "good road", "bad road", "wear", "hairpin", "hairpin good",
-        "ramp bare", "ramp gravel", "steep gravel", "steep packed", "T", "crossroads", "Y", "junction", "quarry", "map" };
+        "ramp bare", "ramp gravel", "steep gravel", "steep packed", "T", "crossroads", "Y", "junction", "quarry", "paving", "paved", "map" };
     // What the host can choose. 1 to 5 are land between two towns. The others are test grounds,
     // each about one thing: the sizes, building a road, what trucks can drive, and junctions.
     public static readonly string[] MapNames = { "Scale yard", "Short, 60 m", "Middle, a hill in the way", "Long, 300 m", "Climb, 16 m up", "Switchback, rocks",
-        "Building roads", "Trucks: road types and turns", "Junctions", "Quarry and service roads" };
-    public static readonly string[] MapButtons = { "Yard", "Short", "Middle", "Long", "Climb", "Switchback", "Building", "Trucks", "Junctions", "Quarry" };
-    public const int YardMap = 0, BuildingMap = 6, TrucksMap = 7, JunctionsMap = 8, QuarryMap = 9;
+        "Building roads", "Trucks: road types and turns", "Junctions", "Quarry and service roads", "Paving and painting" };
+    public static readonly string[] MapButtons = { "Yard", "Short", "Middle", "Long", "Climb", "Switchback", "Building", "Trucks", "Junctions", "Quarry", "Paving" };
+    public const int YardMap = 0, BuildingMap = 6, TrucksMap = 7, JunctionsMap = 8, QuarryMap = 9, PavingMap = 10;
     public static bool LandMap(int map) { return map >= 1 && map <= 5; }
 
     // which of the host's choices a plot belongs to
@@ -63,6 +65,7 @@ public class Plot : MonoBehaviour
         if (id == Land) return -1;
         if (id <= 2 || id == 6) return BuildingMap;     // clicking, the hillside, gravel, and the hairpin to level
         if (id == Quarry) return QuarryMap;
+        if (id == Paving || id == Paved) return PavingMap;
         return id <= 11 ? TrucksMap : JunctionsMap;
     }
     public bool ShownOn(int map) { return IsLand ? LandMap(map) : MapOf(id) == map; }
@@ -83,6 +86,7 @@ public class Plot : MonoBehaviour
     public const int Grade = 0, Gravel = 1;     // these two are sent with a click
     public const int Stakes = 3;
     public const int Zone = 4;                  // the zoning tool: it changes a section's role
+    public const int Pave = 5, Paint = 6;       // spreading asphalt, and painting lines: sent with a click like the first two
     public const int Dev = 7;                   // the dev tool: it finishes a section's next stage in one click
     public static int Tool = Stakes;            // what the local player is holding
 
@@ -90,6 +94,10 @@ public class Plot : MonoBehaviour
     public int w, d;                        // points per side
     public float[] h;
     public byte[] gravel, packed;           // per point: millimetres of gravel on it, and how far that is packed, 0 to 100
+    // Per point, what is on top of the packed gravel: 0 nothing; under 100 asphalt lying where
+    // the dump truck left it; 100 spread out; up to 200 as it is rolled; 255 rolled and painted.
+    public byte[] top;
+    public const int Heaped = 60, Spread = 100, Rolled = 200, Painted = 255;
     byte[] health;                          // host: what the trucks have left of it, 0 to 100
     public uint clicks;                     // clicks the host has accepted since the ground was made
     public float roadShare, shoulderShare;  // how much of each is on its line, 0 to 1
@@ -117,7 +125,7 @@ public class Plot : MonoBehaviour
     static bool No(string why) { Why = why; return false; }
     static void Say(string what, bool bad) { Why = what; WhyBad = bad; WhyFrame = Time.frameCount; }
     // how a plot's road starts: 2 gravelled and packed, 1 gravelled, 0 bare
-    int StartsAs => id == 3 || id == 5 || id == 7 || (id >= 11 && id <= 14) ? 2 : id == 9 || id == 10 ? 1 : 0;
+    int StartsAs => id == 3 || id == 5 || id == 7 || (id >= 11 && id <= 14) || id == Paving || id == Paved ? 2 : id == 9 || id == 10 ? 1 : 0;
     // a stake here takes more than two ropes. Only on the junction test ground until it has been played.
     bool Junctions => id >= 12 && id <= 16;
     public bool IsQuarry => id == Quarry;
@@ -172,6 +180,10 @@ public class Plot : MonoBehaviour
 
     static readonly Color32 Outside = new Color32(104, 100, 92, 255);
     static readonly Color32 Grass = new Color32(112, 128, 88, 255);
+    static readonly Color32 AsphaltLoose = new Color32(64, 54, 48, 255);
+    static readonly Color32 AsphaltRolled = new Color32(28, 28, 32, 255);
+    static readonly Color32 LineYellow = new Color32(236, 200, 40, 255);
+    static readonly Color32 LineWhite = new Color32(236, 236, 228, 255);
     // a service road is the same road in blue
     static readonly Color32 ServiceRough = new Color32(112, 122, 146, 255);
     static readonly Color32 ServiceShoulderRough = new Color32(100, 110, 134, 255);
@@ -278,6 +290,8 @@ public class Plot : MonoBehaviour
                     Lay(t, ox, oz, 0);
                     break;
                 }
+            case Paving: Straight(first - 25f, 0, length, BaseHeight, BaseHeight, BaseHeight, BaseHeight); Lay(t, ox, oz, 0); break;
+            case Paved: Straight(first - 55f, 0, length, BaseHeight, BaseHeight, BaseHeight, BaseHeight); Lay(t, ox, oz, 0); break;
             case 12: Spokes(first - 25f, 20f, length, 0, 180f, 90f); Lay(t, ox, oz, 0); break;
             case 13: Spokes(first - 85f, 20f, length, 0, 180f, 90f, 270f); Lay(t, ox, oz, 0); break;
             case 14: Spokes(first - 25f, -50f, length, 180f, 30f, -30f); Lay(t, ox, oz, 0); break;
@@ -341,6 +355,7 @@ public class Plot : MonoBehaviour
         // whole millimetres, which is what clients are sent
         for (int i = 0; i < h.Length; i++) h[i] = Mathf.RoundToInt(h[i] * 1000f) / 1000f;
         gravel = new byte[h.Length];
+        top = new byte[h.Length];
         packed = new byte[h.Length];
         health = new byte[h.Length];
         if (IsLand) edited = new byte[h.Length];
@@ -355,6 +370,12 @@ public class Plot : MonoBehaviour
                 gravel[i] = (byte)FullGravel;
                 packed[i] = (byte)(StartsAs == 2 ? 100 : 0);
             }
+        }
+        if (id == Paved)
+        {
+            // the example: paved, rolled and painted from end to end
+            for (int i = 0; i < h.Length; i++)
+                if (gravel[i] > 0) top[i] = Painted;
         }
         if (IsQuarry)
         {
@@ -621,6 +642,13 @@ public class Plot : MonoBehaviour
         return false;
     }
 
+    // Test tooling, host only: one click here with this tool, with no cap on how fast.
+    public void TestClick(float x, float z, int tool)
+    {
+        for (int slot = 0; slot < hostNextClick.Length; slot++) hostNextClick[slot] = 0;
+        HostClick(0, x, z, false, tool);
+    }
+
     // Test tooling, host only: a road through these points from the first town to the second,
     // whatever the rules for ropes say.
     public void TestRoad(List<Vector3> between)
@@ -757,7 +785,7 @@ public class Plot : MonoBehaviour
         for (int start = 0; start < points.Count; start += PointsPerMessage)
         {
             int n = Mathf.Min(PointsPerMessage, points.Count - start);
-            var m = Msg.New(Op.PlotPoints, n * 10 + 16);
+            var m = Msg.New(Op.PlotPoints, n * 11 + 16);
             m.U8((byte)id);
             m.U16((ushort)n);
             for (int k = start; k < start + n; k++)
@@ -767,6 +795,7 @@ public class Plot : MonoBehaviour
                 m.F32(h[i]);
                 m.U8(gravel[i]);
                 m.U8(packed[i]);
+                m.U8(top[i]);
             }
             Out(client, everyone, m);
         }
@@ -792,6 +821,7 @@ public class Plot : MonoBehaviour
             h[i] = m.F32();
             gravel[i] = m.U8();
             packed[i] = m.U8();
+            top[i] = m.U8();
         }
     }
 
@@ -815,7 +845,7 @@ public class Plot : MonoBehaviour
         else for (int start = 0; start < h.Length; start += RowsPerMessage)
         {
             int n = Mathf.Min(RowsPerMessage, h.Length - start);
-            m = Msg.New(Op.PlotRows, n * 4 + 16);
+            m = Msg.New(Op.PlotRows, n * 5 + 16);
             m.U8((byte)id);
             m.U32((uint)start);
             m.U16((ushort)n);
@@ -824,6 +854,7 @@ public class Plot : MonoBehaviour
                 m.U16((ushort)Mathf.Clamp(Mathf.RoundToInt(h[i] * 1000f), 0, 65535));
                 m.U8(gravel[i]);
                 m.U8(packed[i]);
+                m.U8(top[i]);
             }
             Out(client, everyone, m);
         }
@@ -844,6 +875,7 @@ public class Plot : MonoBehaviour
         clicks = m.U32();
         h = new float[w * d];
         gravel = new byte[h.Length];
+        top = new byte[h.Length];
         packed = new byte[h.Length];
         health = new byte[h.Length];
         expected = h.Length;
@@ -862,7 +894,7 @@ public class Plot : MonoBehaviour
     {
         if (h == null) return;
         int start = (int)m.U32(), n = m.U16();
-        for (int i = start; i < start + n; i++) { h[i] = m.U16() / 1000f; gravel[i] = m.U8(); packed[i] = m.U8(); }
+        for (int i = start; i < start + n; i++) { h[i] = m.U16() / 1000f; gravel[i] = m.U8(); packed[i] = m.U8(); top[i] = m.U8(); }
         expected -= n;
     }
 
@@ -975,6 +1007,15 @@ public class Plot : MonoBehaviour
                     pile.gameObject.SetActive(false);
                     break;
                 }
+            case Paving:
+                text = "A road to pave. 1: right click the dump truck: it tips asphalt down its lane as it drives.\n2: press 5 and hold left click to spread the asphalt across the road.\n3: right click the roller to roll it.   4: press 6 and hold left click to paint the lines.";
+                at = stakes[1] + Vector3.up * 3f;
+                depots.Add(0);
+                depots.Add(3);
+                labels.Add(new Yard.Label());       // the dump truck and the roller: written each frame
+                labels.Add(new Yard.Label());
+                break;
+            case Paved: text = "The same road paved, rolled and painted.\nTrucks drive faster on it."; break;
             case 15: text = "A junction to build. Press 1, click the middle stake,\nthen click the ground to one side for a branch.\nA stake here takes up to four ropes."; at = stakes[1] + Vector3.up * 2.2f; break;
             case Land:
                 {
@@ -1012,7 +1053,10 @@ public class Plot : MonoBehaviour
     }
 
     // the top of whatever is at a point: the ground, plus its gravel, which packs down by a quarter
-    float Surface(int i) { return h[i] + gravel[i] * 0.001f * (1f - 0.25f * packed[i] * 0.01f); }
+    float Surface(int i) { return h[i] + gravel[i] * 0.001f * (1f - 0.25f * packed[i] * 0.01f) + Asphalt(top[i]); }
+
+    // how thick the asphalt lies: in a ridge where it was dumped, 6 cm spread, 4 cm rolled
+    static float Asphalt(int on) { return on == 0 ? 0 : on < Spread ? 0.22f : 0.06f - 0.02f * Mathf.Clamp01((on - Spread) / 100f); }
 
     void Fill(Chunk chunk)
     {
@@ -1029,6 +1073,15 @@ public class Plot : MonoBehaviour
                 : (level ? (service ? ServiceShoulderDone : ShoulderDone) : (service ? ServiceShoulderRough : ShoulderRough));
             // gravel greys the ground as it deepens, and darkens as it is packed
             if (gravel[i] > 0) color = Color32.Lerp(color, Color32.Lerp(GravelLoose, GravelPacked, packed[i] * 0.01f), Mathf.Clamp01(gravel[i] / full));
+            // asphalt is brown-black as it is dumped and spread, and blacker as it is rolled
+            if (top[i] > 0) color = Color32.Lerp(AsphaltLoose, AsphaltRolled, Mathf.Clamp01((top[i] - Spread) / 100f));
+            if (top[i] == Painted && linkOf[i] < segs.Length)
+            {
+                // the lines: a broken yellow one down the middle, a white one inside each edge
+                float off = Mathf.Abs(across[i]), run = along[i] * segs[linkOf[i]].len;
+                if (off <= 0.13f && run % 6f < 3f) color = LineYellow;
+                else if (off >= lane - 0.55f && off <= lane - 0.2f) color = LineWhite;
+            }
             chunk.colors[k] = color;
         }
     }
@@ -1102,7 +1155,11 @@ public class Plot : MonoBehaviour
     {
         uint hash = 2166136261;
         if (!Ready) return hash;
-        for (int i = 0; i < h.Length; i++) hash = (hash ^ (uint)(Mathf.RoundToInt(h[i] * 1000f) + gravel[i] * 100000 + packed[i] * 30000000)) * 16777619;
+        for (int i = 0; i < h.Length; i++)
+        {
+            hash = (hash ^ (uint)(Mathf.RoundToInt(h[i] * 1000f) + gravel[i] * 100000 + packed[i] * 30000000)) * 16777619;
+            if (top[i] != 0) hash = (hash ^ top[i]) * 16777619;
+        }
         foreach (var s in stakes) hash = (hash ^ (uint)Mathf.RoundToInt((s.x + s.y * 7f + s.z * 13f) * 1000f)) * 16777619;
         foreach (var l in links) hash = (hash ^ (uint)(l.x * 100 + l.y + l.z * 100000)) * 16777619;
         return hash;
@@ -1548,6 +1605,8 @@ public class Plot : MonoBehaviour
     {
         bool level = Mathf.Abs(h[i] - target[i]) < Level;
         if (tool == Grade) return !level;
+        if (tool == Pave) return zone[i] == 1 && level && gravel[i] >= FullGravel && packed[i] >= 100 && top[i] < Spread;
+        if (tool == Paint) return top[i] >= Rolled && top[i] < Painted;
         return zone[i] == 1 && level && (gravel[i] < FullGravel || packed[i] < 100);
     }
 
@@ -1616,6 +1675,20 @@ public class Plot : MonoBehaviour
             Box(link, t, side, halfT, halfSide, out x0, out x1, out z0, out z1);
         }
         int full = FullGravel;
+        // Asphalt is spread from where the dump truck left it: a square can be spread only if
+        // there is asphalt somewhere in its row across the road, dumped or already spread.
+        bool reachable = tool != Pave || round;
+        if (!reachable)
+        {
+            Box(link, t, 0, halfT, Reach, out int r0, out int r1, out int q0, out int q1);
+            for (int iz = q0; iz <= q1 && !reachable; iz++)
+                for (int ix = r0; ix <= r1; ix++)
+                {
+                    int i = iz * w + ix;
+                    if (top[i] > 0 && zone[i] == 1 && linkOf[i] == link && Mathf.Abs(along[i] - t) <= halfT * 1.02f) { reachable = true; break; }
+                }
+            if (!reachable) return;
+        }
         for (int iz = z0; iz <= z1; iz++)
             for (int ix = x0; ix <= x1; ix++)
             {
@@ -1644,6 +1717,17 @@ public class Plot : MonoBehaviour
                     if (next == h[i]) continue;
                     h[i] = next;
                 }
+                else if (tool == Pave)
+                {
+                    // asphalt: only on packed gravel. The ridge the truck left is raked out flat.
+                    if (!Wants(i, Pave)) continue;
+                    top[i] = (byte)Mathf.Min(Spread, top[i] + Mathf.Max(1, Mathf.RoundToInt(tuning.spreadPerClick * 100f * weight)));
+                }
+                else if (tool == Paint)
+                {
+                    if (!Wants(i, Paint)) continue;
+                    top[i] = Painted;
+                }
                 else
                 {
                     // gravel: only on the road, only where it is on its line. It goes down to full
@@ -1661,6 +1745,57 @@ public class Plot : MonoBehaviour
                 health[i] = 100;    // worked ground is sound again
                 changed.Add(i);
             }
+    }
+
+    // host: the dump truck tips asphalt where it is, in a ridge down its lane, on packed gravel
+    // that has none yet. Says whether any went down.
+    public bool Dump(Vector3 at)
+    {
+        if (!Ready) return false;
+        changed.Clear();
+        Box(at.x, at.z, 0.8f, out int x0, out int x1, out int z0, out int z1);
+        for (int iz = z0; iz <= z1; iz++)
+            for (int ix = x0; ix <= x1; ix++)
+            {
+                int i = iz * w + ix;
+                float dx = origin.x + ix * Cell - at.x, dz = origin.z + iz * Cell - at.z;
+                if (dx * dx + dz * dz > 0.5f || top[i] != 0 || !Wants(i, Pave)) continue;
+                top[i] = Heaped;
+                changed.Add(i);
+            }
+        if (changed.Count > 0) Broadcast();
+        return changed.Count > 0;
+    }
+
+    // host: the roller rolls the spread asphalt in the grid squares under it
+    public void Roll(List<Vector3> wheels)
+    {
+        var tuning = Game.I.tuning;
+        if (!Ready) return;
+        changed.Clear();
+        int add = Mathf.Max(1, Mathf.RoundToInt(tuning.rollPerPass * 100f));
+        foreach (var wheel in wheels)
+        {
+            if (!Section(wheel.x, wheel.z, out int link, out float t, out float side) || Mathf.Abs(side) > lane) continue;
+            Square(tuning, link, ref t, ref side, out float halfT, out float halfSide);
+            Box(link, t, side, halfT, halfSide, out int x0, out int x1, out int z0, out int z1);
+            for (int iz = z0; iz <= z1; iz++)
+                for (int ix = x0; ix <= x1; ix++)
+                {
+                    int i = iz * w + ix;
+                    if (top[i] < Spread || top[i] >= Rolled || !InSquare(i, link, t, side, halfT, halfSide) || changed.Contains(i)) continue;
+                    top[i] = (byte)Mathf.Min(Rolled, top[i] + add);
+                    changed.Add(i);
+                }
+        }
+        if (changed.Count > 0) Broadcast();
+    }
+
+    // is the road here paved and rolled? Trucks go faster on it.
+    public bool IsPaved(float x, float z)
+    {
+        if (!Ready || !Inside(x, z, 0.5f)) return false;
+        return top[Mathf.RoundToInt((z - origin.z) / Cell) * w + Mathf.RoundToInt((x - origin.x) / Cell)] >= Rolled;
     }
 
     // [Claude, maps only] host: a truck packs the gravel under its wheels. Each wheel packs
@@ -1720,6 +1855,7 @@ public class Plot : MonoBehaviour
             edit.F32(h[i]);
             edit.U8(gravel[i]);
             edit.U8(packed[i]);
+            edit.U8(top[i]);
             Touch(i);
             if (edited != null) edited[i] = 1;
         }
@@ -1738,6 +1874,7 @@ public class Plot : MonoBehaviour
             h[i] = m.F32();
             gravel[i] = m.U8();
             packed[i] = m.U8();
+            top[i] = m.U8();
             Touch(i);
         }
         if (n > 0) Upload(true);
@@ -1851,28 +1988,27 @@ public class Plot : MonoBehaviour
     }
 
     // A depot is a stake where a truck stands until it is sent somewhere. This is the way from
-    // one depot to another, by any road, service roads included. It stops a few metres short
-    // of the stake it is going to.
+    // one depot to another, by any road, service roads included.
     public bool DepotRoute(List<Vector3> path, int from, int to)
     {
         path.Clear();
         if (!Ready || from < 0 || to < 0 || from >= depots.Count || to >= depots.Count || !PathBetween(depots[from], depots[to])) return false;
-        Lane(path, false, 0, 0);
-        if (path.Count > 16) path.RemoveRange(path.Count - 7, 7);
+        Lane(path, false, 0, 4f);       // a little past the stake, so the whole road is driven
         return path.Count > 6;
     }
 
     // where a truck stands at a depot, and which way it faces: as if it had just driven in
     // from the next depot along
-    public bool DepotStand(int depot, out Vector3 at, out Quaternion facing)
+    // `aside` metres to its right, off the road.
+    public bool DepotStand(int depot, out Vector3 at, out Quaternion facing, float aside = 0)
     {
         at = Vector3.zero;
         facing = Quaternion.identity;
         var path = new List<Vector3>();
         if (!DepotRoute(path, (depot + 1) % Mathf.Max(1, depots.Count), depot)) return false;
-        at = path[path.Count - 3];
-        at.y = HeightAt(at.x, at.z) + 0.3f;
         facing = Quaternion.LookRotation(Flat(path[path.Count - 1] - path[path.Count - 5]));
+        at = path[path.Count - 3] + facing * Vector3.right * aside;
+        at.y = HeightAt(at.x, at.z) + 0.3f;
         return true;
     }
 
@@ -2025,17 +2161,20 @@ public class Plot : MonoBehaviour
     // after the work can be tried without doing the work. One click puts every point of the
     // section on its line; the next lays its gravel and packs it.
 
-    // which stage a section's next click would do: 0 level it, 1 gravel and pack it, -1 nothing left
+    // which stage a section's next click would do: 0 level it, 1 gravel and pack it, 2 pave and
+    // roll it, 3 paint it, -1 nothing left
     int NextStage(int link)
     {
-        bool gravelled = true;
+        int next = -1;
         for (int i = 0; i < h.Length; i++)
         {
             if (zone[i] == 0 || linkOf[i] != link) continue;
             if (Mathf.Abs(h[i] - target[i]) >= Level) return 0;
-            if (zone[i] == 1 && (gravel[i] < FullGravel || packed[i] < 100)) gravelled = false;
+            if (zone[i] != 1) continue;
+            int stage = gravel[i] < FullGravel || packed[i] < 100 ? 1 : top[i] < Rolled ? 2 : top[i] < Painted ? 3 : -1;
+            if (stage >= 0 && (next < 0 || stage < next)) next = stage;
         }
-        return gravelled ? -1 : 1;
+        return next;
     }
 
     // host: do the next stage of a whole section at once
@@ -2049,7 +2188,9 @@ public class Plot : MonoBehaviour
         {
             if (zone[i] == 0 || linkOf[i] != link) continue;
             if (stage == 0) h[i] = target[i];
-            else if (zone[i] == 1) { gravel[i] = (byte)FullGravel; packed[i] = 100; }
+            else if (zone[i] != 1) continue;
+            else if (stage == 1) { gravel[i] = (byte)FullGravel; packed[i] = 100; }
+            else top[i] = (byte)(stage == 2 ? Rolled : Painted);
             health[i] = 100;
             changed.Add(i);
             // a section is a few thousand points; send them a few thousand at a time
@@ -2074,7 +2215,7 @@ public class Plot : MonoBehaviour
         if (!Section(hit.point.x, hit.point.z, out int link, out _, out _)) return;
         int stage = NextStage(link);
         OutlineSection(link, new Color(1f, 0.3f, 1f));
-        Say("dev tool: " + (stage == 0 ? "left click puts this whole section on its line" : stage == 1 ? "left click gravels and packs this whole section" : "this section is finished"), false);
+        Say("dev tool: " + (stage == 0 ? "left click puts this whole section on its line" : stage == 1 ? "left click gravels and packs this whole section" : stage == 2 ? "left click paves and rolls this whole section" : stage == 3 ? "left click paints this whole section" : "this section is finished"), false);
         if (stage >= 0 && mouse.leftButton.wasPressedThisFrame) RequestFinish(link);
     }
 
@@ -2087,7 +2228,7 @@ public class Plot : MonoBehaviour
         int at = g.lorries.rigs[rig].at;
         if (at < 0) { Say("on its way to " + DepotName(g.lorries.rigs[rig].to), false); return true; }
         int to = (at + 1) % Mathf.Max(1, depots.Count);
-        rigLine = "right click sends it to " + DepotName(to);
+        rigLine = g.lorries.RigName(rig) + ": right click sends it to " + DepotName(to);
         if (mouse.rightButton.wasPressedThisFrame) RequestShovel(SendRig, rig, to);
         return false;   // the caller may have more to say about it
     }
@@ -2248,6 +2389,8 @@ public class Plot : MonoBehaviour
         var tuning = g.tuning;
         cursor.enabled = preview.enabled = hotRing.enabled = false;
         if (IsQuarry && pile != null) QuarryLabels(g);
+        if (id == Paving && labels.Count >= 3)
+            for (int r = 1; r <= 2; r++) labels[r] = new Yard.Label { at = g.lorries.RigAt(r) + Vector3.up * 4f, text = g.lorries.RigSays(r) };
         if (g.local == null || !Hud.Playing) return;
         var mouse = Mouse.current;
         if (mouse == null) return;
@@ -2431,7 +2574,7 @@ public class Plot : MonoBehaviour
         if (!round) Square(tuning, link, ref t, ref side, out halfT, out halfSide);
         const int Points = 48;
         cursor.enabled = true;
-        cursor.startColor = cursor.endColor = Tool == Grade ? Color.white : (Color)GravelLoose;
+        cursor.startColor = cursor.endColor = Tool == Grade ? Color.white : Tool == Pave ? new Color(0.9f, 0.5f, 0.2f) : Tool == Paint ? (Color)LineYellow : (Color)GravelLoose;
         cursor.positionCount = Points;
         for (int k = 0; k < Points; k++)
         {

@@ -14,7 +14,7 @@ public class Yard : MonoBehaviour
     const float HairpinGap = 6f;       // bare ground between hairpins
     const float HairpinStart = 12f;    // how far past the end of the strip the hairpins begin
 
-    Material groundMaterial, roadMaterial, lineMaterial, bodyMaterial, glassMaterial, tyreMaterial;
+    Material groundMaterial, roadMaterial, lineMaterial, bodyMaterial, glassMaterial, tyreMaterial, yellowMaterial, orangeMaterial;
     string built = "";
 
     public bool Ready => built.Length > 0;
@@ -80,6 +80,32 @@ public class Yard : MonoBehaviour
         bodyMaterial = Mats.Make(new Color(0.74f, 0.74f, 0.76f));
         glassMaterial = Mats.Make(new Color(0.20f, 0.22f, 0.26f));
         tyreMaterial = Mats.Make(new Color(0.12f, 0.12f, 0.13f));
+        yellowMaterial = Mats.Make(new Color(0.95f, 0.75f, 0.10f));
+        orangeMaterial = Mats.Make(new Color(0.90f, 0.42f, 0.10f));
+    }
+
+    // A dump truck is the truck with an orange load on its back, for now.
+    public void MarkDumpTruck(Transform truck, Tuning t)
+    {
+        Materials();
+        Mats.Part(truck, Mats.Cube, orangeMaterial, new Vector3(0, t.truckHeight + 0.2f, -t.truckLength * 0.17f), new Vector3(t.truckWidth * 0.85f, 0.4f, t.truckLength * 0.55f));
+    }
+
+    // A road roller: a yellow box on two drums as wide as a lane's wheel tracks.
+    public Transform MakeRoller(Transform parent, Tuning t)
+    {
+        Materials();
+        var root = new GameObject("Roller").transform;
+        root.SetParent(parent, false);
+        float w = t.truckWidth, l = t.truckLength;
+        Box(root, yellowMaterial, -w * 0.4f, w * 0.4f, 1.1f, 2.3f, -l * 0.2f, l * 0.25f, false);
+        Box(root, glassMaterial, -w * 0.3f, w * 0.3f, 2.3f, 3.0f, -l * 0.15f, l * 0.1f, false);
+        for (int end = -1; end <= 1; end += 2)
+        {
+            var drum = Mats.Part(root, Mats.Cylinder, tyreMaterial, new Vector3(0, 0.7f, end * l * 0.32f), new Vector3(1.4f, w * 0.5f, 1.4f));
+            drum.localRotation = Quaternion.Euler(0, 0, 90f);
+        }
+        return root;
     }
 
     Vector3 TruckPosition(Tuning t) { return new Vector3(t.laneWidth * 0.5f, 0, t.truckLength * 0.5f + 1f); }

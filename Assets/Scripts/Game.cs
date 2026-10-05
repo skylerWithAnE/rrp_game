@@ -395,7 +395,7 @@ public class Game : MonoBehaviour
                 float x = m.F32(), z = m.F32();
                 bool hot = m.U8() != 0;
                 int tool = m.U8();
-                if (plot < plots.Length && tool <= Plot.Gravel) plots[plot].HostClick(slot, x, z, hot, tool);
+                if (plot < plots.Length && (tool == Plot.Grade || tool == Plot.Gravel || tool == Plot.Pave || tool == Plot.Paint)) plots[plot].HostClick(slot, x, z, hot, tool);
             }
             else if (op == Op.StakeEdit)
             {

@@ -20,7 +20,14 @@ truck that drives a service road to a drop, and zoning tools that give road sect
 are built, checked on two instances, and described in `DESIGN.md` under "Test grounds,
 junctions, roles and the quarry". None has been played.
 
-The next step is the user playing: the Junctions and Quarry test grounds, the Middle map and
+**2026-10-05, after the user tried the test grounds.** Building junctions was accepted. The user
+asked for: trucks keeping their lanes at junctions; a dev tool and flying; the quarry as a dug
+pit with a winding road, load-then-fling shovelling, a placed heap, and trucks that are sent;
+a paving and painting process on a new test ground; and notes for the next prototype. All are
+built and checked on two instances. The user's words are in `DESIGN.md`; what was left out is
+in `NEXT_PROTOTYPE.md`.
+
+The next step is the user playing: the reworked Quarry, the Paving ground, the Middle map and
 the Switchback map.
 
 Rewritten 2026-10-05 after the user answered the first version's questions. The section "Decided

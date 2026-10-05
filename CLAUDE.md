@@ -10,8 +10,10 @@ stake, grade and gravel a road across and watch trucks try it. The user played t
 next morning and said it "went great" and "is looking much more like what I envisioned"; the
 other maps are unplayed. The same day the user asked for, and got: a rope steepness limit, a map
 with rocks that forces a winding road, the Stations map cut into focused test grounds, junctions,
-service roads with a zoning tool, and a quarry where gravel is shovelled into a truck. None of
-those has been played. There is no end, score or clock, by decision.
+service roads with a zoning tool, a quarry pit where gravel is shovelled into a truck that is
+sent to a drop, a paving and painting process, a dev tool and flying. The user has tried the
+junctions and accepted them; the rest is unplayed. `docs/NEXT_PROTOTYPE.md` collects what is
+being left for the prototype after this one. There is no end, score or clock, by decision.
 
 ## Start here
 

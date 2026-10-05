@@ -31,7 +31,15 @@ What the state showed, from 09:49 when watching began to 09:54:
 What was not seen: the staking and the grading of the road itself, which were done before
 watching began, and anything about how it felt beyond what the user said.
 
-What Claude takes from it:
+## 2026-10-05, midday: the test grounds
+
+Claude was not watching. What the user said afterwards: "Trucks at junctions are turning too
+tightly. Let's keep them in their right hand lanes." "Building junctions looks good, and
+intuitive. I did not test zoning roads, but it clearly worked from your example. The 'things
+that looked off' are fine." "The quarry needs to be a bit bigger, and actually a dug out
+section of the world." The rest of that message was requests, and is in `DESIGN.md`.
+
+## What Claude took from the first playtest
 
 - Nothing wrecked on Short, so nothing there showed the truck as the judge of the road. Bare
   graded ground passes every truck on the flat; gravel only matters on a slope. See the concerns
