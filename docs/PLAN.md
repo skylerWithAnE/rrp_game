@@ -11,6 +11,8 @@ is free to change it.
   may add it.** It does not need to ask first.
 - **Several maps, to try different distances** between the two ends of the road, and to get a feel
   for the mechanics on real ground.
+- **150 m between the two ends is fine as the starting distance**, with the distance as a slider.
+  The other maps try other distances around it.
 - **There is no end.** No win, no score, no clock. The prototype is for demonstrating and playing
   with the mechanics.
 - **Do not spend much time on the places at each end.** The towns in the first prototype were
