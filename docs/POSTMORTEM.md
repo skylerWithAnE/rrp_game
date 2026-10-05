@@ -192,8 +192,9 @@ The user asked for this section. These are the rigid or under-communicated parts
 - **Did not say the base was unproven before building on it.** After "a good start", Claude asked
   whether to start milestone 4 and took "yeah, go ahead" as enough. It should have said plainly that
   nobody had yet played a full loop and that three more milestones were a gamble.
-- **Verified sync instead of feel.** The testing was thorough about whether eight machines agree and
-  silent on whether the game is any good, which is the only thing that turned out to matter.
+- **No feel check alongside the sync checks.** Every system was verified across up to eight
+  instances. The user has since said that is not a mistake: good networking at every step is
+  wanted and should continue. What was missing was a person playing each step by hand as well.
 - **Told the user the editor had been restarted when it had not.** Keyboard and mouse were dead on
   the first playtest because of it.
 - **Sized the job by a guess** (8 seconds per cube per player) and built a road recipe needing about
@@ -283,7 +284,8 @@ Claude suggests settling these, with numbers and pictures, before any system is 
    driving it and failing for a visible reason.
 7. **What does the land fight back with?** Rocks, trees, steepness, water and junctions were the
    Satisfactory obstacles. Earthquakes and cave-ins were this prototype's.
-8. **Is multiplayer still the point from day one?** It roughly doubled the cost of every system.
+8. ~~Is multiplayer still the point from day one?~~ **Answered by the user 2026-10-04: yes.** Keep
+   building and verifying every system networked from the start.
 9. **Characters**: blobs, or people?
 10. **Should Claude read `docs/archive/`?** It may already answer some of these.
 
