@@ -1,80 +1,83 @@
 # Plan for the prototype
 
-Written 2026-10-05 by Claude, after the user accepted the five stations. **Everything here is
-Claude's proposal until the user has agreed it.** Nothing in it is built.
+Rewritten 2026-10-05 after the user answered the first version's questions. The section "Decided
+by the user" is the user's. Everything else is Claude's proposal, and the session that builds it
+is free to change it.
 
-## What the stations settled
+## Decided by the user (2026-10-05)
 
-The verbs work and the user likes them: stakes and rope, hold-to-click grading with a hot spot,
-gravel that packs, trucks that judge the road by driving it, wreck on bad road and wear out good
-road. What does not exist is a reason to do any of it: no job, no map, no start and end, no clock.
+- **The next push is built while the user is asleep.** The building session has wide latitude: it
+  may solve problems creatively, and **if it sees a system that would streamline the gameplay, it
+  may add it.** It does not need to ask first.
+- **Several maps, to try different distances** between the two ends of the road, and to get a feel
+  for the mechanics on real ground.
+- **There is no end.** No win, no score, no clock. The prototype is for demonstrating and playing
+  with the mechanics.
+- **Do not spend much time on the places at each end.** The towns in the first prototype were
+  fine as they were.
+- **Wear is off.** Trucks do not damage the road in the prototype.
+- **A second player is the same as the first** in every control. There are no roles.
 
-## What the prototype is
+## What this push builds
 
-One job, on one map, for one to four players: **stake, grade and gravel a road from one place to
-another across rough ground, good enough that trucks get through.** The trucks start running as
-soon as the two ends are joined, on whatever is there. The crew's work is then keeping them
-arriving: fixing where they wreck, and repairing what they wear out.
+One sentence: **pick a map, stake, grade and gravel a road between its two towns, and watch the
+trucks try it.**
 
-That sentence is the proposal. The questions below decide its size and its ending.
+1. **Maps.** Each map is one piece of ground with a town at each end and rough land between. The
+   host picks the map. A set that tries different distances and different land, for example:
+   - short, about 60 m, gently rough: one player can finish it in a sitting
+   - medium, about 150 m, with a hill or a hollow in the way
+   - long, about 300 m
+   - a climb: the ends far enough apart in height that a straight road is too steep for the
+     truck, so the road has to wind
+   The distances are proposals; the point is to have several to compare. The stations stay
+   available as one more choice, since they are the reference for how each mechanic felt.
+2. **All three tools work anywhere on a map.**
+3. **Trucks drive what the players staked.** As soon as a chain of stakes joins the two towns,
+   trucks set off from each town and keep coming, in both lanes, on whatever is there. They wreck
+   where the road is bad. That is the feedback; nothing else judges the road.
+4. **Towns** are a few solid-color blocks and a pad at each end, as in the first prototype. An
+   hour at most.
 
-## Questions for the user
+## What follows from it, and where the risk is
 
-These cannot be settled by Claude, and steps 2 and 3 wait on them.
+- **The ground is the cost.** The stations' plots hold a height every 0.25 m. A 300 m map at that
+  spacing is over a million points: megabytes to a joining player, and `Plot.Resolve` visits every
+  point each time a stake changes. Something has to give. Options, none tried: coarser ground away
+  from the road; ground made from a seed on every machine with only the edits sent; working out
+  sections only near the stake that changed; a map as a strip of plots. Pick by trying. The result
+  must still be the same on every machine.
+- **`Plot.Route` assumes the stakes are in order.** Players place them in any order and can leave
+  gaps, so the trucks need the chain walked from one town to the other.
+- **A road a crew cannot finish is no demonstration.** By arithmetic one 20 m section is about two
+  minutes of clicking for one player. A 300 m road is then half an hour of clicking alone. This is
+  exactly where a streamlining system may earn its place. The user has said such systems are
+  allowed; record any that is added as Claude's, with the reason, and make it a slider or a switch
+  so it can be turned off and compared.
+- **Nobody will play it before the next step is built.** That removes the check that caught every
+  wrong turn in the stations. In its place: verify each step across two instances, look at it from
+  the blob's eyes in screenshots, and keep each step small enough to describe in a few lines.
 
-1. **How long should one job take, and for how many players?** By arithmetic, one 20 m section is
-   about two minutes of clicking for one player, before walking and aiming. If that holds, four
-   players for 30 minutes could build a few hundred metres. Nobody has timed a section by hand.
-   Timing one would fix this number.
-2. **What is at each end of the road?** The first prototype had towns. This design has nothing.
-3. **What ends a job?** Trucks arriving at all, a number of them, a number in a row, a clock
-   running out, or nothing: the road is simply kept open.
-4. **Do trucks wear the road everywhere, or is wear still an experiment on one road?**
-5. **What does a second player do that the first does not?** Still unanswered from the redesign.
-   The stations give every player the same three tools.
-6. **Curved sections or mitred corners?** The user wanted to see the mitre first and has now
-   played it.
+## How to work while the user is asleep
 
-## Steps
+- Read `CLAUDE.md`, this file, `DESIGN.md`, `TECH_PLAN.md`, `NOTES.md` and `SETUP.md` first.
+- Unity has to be open with the project loaded and not in play mode. If it is not reachable, say
+  so and stop; there is nothing useful to do without it.
+- Build in steps. After each step that works on two instances, commit it, so the morning starts
+  from something that runs whatever happened later. Do not push to a remote.
+- Keep `DESIGN.md`, `TECH_PLAN.md` and this file true as things change. Keep the user's decisions
+  apart from Claude's choices.
+- Do not stop to ask. Where a decision is needed, make it, write down what was chosen and what the
+  other option was, and carry on.
+- Leave the first prototype's switched-off code alone unless it is in the way.
+- End with a report the user can read over coffee: what to run, what each map is for, what to
+  try first, every system that was added and why, what was checked and how, what was not checked,
+  and what looked wrong.
 
-Each step is built, checked across two instances, and played by the user before the next starts.
+## Still open, and not for this push
 
-### Step 1: one map
-
-- One piece of ground big enough for a real route, with a hill or a hollow in the way, in place of
-  the eight separate plots. A marked start and a marked end.
-- All three tools work anywhere on it.
-- Trucks follow any chain of stakes from the start to the end, in whatever order the stakes were
-  placed. This removes the limit that trucks cannot drive a road the players staked.
-- The stations stay reachable until the user says they can go.
-- **What follows from it:** the ground is the cost. At 0.25 m between points, a map 200 m square
-  is 640,000 points: about 2.5 megabytes to a joining player, and the code that works out what
-  each point belongs to would have to be made local, because it currently visits every point when
-  a stake changes. A coarser ground (0.5 m) is a quarter of that and changes how grading looks.
-  This is the first thing to settle by trying it.
-- **Does not need the questions answered**, except for how far apart the two ends are. Claude
-  would start at 150 m and make it a slider.
-
-### Step 2: the job
-
-- Trucks set off by themselves once the ends are joined, and keep coming.
-- The readout counts arrived and wrecked, and whatever question 3 decides is shown and ends the job.
-- The host can start a fresh job.
-- **Waits on** questions 1, 2 and 3.
-
-### Step 3: keeping the road open
-
-- Wear on the whole road, tuned so that a crew can keep up but has to work.
-- **Waits on** question 4, and on step 2 having been played.
-
-### Not in this plan
-
-Earth that has to come from somewhere, things in the ground, weather, oil and asphalt, junctions,
-a second map, scores between sessions, and anything about the look. They are listed in `DESIGN.md`
-under "Open" and stay there until the user asks for them.
-
-## Housekeeping that could be done at any point
-
-- Delete the first prototype's switched-off code (about 2,000 lines). The user said not to during
-  the stations.
-- Link a Unity Cloud project so join codes can be tried. Only the user can do this (`SETUP.md`).
+- Curved sections or mitred corners. The user has played the mitre and not said.
+- What ends a job, scores, a clock.
+- Wear, as part of the game.
+- Earth that has to come from somewhere, things in the ground, weather, oil and asphalt, junctions.
+- Anything about the look.

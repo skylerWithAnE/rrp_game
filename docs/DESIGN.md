@@ -6,6 +6,11 @@ the design of the first prototype, which is in git history (commit `4348b8e`).
 **All five stations were built, played and accepted by the user by 2026-10-05.** What comes next
 is in `PLAN.md`. How the code works is in `TECH_PLAN.md`.
 
+Decided by the user on 2026-10-05 for the prototype that follows the stations: several maps to
+try different distances; no end, score or clock; wear off; a second player identical to the
+first; towns as in the first prototype, with little time spent on them; and the session that
+builds it may add systems that streamline the gameplay. The detail is in `PLAN.md`.
+
 Everything under "Decided by the user" was said by the user. Everything marked **[Claude]** is a
 proposal that the user has seen and not objected to; it is not a decision until it has been played.
 Do not add anything that is not on this page. If something seems missing, ask.

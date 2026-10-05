@@ -5,13 +5,13 @@ truck can drive. They set stakes, bring the ground to the rope between them, lay
 and trucks drive the result, wrecking on bad road and wearing out good road.
 
 The five mechanics stations are built and were played and accepted by the user on 2026-10-05. The
-next thing is the prototype itself: one job on one map. There is no job, map, score or clock yet.
+next thing is the prototype itself: several maps, each with a town at either end, to stake, grade
+and gravel a road across and watch trucks try it. There is no end, score or clock, by decision.
 
 ## Start here
 
-1. `docs/PLAN.md` is the plan for the prototype: the steps, and the questions the user has to
-   answer before some of them can be built. Build one step at a time and have the user play it by
-   hand before starting the next.
+1. `docs/PLAN.md` is the plan for the prototype: what the user decided, what to build, where the
+   risk is, and how to work when the user is not there to play each step.
 2. `docs/DESIGN.md` is the design: the user's decisions, sizes in metres, and each station as
    built. It keeps the user's decisions apart from Claude's proposals.
 3. `docs/TECH_PLAN.md` describes the code as it stands.
@@ -31,8 +31,14 @@ asking.
 
 ## Ground rules from the user
 
-- **Fight scope creep.** Do not add features, systems or options that are not in `DESIGN.md` or
-  `PLAN.md`. If something seems missing, ask. Do not add a feature to solve a design problem.
+- **Latitude for the prototype push (user, 2026-10-05).** The session building the maps works
+  while the user is asleep and is deliberately unrestricted: solve problems creatively, and add a
+  system if it would streamline the gameplay, without asking first. Write down each addition as
+  Claude's, with the reason, and make it something that can be switched off.
+- Outside that push, the older rule stands: do not add features, systems or options that are not
+  in `DESIGN.md` or `PLAN.md`; if something seems missing, ask.
+- No end, score or clock yet. Wear is off. A second player has exactly the same controls as the
+  first. Do not spend long on the towns: the first prototype's were fine.
 - It is a prototype: fast, simple and weird beats correct and polished. The user is enjoying the
   trucks' explosions and jank (2026-10-05): do not smooth them out.
 - First person. Several tools, each with one job. Throwing cubes around is out.
@@ -56,4 +62,5 @@ asking.
   not multiple-choice ones that steer toward small fixes.
 - Before asking the user to play something new: check it across two instances, say how, say what
   was not checked, and send a screenshot from the blob's eyes.
-- Commit when the user says a step is accepted.
+- Commit when the user says a step is accepted. During the unattended prototype push, commit each
+  step once it works on two instances. Never push to a remote unless asked.
