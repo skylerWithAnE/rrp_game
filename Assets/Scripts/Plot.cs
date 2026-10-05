@@ -21,6 +21,10 @@ using UnityEngine.InputSystem;
 //   5  wear             a finished road that the trucks wear out
 //   6  hairpin          stakes laid round the tightest turn allowed, on rough ground
 //   7  hairpin good     the same turn, finished
+//   8  the map          one big piece of land with a town at each end: see "the map" below
+//
+// The first eight are the stations, and exist only while the host has the stations chosen. The
+// ninth is the land of whichever map the host has chosen instead.
 //
 // The host decides every click and every stake and sends the results; clients never generate or
 // change anything themselves.
@@ -28,13 +32,19 @@ public class Plot : MonoBehaviour
 {
     public const float Cell = 0.25f;        // distance between ground points
     public const int PresetSections = 3;    // station 2: level, climbing, falling
-    public const int Count = 8;
-    public static readonly string[] Names = { "2", "3", "4", "5 good", "5 bad", "wear", "hairpin", "hairpin good" };
+    public const int Count = 9, Land = 8;
+    public static readonly string[] Names = { "2", "3", "4", "5 good", "5 bad", "wear", "hairpin", "hairpin good", "map" };
+    // what the host can choose. 0 is the stations; the rest are land between two towns.
+    public static readonly string[] MapNames = { "Stations", "Short, 60 m", "Middle, a hill in the way", "Long, 300 m", "Climb, 16 m up" };
     const int ChunkCells = 32;              // cells along each side of one mesh
     const float Margin = 5f;                // ground round the edge of a plot, sloping down to the yard
     const float BaseHeight = 1.2f;          // the line of a level preset road, above the yard
     const float Level = 0.005f;             // closer to the line than this counts as level
-    const int MaxStakes = 60;
+    const int MaxStakes = 250;              // stakes and ropes are counted in a byte each
+    const int Fine = 4;                     // the map: ground points to each metre of the heights the host sends
+    const float TownEnd = 30f;              // the map: land behind each town
+    const float PadRadius = 13f;            // the map: level ground round each town's stake
+    const float EdgeMargin = 8f;            // the map: the land falls away to nothing over this, at its edges
     const int RowsPerMessage = 4000;        // ground points per message when the whole plot is sent
 
     public const int Grade = 0, Gravel = 1;     // these two are sent with a click
@@ -55,6 +65,14 @@ public class Plot : MonoBehaviour
     public int selected = -1;               // the local player's stake: the next one is roped to it
 
     public bool Wears => id == 5;           // trucks damage this road
+    public bool IsLand => id == Land;
+    public int fixedStakes;                 // the map: the first stakes are the towns', and stay where they are
+    public bool joined;                     // the map: ropes run all the way from one town's stake to the other's
+    public float roadLength;                // the map: metres of rope in the chain that starts at the first town
+    ushort[] coarse;                        // the map: the land as the host made it, a height in millimetres every metre
+    int cw, cd;
+    byte[] edited;                          // host, the map: points a click has changed, which is all a joiner needs sending
+    float remakeAt;                         // host, the map: make the land again once the sliders have stopped moving
     bool Finished => id == 3 || id == 5 || id == 7;
 
     Vector3 origin;                         // world position of point 0,0
@@ -93,6 +111,7 @@ public class Plot : MonoBehaviour
     readonly List<int> changed = new List<int>();
 
     static readonly Color32 Outside = new Color32(104, 100, 92, 255);
+    static readonly Color32 Grass = new Color32(112, 128, 88, 255);
     static readonly Color32 RoadRough = new Color32(146, 128, 100, 255);
     static readonly Color32 ShoulderRough = new Color32(128, 116, 96, 255);
     static readonly Color32 RoadDone = new Color32(206, 192, 150, 255);
@@ -126,6 +145,12 @@ public class Plot : MonoBehaviour
         segs = new Seg[0];
         h = null;
         chunks = null;
+        coarse = null;
+        edited = null;
+        fixedStakes = 0;
+        joined = false;
+        roadLength = 0;
+        remakeAt = 0;
         cursor = preview = hotRing = null;
         stakeRoot = null;
         built = "";
@@ -135,12 +160,19 @@ public class Plot : MonoBehaviour
         roadShare = shoulderShare = gravelShare = packedShare = 0;
     }
 
-    static string Signature(Tuning t) { return t.laneWidth + " " + t.sectionLength + " " + t.sectionRise + " " + t.shoulderWidth + " " + t.shoulderDrop + " " + t.hairpinAcross; }
+    string Signature(Tuning t)
+    {
+        if (IsLand) return Game.I.map + " " + Game.I.mapSeed + " " + t.laneWidth + " " + t.shoulderWidth + " " + t.shoulderDrop + " " + t.landRoughness + " " + (Game.I.map == 2 ? t.mapDistance : 0);
+        return t.laneWidth + " " + t.sectionLength + " " + t.sectionRise + " " + t.shoulderWidth + " " + t.shoulderDrop + " " + t.hairpinAcross;
+    }
 
-    // host: the lines follow these sizes, so new ones mean new ground
+    // host: the lines follow these sizes, so new ones mean new ground. The map is big, so it
+    // waits until the slider has stopped moving.
     public void TuningChanged()
     {
-        if (Net.IsHost && Ready && Signature(Game.I.tuning) != built) Generate();
+        if (!Net.IsHost || !Ready || Signature(Game.I.tuning) == built) return;
+        if (IsLand) remakeAt = Time.unscaledTime + 0.7f;
+        else Generate();
     }
 
     // ---- host: make the ground
@@ -165,6 +197,7 @@ public class Plot : MonoBehaviour
             case 3: Straight(first - 25f, 0, length, BaseHeight, BaseHeight, BaseHeight + rise * 0.5f); Lay(t, ox, oz, 0); break;
             case 4: Straight(first - 50f, 0, length, BaseHeight, BaseHeight, BaseHeight + rise * 0.5f); Lay(t, ox, oz, 0.9f); break;
             case 5: Straight(first - 75f, 0, length, BaseHeight, BaseHeight, BaseHeight); Lay(t, ox, oz, 0); break;
+            case Land: MakeLand(t); break;
             default:
                 {
                     // the hairpins sit behind the row, side by side
@@ -180,6 +213,7 @@ public class Plot : MonoBehaviour
         gravel = new byte[h.Length];
         packed = new byte[h.Length];
         health = new byte[h.Length];
+        if (IsLand) edited = new byte[h.Length];
         for (int i = 0; i < h.Length; i++) health[i] = 100;
         if (Finished)
         {
@@ -282,6 +316,210 @@ public class Plot : MonoBehaviour
         }
     }
 
+    // ---- the map
+    //
+    // A map is too big to send a height every 0.25 m (300 m of it is over half a million points).
+    // So the host makes the land as a height every metre, in whole millimetres, and sends that:
+    // 30 to 70 kB. Every machine fills in the points between with the same whole-number sums, so
+    // they all hold exactly the same ground without any of them having to trust another's
+    // arithmetic. After that only the points a click has changed are sent.
+
+    // host: the land of the chosen map. The towns stand at x 0, the first at z 0 and the second
+    // `length` further on, each with a fixed stake on a level pad.
+    void MakeLand(Tuning t)
+    {
+        int map = Game.I.map;
+        float length = Mathf.Round(map == 1 ? 60f : map == 2 ? t.mapDistance : map == 3 ? 300f : 160f);
+        float width = map == 1 ? 70f : map == 4 ? 130f : 100f;
+        // the same seed makes the same land, so a map is the same every time until it is made again
+        var random = new System.Random(Game.I.mapSeed);
+        float ox = (float)random.NextDouble() * 100f, oz = (float)random.NextDouble() * 100f;
+        origin = new Vector3(-width * 0.5f, 0, -TownEnd);
+        cw = Mathf.RoundToInt(width) + 1;
+        cd = Mathf.RoundToInt(length + TownEnd * 2f) + 1;
+        coarse = new ushort[cw * cd];
+        float padA = Shape(map, 0, 0, length, ox, oz), padB = Shape(map, 0, length, length, ox, oz);
+        for (int i = 0; i < coarse.Length; i++)
+        {
+            float u = i % cw, v = i / cw, x = origin.x + u, z = origin.z + v;
+            float y = Shape(map, x, z, length, ox, oz) + Noise(x, z, ox, oz) * t.landRoughness;
+            // level round each town's stake
+            y = Mathf.Lerp(padA, y, Mathf.SmoothStep(0, 1, (Mathf.Sqrt(x * x + z * z) - PadRadius) / 10f));
+            y = Mathf.Lerp(padB, y, Mathf.SmoothStep(0, 1, (Mathf.Sqrt(x * x + (z - length) * (z - length)) - PadRadius) / 10f));
+            float edge = Mathf.Min(Mathf.Min(u, cw - 1 - u), Mathf.Min(v, cd - 1 - v));
+            y *= Mathf.SmoothStep(0, 1, edge / EdgeMargin);
+            coarse[i] = (ushort)Mathf.Clamp(Mathf.RoundToInt(y * 1000f), 0, 65535);
+        }
+        Expand();
+        int centre = cw / 2, rowA = Mathf.RoundToInt(TownEnd);
+        stakes.Add(new Vector3(0, coarse[rowA * cw + centre] * 0.001f, 0));
+        stakes.Add(new Vector3(0, coarse[(rowA + Mathf.RoundToInt(length)) * cw + centre] * 0.001f, length));
+        fixedStakes = 2;
+    }
+
+    // The shape of each map's land, before its humps and hollows: metres up at x, z, with the
+    // towns `length` apart.
+    static float Shape(int map, float x, float z, float length, float ox, float oz)
+    {
+        // a swell 50 m or so from crest to crest, between -1 and 1
+        float swell = (Mathf.PerlinNoise(ox + 31f + x * 0.021f, oz + 17f + z * 0.021f) - 0.5f) * 2f;
+        float mid = length * 0.5f;
+        switch (map)
+        {
+            case 1:
+                // short: nearly flat
+                return 3f + swell * 0.8f;
+            case 2:
+                {
+                    // middle: a hill on the straight line between the towns, and a hollow on one
+                    // side of it, so the easy way is round the other side
+                    float sigma = Mathf.Max(12f, length * 0.1f);
+                    float hill = 9f * Mathf.Exp(-(x * x + (z - mid) * (z - mid)) / (2f * sigma * sigma));
+                    float hollow = -3f * Mathf.Exp(-((x - 30f) * (x - 30f) + (z - mid) * (z - mid)) / 200f);
+                    return 4f + swell + hill + hollow;
+                }
+            case 3:
+                {
+                    // long: rolling land, a ridge right across it with one gap, and a hollow further on
+                    float zr = length * 0.38f, zh = length * 0.7f;
+                    float ridge = 6f * Mathf.Exp(-(z - zr) * (z - zr) / 162f) * (1f - 0.8f * Mathf.Exp(-(x - 28f) * (x - 28f) / 288f));
+                    float hollow = -3.5f * Mathf.Exp(-((x + 5f) * (x + 5f) + (z - zh) * (z - zh)) / 512f);
+                    return 4f + swell * 1.5f + ridge + hollow;
+                }
+            default:
+                {
+                    // climb: the second town is 16 m higher. The rise is spread over 150 m at the
+                    // left edge and gets shorter and steeper to the right: about 31 degrees on the
+                    // straight line between the towns, and a cliff at the right edge.
+                    float across = Mathf.Max(16f, 150f * Mathf.Pow(40f / 150f, (x + 55f) / 55f));
+                    return 3f + 16f * Mathf.SmoothStep(0, 1, (z - (mid - across * 0.5f)) / across) + swell * 0.6f;
+                }
+        }
+    }
+
+    // every machine: the ground points from the heights a metre apart, by whole-number sums
+    void Expand()
+    {
+        w = (cw - 1) * Fine + 1;
+        d = (cd - 1) * Fine + 1;
+        h = new float[w * d];
+        for (int iz = 0; iz < d; iz++)
+        {
+            int cz = Mathf.Min(iz / Fine, cd - 2), fz = iz - cz * Fine;
+            for (int ix = 0; ix < w; ix++)
+            {
+                int cx = Mathf.Min(ix / Fine, cw - 2), fx = ix - cx * Fine, c = cz * cw + cx;
+                int mm = (coarse[c] * (Fine - fx) * (Fine - fz) + coarse[c + 1] * fx * (Fine - fz) + coarse[c + cw] * (Fine - fx) * fz + coarse[c + cw + 1] * fx * fz + Fine * Fine / 2) / (Fine * Fine);
+                h[iz * w + ix] = mm / 1000f;
+            }
+        }
+    }
+
+    // where players start on the map: beside the first town's stake, looking at the other town
+    public Vector3 SpawnAt(int slot)
+    {
+        if (!Ready || stakes.Count == 0) return new Vector3(0, 5f, 0);
+        Vector3 at = stakes[0] + new Vector3(3f + slot * 1.3f, 0, -3f);
+        return new Vector3(at.x, HeightAt(at.x, at.z) + 0.2f, at.z);
+    }
+
+    // A town: a painted pad behind its stake, a few blocks round the back, and a tall pole to
+    // find it by from the other end. `away` is +1 or -1: which way along z is away from the road.
+    void Town(Transform root, Vector3 stake, float away, Color color)
+    {
+        var dark = Mats.Make(new Color(0.34f, 0.34f, 0.36f));
+        var wall = Mats.Make(color);
+        var roof = Mats.Make(color * 0.55f);
+        Mats.Part(root, Mats.Cube, dark, stake + new Vector3(0, 0.02f, away * 7f), new Vector3(16f, 0.04f, 10f));
+        Mats.Part(root, Mats.Cube, wall, stake + new Vector3(0, 13f, away * 12.5f), new Vector3(0.35f, 26f, 0.35f));
+        // x, how far behind the stake, width, height, depth
+        float[] houses = { -12f, 6f, 6f, 4f, 6f,   12f, 7f, 5f, 5.5f, 7f,   -9f, 17f, 7f, 3.5f, 5f,   9f, 18f, 6f, 6.5f, 6f,   0f, 21f, 5f, 4.5f, 4f };
+        for (int k = 0; k < houses.Length; k += 5)
+        {
+            float x = stake.x + houses[k], z = stake.z + away * houses[k + 1], width = houses[k + 2], height = houses[k + 3], depth = houses[k + 4];
+            float foot = HeightAt(x, z) - 0.6f;
+            var box = Mats.Part(root, Mats.Cube, wall, new Vector3(x, foot + (height + 0.6f) * 0.5f, z), new Vector3(width, height + 0.6f, depth));
+            box.gameObject.AddComponent<BoxCollider>();
+            Mats.Part(root, Mats.Cube, roof, new Vector3(x, foot + height + 0.6f + 0.25f, z), new Vector3(width + 0.8f, 0.5f, depth + 0.8f));
+        }
+    }
+
+    // whether the ropes join the towns, and how much road is staked out from the first
+    void Survey()
+    {
+        joined = false;
+        roadLength = 0;
+        if (!IsLand || stakes.Count < 2) return;
+        joined = Chain(0, 1);
+        foreach (int c in chain) roadLength += segs[c < 0 ? ~c : c].len;
+    }
+
+    // a spot on some section of road, for the test tooling: a, b and c are each 0 to 1
+    public Vector3 RoadSpot(float a, float b, float c)
+    {
+        if (!Ready || segs.Length == 0) return Spot(b, c);
+        Vector3 p = World(Mathf.Min((int)(a * segs.Length), segs.Length - 1), b, (c * 2f - 1f) * Reach * 0.97f);
+        return new Vector3(p.x, HeightAt(p.x, p.z), p.z);
+    }
+
+    // host: the map's heights a metre apart, then the points that clicks have changed since
+    void SendLand(ulong client, bool everyone)
+    {
+        const int PerMessage = 8000;
+        for (int start = 0; start < coarse.Length; start += PerMessage)
+        {
+            int n = Mathf.Min(PerMessage, coarse.Length - start);
+            var m = Msg.New(Op.PlotCoarse, n * 2 + 16);
+            m.U8((byte)id);
+            m.U32((uint)start);
+            m.U16((ushort)n);
+            for (int i = start; i < start + n; i++) m.U16(coarse[i]);
+            Out(client, everyone, m);
+        }
+        var points = new List<int>();
+        for (int i = 0; i < edited.Length; i++) if (edited[i] != 0) points.Add(i);
+        const int PointsPerMessage = 2000;
+        for (int start = 0; start < points.Count; start += PointsPerMessage)
+        {
+            int n = Mathf.Min(PointsPerMessage, points.Count - start);
+            var m = Msg.New(Op.PlotPoints, n * 10 + 16);
+            m.U8((byte)id);
+            m.U16((ushort)n);
+            for (int k = start; k < start + n; k++)
+            {
+                int i = points[k];
+                m.U32((uint)i);
+                m.F32(h[i]);
+                m.U8(gravel[i]);
+                m.U8(packed[i]);
+            }
+            Out(client, everyone, m);
+        }
+    }
+
+    public void OnCoarse(Msg m)
+    {
+        if (coarse == null) return;
+        int start = (int)m.U32(), n = m.U16();
+        for (int i = start; i < start + n; i++) coarse[i] = m.U16();
+        expected -= n;
+        if (expected <= 0) Expand();
+    }
+
+    // points that were changed before this machine joined
+    public void OnPoints(Msg m)
+    {
+        if (h == null) return;
+        int n = m.U16();
+        for (int k = 0; k < n; k++)
+        {
+            int i = (int)m.U32();
+            h[i] = m.F32();
+            gravel[i] = m.U8();
+            packed[i] = m.U8();
+        }
+    }
+
     // ---- sending the whole plot
 
     // host: to one client (someone joined) or to all. Heights go in millimetres, two bytes each,
@@ -295,8 +533,11 @@ public class Plot : MonoBehaviour
         m.V3(origin);
         m.F32(lane); m.F32(shoulderWidth); m.F32(shoulderDrop);
         m.U32(clicks);
+        m.U8((byte)(IsLand ? 1 : 0));
+        if (IsLand) { m.U16((ushort)cw); m.U16((ushort)cd); m.U8((byte)fixedStakes); }
         Out(client, everyone, m);
-        for (int start = 0; start < h.Length; start += RowsPerMessage)
+        if (IsLand) SendLand(client, everyone);
+        else for (int start = 0; start < h.Length; start += RowsPerMessage)
         {
             int n = Mathf.Min(RowsPerMessage, h.Length - start);
             m = Msg.New(Op.PlotRows, n * 4 + 16);
@@ -332,6 +573,13 @@ public class Plot : MonoBehaviour
         health = new byte[h.Length];
         expected = h.Length;
         built = "from host";
+        if (m.U8() == 0) return;
+        // the map: its heights come a metre apart, and the ground is filled in from them here
+        cw = m.U16(); cd = m.U16();
+        fixedStakes = m.U8();
+        coarse = new ushort[cw * cd];
+        expected = coarse.Length;
+        h = null;
     }
 
     public void OnRows(Msg m)
@@ -392,6 +640,7 @@ public class Plot : MonoBehaviour
             chunk.collider.sharedMesh = chunk.mesh;
         }
         Tally();
+        Survey();
 
         wood = Mats.Make(new Color(0.80f, 0.62f, 0.30f));
         red = Mats.Make(new Color(0.90f, 0.15f, 0.12f));
@@ -418,6 +667,21 @@ public class Plot : MonoBehaviour
             case 4: text = "Station 5: a bad road. Trucks try it both ways."; break;
             case 5: text = "Wear: a finished road that the trucks wear out"; break;
             case 6: text = "Hairpin: stakes set round the tightest turn allowed\nlevel it and gravel it; trucks try it as it is"; break;
+            case Land:
+                {
+                    text = "Town A. Press 1 and left click this stake, then click the ground toward the pole at the other town.\nEach stake is roped to the last. Rope the last one to town B's stake and the trucks set off.";
+                    at = stakes[0] + Vector3.up * 2.2f;
+                    labels.Add(new Yard.Label { at = stakes[1] + Vector3.up * 2.2f, text = "Town B. Rope the road to this stake." });
+                    var towns = new GameObject("Towns").transform;
+                    towns.SetParent(transform, false);
+                    Town(towns, stakes[0], -1f, new Color(0.85f, 0.35f, 0.3f));
+                    Town(towns, stakes[1], 1f, new Color(0.3f, 0.5f, 0.85f));
+                    // the plain the land stands on, so nobody falls for ever off its edge
+                    var plain = Mats.Part(towns, Mats.Cube, Mats.Make(new Color(0.33f, 0.37f, 0.31f)), new Vector3(origin.x + SizeX * 0.5f, -0.5f, origin.z + SizeZ * 0.5f), new Vector3(2000f, 1f, 2000f));
+                    plain.gameObject.AddComponent<BoxCollider>();
+                    Game.I.respawn = true;      // everyone starts again at the first town
+                    break;
+                }
             default: text = "Hairpin: the same turn, finished"; break;
         }
         labels.Add(new Yard.Label { at = at, text = text });
@@ -449,7 +713,7 @@ public class Plot : MonoBehaviour
             int i = (chunk.row0 + k / stride) * w + chunk.col0 + k % stride;
             chunk.verts[k] = new Vector3(i % w * Cell, Surface(i), i / w * Cell) + origin;
             bool level = zone[i] != 0 && Mathf.Abs(h[i] - target[i]) < Level;
-            Color32 color = zone[i] == 0 ? Outside : zone[i] == 1 ? (level ? RoadDone : RoadRough) : (level ? ShoulderDone : ShoulderRough);
+            Color32 color = zone[i] == 0 ? (IsLand ? Grass : Outside) : zone[i] == 1 ? (level ? RoadDone : RoadRough) : (level ? ShoulderDone : ShoulderRough);
             // gravel greys the ground as it deepens, and darkens as it is packed
             if (gravel[i] > 0) color = Color32.Lerp(color, Color32.Lerp(GravelLoose, GravelPacked, packed[i] * 0.01f), Mathf.Clamp01(gravel[i] / full));
             chunk.colors[k] = color;
@@ -667,10 +931,12 @@ public class Plot : MonoBehaviour
         {
             Vector3 s = stakes[i];
             // the string is tied 0.8 m below the top, at the height the ground is to reach
-            var post = Mats.Part(stakeRoot, Mats.Cube, i == selected ? white : wood, s + Vector3.down * 0.6f, new Vector3(0.08f, 2.8f, 0.08f));
+            // a town's stake is twice as thick
+            float thick = i < fixedStakes ? 0.16f : 0.08f;
+            var post = Mats.Part(stakeRoot, Mats.Cube, i == selected ? white : wood, s + Vector3.down * 0.6f, new Vector3(thick, 2.8f, thick));
             var grab = post.gameObject.AddComponent<BoxCollider>();
             grab.isTrigger = true;                      // walked through, but the crosshair finds it
-            grab.size = new Vector3(5f, 1f, 5f);        // 0.4 m across
+            grab.size = new Vector3(0.4f / thick, 1f, 0.4f / thick);    // 0.4 m across
             stakeByCollider[grab.GetInstanceID()] = i;
         }
         foreach (var l in links)
@@ -726,7 +992,7 @@ public class Plot : MonoBehaviour
     // May a new stake go in at x,z, roped to stake `from` if there is one?
     bool CanAdd(float x, float z, int from)
     {
-        if (stakes.Count >= MaxStakes || !Inside(x, z, Margin * 0.5f)) return false;
+        if (stakes.Count >= MaxStakes || !Inside(x, z, IsLand ? EdgeMargin : Margin * 0.5f)) return false;
         if (Section(x, z, out _, out _, out _)) return false;    // not on road that is already staked out
         var stake = new Vector3(x, 0, z);
         foreach (var other in stakes)
@@ -769,7 +1035,7 @@ public class Plot : MonoBehaviour
     // comes out, with every rope tied to it. The ground stays as it is.
     public bool HostStakeEdit(int stake, int steps)
     {
-        if (!Ready || stake < 0 || stake >= stakes.Count) return false;
+        if (!Ready || stake < fixedStakes || stake >= stakes.Count) return false;    // a town's stake stays as it is
         if (steps != 0)
         {
             Vector3 s = stakes[stake];
@@ -848,6 +1114,7 @@ public class Plot : MonoBehaviour
             if (k < old.Length) Resolve(old[k]);
             if (k < segs.Length) Resolve(segs[k]);
         }
+        Survey();
         Upload(false);
         BuildStakes();
     }
@@ -1009,6 +1276,7 @@ public class Plot : MonoBehaviour
             edit.U8(gravel[i]);
             edit.U8(packed[i]);
             Touch(i);
+            if (edited != null) edited[i] = 1;
         }
         Net.ToClients(edit, true);
         if (changed.Count > 0) Upload(true);
@@ -1169,6 +1437,11 @@ public class Plot : MonoBehaviour
             tallyDirty = false;
             nextTally = Time.unscaledTime + 0.25f;
             Tally();
+        }
+        if (remakeAt > 0 && Time.unscaledTime >= remakeAt)
+        {
+            remakeAt = 0;
+            if (Net.IsHost && Signature(g.tuning) != built) { g.lorries.Clear(); Generate(); return; }
         }
         var tuning = g.tuning;
         cursor.enabled = preview.enabled = hotRing.enabled = false;

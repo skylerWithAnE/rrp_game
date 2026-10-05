@@ -92,6 +92,12 @@ public class Tuning : ScriptableObject
     [Tooltip("Seconds without moving before it gives up and blows up.")]
     [Range(1, 15)] public float lorryStuckSeconds = 4f;
 
+    [Header("Maps")]
+    [Tooltip("How far apart the two towns are on the middle map (m). The land is made again when this changes.")]
+    [Range(40, 400)] public float mapDistance = 150f;
+    [Tooltip("How far the humps and hollows on a map rise and fall (m). The stations use roughHeight instead.")]
+    [Range(0, 1)] public float landRoughness = 0.35f;
+
     [Header("Old: Player")]
     [Range(1, 12)] public float moveSpeed = 6f;
     [Range(0, 12)] public float jumpSpeed = 7.5f;

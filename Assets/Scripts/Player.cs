@@ -142,6 +142,7 @@ public class Player : MonoBehaviour
         if (knocked > 0) c = default;
         if (bot == null) yaw = Mathf.LerpAngle(yaw, g.cam.yaw, 1f - Mathf.Exp(-16f * dt));
 
+        if (!g.WorldReady || g.respawn) return;     // nothing to stand on yet
         Vector3 move = Quaternion.Euler(0, bot != null ? yaw : g.cam.yaw, 0) * new Vector3(c.move.x, 0, c.move.y);
         if (move.sqrMagnitude > 1) move.Normalize();
         if (controller.isGrounded)
@@ -153,7 +154,7 @@ public class Player : MonoBehaviour
         float speed = t.walkSpeed * (c.sprint ? t.sprintMultiplier : 1f);
         controller.Move((move * speed + Vector3.up * verticalSpeed) * dt);
         grounded = controller.isGrounded;
-        if (transform.position.y < -10f) Teleport(g.yard.Spawn(slot));   // walked off the edge of the yard
+        if (transform.position.y < -10f) Teleport(g.SpawnPoint(slot));   // walked off the edge of the yard
 
         // Everything below is the first prototype's shovel. It only runs in a job, and station 1
         // never starts one.

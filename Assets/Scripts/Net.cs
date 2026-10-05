@@ -15,6 +15,7 @@ public enum Op : byte
     Click, Stake, StakeEdit,    // client -> host
     PlotState, PlotRows, PlotEdit, PlotStakes,
     Lorry,      // station 5
+    Map, PlotCoarse, PlotPoints,    // the maps: which one, its land a height every metre, and the points changed since
 }
 
 // A byte buffer with the few field types the game sends.

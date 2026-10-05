@@ -12,7 +12,9 @@ using UnityEngine;
 //   -rrpBotTime <s>     bots stand still once the job is this many seconds old
 //   -rrpLog             print one RRPSTATE line every second
 //   -rrpClicks <n>      ask for n clicks on random spots of the station 2 and 3 plots, twenty a second
-//   -rrpStakes          first put three linked stakes down on the station 3 hillside
+//   -rrpStakes          first put three linked stakes down on the station 3 hillside; on a map,
+//                       stake a road out from the first town to the second
+//   -rrpMap <n>         host: choose map n (0 is the stations)
 //
 // RunStress (also a button on the tuning panel) runs the cube experiment's pile and avalanche
 // tests on the host and prints one RRPSTRESS line per test.
@@ -23,6 +25,7 @@ public class AutoTest : MonoBehaviour
 {
     public static bool Bot, Log;
     int clicksLeft, clicksTotal, stakesLeft;
+    int mapWanted = -1;
     float stakeTimer;
     float clickTimer;
     public static AutoTest I;
@@ -59,13 +62,20 @@ public class AutoTest : MonoBehaviour
             else if (args[i] == "-rrpLog") Log = true;
             else if (args[i] == "-rrpClicks" && i + 1 < args.Length) { int.TryParse(args[++i], out clicksLeft); clicksTotal = clicksLeft; }
             else if (args[i] == "-rrpStakes") stakesLeft = 3;
+            else if (args[i] == "-rrpMap" && i + 1 < args.Length) int.TryParse(args[++i], out mapWanted);
         }
         if (host) Game.I.Host(false);
     }
 
+    // Things for the game to do on its next frame. A script driving the editor from outside
+    // must hand its work over this way: a message sent from outside the game's own frame is
+    // never delivered and costs the client its connection.
+    public static readonly System.Collections.Generic.Queue<Action> Next = new System.Collections.Generic.Queue<Action>();
+
     void Update()
     {
         var g = Game.I;
+        while (Next.Count > 0) Next.Dequeue()();
         if (join != null && g.phase == Phase.Menu)
         {
             retry -= Time.unscaledDeltaTime;
@@ -74,10 +84,19 @@ public class AutoTest : MonoBehaviour
         if (host && startAt > 0 && g.phase == Phase.Lobby && g.PlayerCount >= startAt) g.StartJob();
 
         if (g.local != null) g.local.bot = Bot ? (Func<Controls>)BotControls : null;
+        if (mapWanted >= 0 && Net.IsHost && g.phase == Phase.Lobby)
+        {
+            if (g.map != mapWanted) g.SetMap(mapWanted);
+            mapWanted = -1;
+        }
         clickTimer += Time.unscaledDeltaTime;
-        bool plotsReady = g.plots[0].Ready && g.plots[1].Ready && g.plots[2].Ready;
         stakeTimer += Time.unscaledDeltaTime;
-        if (stakesLeft > 0 && plotsReady && stakeTimer > 1f)
+        if (g.map != 0)
+        {
+            if (g.phase == Phase.Lobby && g.plots[Plot.Land].Ready && !g.respawn) OnLand(g.plots[Plot.Land]);
+        }
+        else if (g.phase != Phase.Lobby) { }
+        else if (stakesLeft > 0 && PlotsReady(g) && stakeTimer > 1f)
         {
             // each links to the one before, which the host's answer has made this player's chosen stake
             stakeTimer = 0;
@@ -86,7 +105,7 @@ public class AutoTest : MonoBehaviour
             Vector3 spot = hill.Spot(0.3f + 0.15f * stakesLeft, 0.7f - 0.25f * stakesLeft);
             hill.RequestStake(spot.x, spot.z, hill.selected, -1);
         }
-        else if (stakesLeft == 0 && clicksLeft > 0 && plotsReady && stakeTimer > 1f && clickTimer > 0.05f)
+        else if (stakesLeft == 0 && clicksLeft > 0 && PlotsReady(g) && stakeTimer > 1f && clickTimer > 0.05f)
         {
             clickTimer = 0;
             clicksLeft--;
@@ -108,6 +127,33 @@ public class AutoTest : MonoBehaviour
         if (logTimer < 1f) return;
         logTimer = 0;
         Debug.Log(State());
+    }
+
+    static bool PlotsReady(Game g) { return g.plots[0].Ready && g.plots[1].Ready && g.plots[2].Ready; }
+
+    // On a map: stake a road out from the first town to the second, a stake a second, swinging a
+    // little from side to side; then click along it, grading two clicks in three and gravelling
+    // the third.
+    void OnLand(Plot land)
+    {
+        if (stakesLeft > 0 && stakeTimer > 1f)
+        {
+            stakeTimer = 0;
+            if (land.joined || land.stakes.Count > 60) { stakesLeft = 0; return; }
+            int from = land.selected < 0 ? 0 : land.selected;
+            Vector3 here = land.stakes[from], to = land.stakes[1] - here;
+            to.y = 0;
+            if (to.magnitude <= 19f) { land.RequestStake(0, 0, from, 1); return; }
+            Vector3 step = to.normalized * 17f + new Vector3(land.stakes.Count % 2 == 0 ? 3f : -3f, 0, 0);
+            land.RequestStake(here.x + step.x, here.z + step.z, from, -1);
+        }
+        else if (stakesLeft == 0 && clicksLeft > 0 && stakeTimer > 1f && clickTimer > 0.05f)
+        {
+            clickTimer = 0;
+            clicksLeft--;
+            Vector3 spot = land.RoadSpot(UnityEngine.Random.value, UnityEngine.Random.value, UnityEngine.Random.value);
+            land.RequestClick(spot.x, spot.z, clicksLeft % 5 == 0, clicksLeft % 3 == 0 ? Plot.Gravel : Plot.Grade);
+        }
     }
 
     // Wander near the spawn side of the hill, turning now and then, digging and flinging.
@@ -146,6 +192,7 @@ public class AutoTest : MonoBehaviour
         var g = Game.I;
         var s = new System.Text.StringBuilder("RRPSTATE ");
         s.Append(Net.IsHost ? "host" : "client").Append(" slot=").Append(g.localSlot).Append(" phase=").Append(g.phase);
+        s.Append(" map=").Append(g.map).Append(" joined=").Append(g.plots[Plot.Land].joined).Append(" road=").Append(g.plots[Plot.Land].roadLength.ToString("0.0"));
         s.Append(" players=");
         foreach (var p in g.players)
             if (p != null) s.Append(p.slot).Append(':').Append(p.transform.position.ToString("0.0")).Append("load").Append(p.load).Append(' ');

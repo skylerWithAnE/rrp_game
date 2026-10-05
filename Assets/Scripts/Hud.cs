@@ -181,8 +181,23 @@ public class Hud : MonoBehaviour
 
     void Lobby(Game g, float width)
     {
-        GUILayout.BeginArea(new Rect(width / 2 - 170, 10, 340, 80), box);
-        GUILayout.Label("Scale yard: " + g.PlayerCount + " of " + Session.MaxPlayers + " players", label);
+        GUILayout.BeginArea(new Rect(width / 2 - 200, 10, 400, Net.IsHost ? 132 : 60), box);
+        GUILayout.Label("<b>" + Plot.MapNames[g.map] + "</b>   " + g.PlayerCount + " of " + Session.MaxPlayers + " players", label);
+        if (Net.IsHost)
+        {
+            // the host picks the map; everyone starts again on it
+            for (int row = 0; row < 2; row++)
+            {
+                GUILayout.BeginHorizontal();
+                for (int i = row == 0 ? 0 : 3; i < (row == 0 ? 3 : Plot.MapNames.Length); i++)
+                {
+                    GUI.enabled = i != g.map;
+                    if (GUILayout.Button(i == 2 ? "Middle, " + Mathf.RoundToInt(g.tuning.mapDistance) + " m" : Plot.MapNames[i])) g.SetMap(i);
+                }
+                GUI.enabled = true;
+                GUILayout.EndHorizontal();
+            }
+        }
         if (Net.IsHost)
         {
             if (Session.JoinCode.Length > 0) GUILayout.Label("Join code: <b>" + Session.JoinCode + "</b>", label);
@@ -208,6 +223,7 @@ public class Hud : MonoBehaviour
         foreach (var plot in g.plots)
             if (plot == near) text.Append("<size=12>").Append(Plot.Names[plot.id]).Append(": level ").Append(Mathf.FloorToInt(plot.roadShare * 100f)).Append("  shoulder ").Append(Mathf.FloorToInt(plot.shoulderShare * 100f))
                 .Append("  gravel ").Append(Mathf.FloorToInt(plot.gravelShare * 100f)).Append("  packed ").Append(Mathf.FloorToInt(plot.packedShare * 100f)).Append(" %   clicks ").Append(plot.clicks).Append("</size>\n");
+        if (near != null && near.IsLand) text.Append("<size=12>road staked from town A: ").Append(Mathf.RoundToInt(near.roadLength)).Append(" m   towns joined: ").Append(near.joined ? "<b>YES</b>" : "no").Append("</size>\n");
         if (near != null) g.lorries.Readout(text, near.id);
         text.Append("holding: <b>").Append(Plot.Tool == Plot.Stakes ? "1 stakes" : Plot.Tool == Plot.Grade ? "2 grade" : "3 gravel").Append("</b>   sprint ").Append(Player.Sprinting ? "ON" : "off").Append('\n');
         if (g.phase == Phase.Job) text.Append("towns joined by asphalt: ").Append(g.road.asphaltLinked ? "YES" : "no").Append("   by paint: ").Append(g.road.paintedLinked ? "YES" : "no").Append('\n');
@@ -234,8 +250,8 @@ public class Hud : MonoBehaviour
         }
         text.Append("<size=11>F1 tuning   F3 readout   Tab mouse\nWASD walk   Shift sprint on/off   Space hop   1 2 3 tools\nstakes: left click places or chooses, wheel moves\nthe chosen rope, X removes, right click lets go</size>");
 
-        GUI.Box(new Rect(8, 8, 360, 230), GUIContent.none, box);
-        GUI.Label(new Rect(16, 12, 350, 225), text.ToString(), label);
+        GUI.Box(new Rect(8, 8, 360, 246), GUIContent.none, box);
+        GUI.Label(new Rect(16, 12, 350, 241), text.ToString(), label);
     }
 
     // What each thing in the yard is and how big, written over it.
@@ -286,12 +302,9 @@ public class Hud : MonoBehaviour
             GUILayout.EndHorizontal();
         }
 
-        if (host && GUILayout.Button("Make all the ground again"))
-        {
-            g.lorries.Clear();
-            foreach (var plot in g.plots) plot.Generate();
-        }
-        if (host)
+        // on a map this makes new land from a new seed; choosing the map again brings the first back
+        if (host && GUILayout.Button(g.map == 0 ? "Make all the ground again" : "Make new land for this map")) g.SetMap(g.map, true);
+        if (host && g.map == 0)
         {
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("Send trucks: station 2")) g.lorries.Send(0);

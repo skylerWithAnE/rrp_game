@@ -31,6 +31,9 @@ public class Game : MonoBehaviour
     public readonly Player[] players = new Player[Session.MaxPlayers];
     public Player local;
     public int localSlot = -1;
+    public int map = 2;         // which map the host has chosen: see Plot.MapNames. 0 is the stations.
+    public int mapSeed = 1002;  // the land is made from this, so a map is the same until it is made again
+    public bool respawn;        // put the local player at the start once the world is there to stand on
     public float jobTime;
     public bool won;            // the towns are joined by painted road; jobTime is the score
     public float bestTime;      // this machine's best, 0 if none
@@ -193,13 +196,8 @@ public class Game : MonoBehaviour
         truck.Clear();
         blocks.Clear();
         road.Setup(false);
-        yard.Refresh();
-        lorries.Clear();
-        // the host makes the rough ground; a client is sent it
-        foreach (var plot in plots) { if (Net.IsHost) plot.Generate(); else plot.Clear(); }
         AddPlayer(localSlot, true);
-        cam.yaw = local.yaw = Yard.SpawnYaw;
-        cam.pitch = 0;
+        LoadMap();
         foreach (var p in players)
         {
             if (p == null) continue;
@@ -257,6 +255,7 @@ public class Game : MonoBehaviour
 
         var m = Msg.New(Op.Welcome, 256);
         m.U8((byte)slot);
+        m.U8((byte)map);
         tuning.Write(m);
         Net.Send(id, m, true);
         foreach (var plot in plots) plot.SendState(id);
@@ -315,7 +314,35 @@ public class Game : MonoBehaviour
         players[slot] = null;
     }
 
-    Vector3 SpawnPoint(int slot) { return yard.Spawn(slot); }
+    public Vector3 SpawnPoint(int slot) { return map == 0 ? yard.Spawn(slot) : plots[Plot.Land].SpawnAt(slot); }
+
+    // is there ground to stand on yet? A client waits for the host to send it.
+    public bool WorldReady => map == 0 ? yard.Ready : plots[Plot.Land].Ready;
+
+    // host: choose a map. Everyone gets its ground and starts again at its beginning. With
+    // `again`, the land is made afresh from a new seed.
+    public void SetMap(int index, bool again = false)
+    {
+        if (!Net.IsHost || phase != Phase.Lobby || index < 0 || index >= Plot.MapNames.Length) return;
+        map = index;
+        mapSeed = again ? Random.Range(1, 1 << 20) : 1000 + index;
+        var m = Msg.New(Op.Map, 4);
+        m.U8((byte)map);
+        Net.ToClients(m, true);
+        LoadMap();
+    }
+
+    // everyone: out with the old ground. The host makes the new; a client is sent it.
+    void LoadMap()
+    {
+        lorries.Clear();
+        foreach (var plot in plots) plot.Clear();
+        if (map == 0) yard.Refresh(); else yard.Clear();
+        if (Net.IsHost)
+            foreach (var plot in plots)
+                if (plot.IsLand == (map != 0)) plot.Generate();
+        respawn = true;
+    }
 
     // host: everyone loads a fresh map together
     public void StartJob()
@@ -350,7 +377,7 @@ public class Game : MonoBehaviour
         }
     }
 
-    public void TuningChanged() { tuningDirty = true; cubes.ApplyTuning(); yard.Refresh(); foreach (var plot in plots) plot.TuningChanged(); }
+    public void TuningChanged() { tuningDirty = true; cubes.ApplyTuning(); if (map == 0) yard.Refresh(); foreach (var plot in plots) plot.TuningChanged(); }
 
     // ---- messages
 
@@ -400,6 +427,7 @@ public class Game : MonoBehaviour
         {
             case Op.Welcome:
                 localSlot = m.U8();
+                map = m.U8();
                 tuning.Read(m);
                 cubes.ApplyTuning();
                 EnterLobby();
@@ -429,6 +457,12 @@ public class Game : MonoBehaviour
             case Op.GroundEdit: ground.ApplyEdits(m); break;
             case Op.PlotState: plots[m.U8()].OnState(m); break;
             case Op.PlotRows: plots[m.U8()].OnRows(m); break;
+            case Op.PlotCoarse: plots[m.U8()].OnCoarse(m); break;
+            case Op.PlotPoints: plots[m.U8()].OnPoints(m); break;
+            case Op.Map:
+                map = m.U8();
+                LoadMap();
+                break;
             case Op.PlotEdit: plots[m.U8()].OnEdit(m); break;
             case Op.PlotStakes: plots[m.U8()].OnStakes(m); break;
             case Op.Lorry: lorries.OnState(m); break;
@@ -451,7 +485,7 @@ public class Game : MonoBehaviour
             case Op.Tuning:
                 tuning.Read(m);
                 cubes.ApplyTuning();
-                yard.Refresh();
+                if (map == 0) yard.Refresh();
                 break;
             case Op.Stats:
                 hostFps = m.U16();
@@ -500,6 +534,13 @@ public class Game : MonoBehaviour
         if (!Net.Running) return;
         Net.Tick(dt);
         if (phase != Phase.Lobby && phase != Phase.Job) return;
+        if (respawn && WorldReady && local != null)
+        {
+            respawn = false;
+            local.Teleport(SpawnPoint(localSlot));
+            cam.yaw = local.yaw = map == 0 ? Yard.SpawnYaw : 0;
+            cam.pitch = 0;
+        }
         if (phase == Phase.Job && nm.IsHost && !won)
         {
             jobTime += Time.deltaTime;

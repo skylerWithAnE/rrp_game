@@ -61,7 +61,7 @@ public class Lorries : MonoBehaviour
             l.launch = -1;
             l.wait = Wait + (l.back ? 1.5f : 0);
             // the example roads always have trucks on the way
-            l.wanted = l.plot >= 3;
+            l.wanted = l.plot >= 3 && l.plot != Plot.Land;
             l.once = false;
         }
     }
