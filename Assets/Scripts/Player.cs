@@ -38,7 +38,7 @@ public class Player : MonoBehaviour
     Vector3 lastPos;
 
     public Vector3 Forward => Quaternion.Euler(0, yaw, 0) * Vector3.forward;
-    public Vector3 ShovelPoint => transform.position + Forward * 1.1f + Vector3.up * 0.7f;
+    public Vector3 ShovelPoint => transform.position + Forward * 1.5f + Vector3.up * 1f;
 
     public void Init(int slot, bool isLocal, Vector3 position)
     {
@@ -51,11 +51,11 @@ public class Player : MonoBehaviour
         if (isLocal)
         {
             controller = gameObject.AddComponent<CharacterController>();
-            controller.height = 1f;
-            controller.radius = 0.3f;
-            controller.center = new Vector3(0, 0.5f, 0);
+            controller.height = Blob.Height;
+            controller.radius = 0.45f;
+            controller.center = new Vector3(0, Blob.Height * 0.5f, 0);
             controller.slopeLimit = 50f;
-            controller.stepOffset = 0.3f;
+            controller.stepOffset = 0.45f;
             marker = Mats.Part(null, Mats.Cube, Mats.Make(new Color(1f, 1f, 1f)), Vector3.zero, new Vector3(0.6f, 0.04f, 0.6f));
             marker.name = "Target";
         }
@@ -69,9 +69,9 @@ public class Player : MonoBehaviour
             pusher = go.AddComponent<Rigidbody>();
             pusher.isKinematic = true;
             var capsule = go.AddComponent<CapsuleCollider>();
-            capsule.radius = 0.42f;
-            capsule.height = 0.9f;
-            capsule.center = new Vector3(0, 0.72f, 0);
+            capsule.radius = 0.6f;
+            capsule.height = 1.4f;
+            capsule.center = new Vector3(0, 1.1f, 0);
             if (controller != null) Physics.IgnoreCollision(controller, capsule);
         }
     }

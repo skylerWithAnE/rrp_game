@@ -41,7 +41,7 @@ public class CameraRig : MonoBehaviour
             pitch = Mathf.Clamp(pitch - look.y * 0.12f, -5f, 78f);
         }
 
-        Vector3 focus = p.transform.position + Vector3.up * 1.3f;
+        Vector3 focus = p.transform.position + Vector3.up * (Blob.Height + 0.4f);
         Vector3 back = Quaternion.Euler(pitch, yaw, 0) * Vector3.back;
         // come in closer rather than look through a hill, a house or a tunnel roof
         float reach = distance;

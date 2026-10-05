@@ -19,6 +19,7 @@ public struct Spring
 public class Blob : MonoBehaviour
 {
     public const int SwingScoop = 0, SwingFling = 1, SwingSmack = 2;
+    public const float Height = 1.6f;   // a blob is 1.6 m tall; the parts below are modelled 1 m tall and scaled
 
     Transform body, shovel, loadVisual;
     MeshRenderer loadRenderer;
@@ -63,8 +64,8 @@ public class Blob : MonoBehaviour
         loadRenderer.sharedMaterial = Cubes.MaterialFor((byte)load);
         // a partial oil load shows as a stack of thin bits
         // the cube is far bigger than the shovel, and is carried that way
-        float height = bits == 0 ? 0.7f : 0.14f * bits;
-        loadVisual.localScale = new Vector3(0.7f, height, 0.7f);
+        float height = bits == 0 ? 0.45f : 0.09f * bits;
+        loadVisual.localScale = new Vector3(0.45f, height, 0.45f);
         loadVisual.localPosition = new Vector3(0, 0.02f + height * 0.5f, 0.88f);
     }
 
@@ -93,7 +94,7 @@ public class Blob : MonoBehaviour
         float bob = grounded ? Mathf.Sin(walkPhase * Mathf.PI) * 0.07f * Mathf.Clamp01(speed / 3f) : 0;
         float sy = Mathf.Clamp(squash.x + bob, 0.45f, 1.7f);
         float sxz = 1f / Mathf.Sqrt(sy); // keeps the volume
-        body.localScale = new Vector3(sxz, sy, sxz);
+        body.localScale = new Vector3(sxz, sy, sxz) * Height;
 
         // lean into movement; flop over when knocked down
         leanX.Step(Mathf.Clamp(local.z * 3.5f, -22f, 22f), 2.5f, 0.5f, dt);

@@ -28,6 +28,9 @@ Decided by the user on 2026-10-04, for the redesign:
 2. **First person.**
 3. **Throwing cubes around is out of favour.** It was not as funny as hoped and is expected to become
    a problem later.
+4. **A blob is 1.6 m tall.** The prototype's blobs were 1 m. The code was changed to 1.6 m in the
+   session's last commit; it compiles and builds but **has not been run or played**. Every other
+   size in the redesign should be chosen in metres against that.
 
 **The redesign is about mechanics** (user, 2026-10-04). Do not let the look of other games steer
 the mechanics prototype.
@@ -328,7 +331,7 @@ Claude suggests settling these, with numbers and pictures, before any system is 
 
 1. **A reference for scale and terrain.** One or two Valheim screenshots that show the scale and
    the terraforming wanted. The look is parked: this is a mechanics prototype.
-2. **Three sizes in metres**: eye height, road width, truck size. The Satisfactory truck is 6.5 by
+2. **Sizes in metres** against a 1.6 m blob: eye height, road width, truck size. The Satisfactory truck is 6.5 by
    10.5 m.
 3. **How big is the job?** Road length in metres, and whether 20 to 30 minutes still outranks size.
 4. **What are the tools**, now that there is more than one? What does each do to the ground?
@@ -341,7 +344,8 @@ Claude suggests settling these, with numbers and pictures, before any system is 
 8. ~~Is multiplayer still the point from day one?~~ **Answered by the user 2026-10-04: yes.** Keep
    building and verifying every system networked from the start.
 9. ~~Characters: blobs, or people?~~ **Answered by the user 2026-10-04: keep the blobs** as
-   placeholders. In first person their size and eye height still need choosing.
+   placeholders, **1.6 m tall**. Eye height for first person is still to choose (about 1.4 m on a
+   blob that size).
 10. **Should Claude read `docs/archive/`?** It may already answer some of these.
 
 And one process suggestion: start with a walkable grey-box at the right scale, in first person,
