@@ -227,7 +227,8 @@ public class AutoTest : MonoBehaviour
             s.Append(" plot").Append(plot.id).Append('=').Append(plot.Hash().ToString("x8")).Append(" level=").Append((plot.roadShare * 100f).ToString("0.0")).Append('/').Append((plot.shoulderShare * 100f).ToString("0.0"))
                 .Append('/').Append((plot.gravelShare * 100f).ToString("0.0")).Append('/').Append((plot.packedShare * 100f).ToString("0.0")).Append(" clicks=").Append(plot.clicks).Append(" stakes=").Append(plot.stakes.Count).Append('+').Append(plot.links.Count);
         s.Append(" lorries=").Append(g.lorries.State());
-        s.Append(" haul=").Append(g.lorries.haulState).Append('/').Append(g.lorries.haulLoad).Append(" stock=").Append(g.plots[Plot.Quarry].stock);
+        s.Append(" rigs=").Append(g.lorries.RigState()).Append(" stock=").Append(g.plots[Plot.Quarry].stock).Append(" carrying=").Append(g.plots[Plot.Quarry].carrying)
+            .Append(" heap=").Append(g.plots[Plot.Quarry].heapPlaced ? g.plots[Plot.Quarry].heapAt.ToString("0.0") : "none");
         s.Append(" blocks=").Append(g.blocks.Count);
         s.Append(" cubes=").Append(g.cubes.Loose).Append(" moving=").Append(Net.IsHost ? g.cubes.Moving : g.cubes.clientMoving);
         s.Append(" rest=").Append(g.cubes.RestHash().ToString("x8"));

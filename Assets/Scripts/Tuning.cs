@@ -71,10 +71,12 @@ public class Tuning : ScriptableObject
     [Range(30, 90)] public float junctionAngle = 60f;
 
     [Header("Quarry (the Quarry test ground only)")]
-    [Tooltip("Shovels of gravel the truck carries. Full, it sets off for the drop.")]
-    [Range(5, 100)] public float haulLoad = 30f;
-    [Tooltip("How many clicks of laying one shovel is worth once it is unloaded. 3 lays one square to full depth.")]
-    [Range(1, 10)] public float shovelWorth = 3f;
+    [Tooltip("Shovels of gravel the truck carries.")]
+    [Range(2, 100)] public float haulLoad = 12f;
+    [Tooltip("How many clicks of laying one shovel is worth once it is on the heap. 3 lays one square to full depth.")]
+    [Range(1, 30)] public float shovelWorth = 8f;
+    [Tooltip("How far a loaded shovel can be flung, into the truck or onto the heap (m).")]
+    [Range(3, 30)] public float flingReach = 16f;
     [Tooltip("1: gravel laid at the quarry comes off the heap at the drop, and none can be laid when it is empty. 0: gravel is free, as everywhere else.")]
     [Range(0, 1)] public float gravelFromStock = 1f;
 

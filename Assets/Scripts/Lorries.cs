@@ -18,10 +18,10 @@ using UnityEngine;
 // towns' stakes. From then on a truck sets off from each town every few seconds, whatever state
 // the road is in, up to six on the way in each lane.
 //
-// The quarry has one truck more, the gravel truck, which does not drive until it is full. It
-// waits at the quarry's loading bay while players shovel gravel into it, drives to the drop by
-// any road, service roads included, waits there while they shovel it off, and then leaves by a
-// road for everyone. A new one comes to the bay a few seconds later.
+// Some trucks do not drive by themselves. They stand at a depot (a stake a plot names as one)
+// until a player sends them to another, drive there by any road, service roads included, and
+// stand again. The quarry's gravel truck is one: it is shovelled full at the quarry and
+// shovelled empty at the drop. These are the "rigs" below.
 public class Lorries : MonoBehaviour
 {
     const float Travel = 1.1f;              // length of a wheel's ray: spring travel plus the wheel's radius
@@ -31,7 +31,7 @@ public class Lorries : MonoBehaviour
     const float Wait = 3f;                  // seconds before the next truck sets off
     const int LandLorries = 12;             // the most on a map's road at once, both lanes together
 
-    class Lorry
+    internal class Lorry
     {
         public int plot;
         public bool back;                   // drives from the last stake to the first, in the other lane
@@ -45,6 +45,7 @@ public class Lorries : MonoBehaviour
         public float stuck, flipped, launch = -1, wait, wear;
         public Vector3 netPos;
         public Quaternion netRot = Quaternion.identity;
+        public Rig rig;                     // set if it is a truck that waits to be sent
         public bool Alive => body != null;
     }
 
@@ -52,21 +53,29 @@ public class Lorries : MonoBehaviour
     float sendTimer;
     readonly float[] landWait = new float[2];   // host: seconds until the next truck sets off from each town
 
-    public const int Loading = 1, Hauling = 2, Unloading = 3, Leaving = 4;
-    Lorry hauler;                   // the quarry's gravel truck
-    public int haulLoad, haulState; // shovels on it, and which of the four it is doing (0: there is none)
-    float haulWait;                 // host: seconds until the next one comes to the bay
-    readonly Msg snapshot = new Msg(512);
+    readonly Msg snapshot = new Msg(1024);
     readonly List<Vector3> touching = new List<Vector3>();
+
+    // A truck that waits to be sent.
+    public class Rig
+    {
+        public int plot, kind, home;    // which plot's roads it uses, what it is, and the depot it first stands at
+        public int at, to;              // the depot it stands at (-1 while it drives), and the one it is going to
+        public int load;                // what is on it
+        public float wait;              // host: seconds until a new one stands at home, when there is none
+        internal Lorry l;
+    }
+    public const int GravelTruck = 0;
+    public Rig[] rigs = { new Rig { plot = Plot.Quarry, kind = GravelTruck, home = 0 } };
 
     void Ensure()
     {
         if (lorries != null) return;
         // two for each station's plot, then the map's
         int stations = Plot.Land * 2;
-        lorries = new Lorry[stations + LandLorries + 1];
+        lorries = new Lorry[stations + LandLorries + rigs.Length];
         for (int i = 0; i < lorries.Length; i++) lorries[i] = new Lorry { plot = i < stations ? i / 2 : Plot.Land, back = i % 2 == 1 };
-        hauler = lorries[lorries.Length - 1] = new Lorry { plot = Plot.Quarry };
+        for (int r = 0; r < rigs.Length; r++) rigs[r].l = lorries[stations + LandLorries + r] = new Lorry { plot = rigs[r].plot, rig = rigs[r] };
     }
 
     public void Clear()
@@ -80,58 +89,67 @@ public class Lorries : MonoBehaviour
             l.launch = -1;
             l.wait = Wait + (l.back ? 1.5f : 0);
             // the example roads always have trucks on the way
-            l.wanted = l.plot >= 3 && l.plot != Plot.Land && l != hauler;
+            l.wanted = l.plot >= 3 && l.plot != Plot.Land && l.rig == null;
             l.once = false;
         }
         landWait[0] = 2f;
         landWait[1] = 3.5f;
-        haulLoad = haulState = 0;
-        haulWait = 2f;
+        foreach (var rig in rigs) { rig.at = rig.to = -1; rig.load = 0; rig.wait = 1.5f; }
     }
 
-    // ---- the gravel truck
+    // ---- trucks that wait to be sent
 
-    public bool IsHauler(Collider collider) { return hauler != null && hauler.Alive && collider.gameObject == hauler.body; }
-    public Vector3 HaulerAt => hauler != null && hauler.Alive ? hauler.body.transform.position : Game.I.plots[Plot.Quarry].stakes[0];
-    public string HaulerSays
+    public int RigOf(Collider collider)
     {
-        get
-        {
-            int full = Mathf.RoundToInt(Game.I.tuning.haulLoad);
-            switch (haulState)
-            {
-                case Loading: return "Gravel truck: " + haulLoad + " of " + full + " shovels.\nPress 3 and hold left click on the quarry's rock.";
-                case Hauling: return "Gravel truck: full, on its way to the drop.";
-                case Unloading: return "Gravel truck: " + haulLoad + " shovels to unload.\nPress 3 and hold left click on the truck.";
-                case Leaving: return "Gravel truck: empty, leaving.";
-                default: return "The next gravel truck is on its way.\n(If none comes, no road joins the quarry to the drop.)";
-            }
-        }
+        for (int r = 0; r < rigs.Length; r++)
+            if (rigs[r].l != null && rigs[r].l.Alive && collider.gameObject == rigs[r].l.body) return r;
+        return -1;
     }
 
-    // host: a shovel of gravel into the truck at the quarry (0), or off it at the drop (1)
-    public bool Shovel(Plot quarry, int what)
+    // the depot a truck is standing at, or -1 if it is driving or wrecked
+    public int StandingAt(int rig) { return rigs[rig].l != null && rigs[rig].l.Alive && rigs[rig].l.launch < 0 ? rigs[rig].at : -1; }
+
+    public Vector3 RigAt(int rig)
     {
-        var t = Game.I.tuning;
-        if (hauler == null || !hauler.Alive || hauler.launch >= 0) return false;
-        if (what == 0)
-        {
-            if (haulState != Loading) return false;
-            if (++haulLoad >= Mathf.RoundToInt(t.haulLoad)) haulState = Hauling;
-            return true;
-        }
-        if (haulState != Unloading || haulLoad <= 0) return false;
-        haulLoad--;
-        quarry.stock += Mathf.RoundToInt(t.shovelWorth);
-        if (haulLoad > 0) return true;
-        // empty: away by a road for everyone, if there is one
-        if (quarry.LeaveRoute(hauler.path))
-        {
-            haulState = Leaving;
-            hauler.index = hauler.reached = 0;
-            hauler.stuck = 0;
-        }
-        else Remove(hauler);
+        var plot = Game.I.plots[rigs[rig].plot];
+        return rigs[rig].l != null && rigs[rig].l.Alive ? rigs[rig].l.body.transform.position : plot.stakes.Count > 0 ? plot.stakes[0] : Vector3.zero;
+    }
+
+    public string RigSays(int rig)
+    {
+        var r = rigs[rig];
+        var plot = Game.I.plots[r.plot];
+        if (r.l == null || !r.l.Alive) return "The next truck is on its way.\n(If none comes, no road joins the depots.)";
+        string what = "Gravel truck: " + r.load + " of " + Mathf.RoundToInt(Game.I.tuning.haulLoad) + " shovels aboard.";
+        return r.at < 0 ? what + "\nOn its way to " + plot.DepotName(r.to) + "." : what + "\nStanding at " + plot.DepotName(r.at) + ". Right click it to send it on.";
+    }
+
+    public string RigState()
+    {
+        var s = new StringBuilder();
+        foreach (var r in rigs) s.Append(r.at).Append('>').Append(r.to).Append('/').Append(r.load).Append(',');
+        return s.ToString();
+    }
+
+    // host: send a standing truck to another depot. It is put at the start of its way, facing
+    // along it: there is no turning round at the end of a road yet.
+    public bool Send(int rig, int depot)
+    {
+        if (rig < 0 || rig >= rigs.Length) return false;
+        var r = rigs[rig];
+        if (StandingAt(rig) < 0 || depot == r.at || !Game.I.plots[r.plot].DepotRoute(r.l.path, r.at, depot)) return false;
+        var path = r.l.path;
+        Vector3 start = path[1], ahead = path[5] - path[1];
+        start.y = Game.I.plots[r.plot].HeightAt(start.x, start.z) + 0.3f;
+        ahead.y = 0;
+        r.l.rb.position = start;
+        r.l.rb.rotation = Quaternion.LookRotation(ahead);
+        r.l.body.transform.SetPositionAndRotation(start, Quaternion.LookRotation(ahead));
+        r.l.rb.linearVelocity = r.l.rb.angularVelocity = Vector3.zero;
+        r.l.index = r.l.reached = 0;
+        r.l.stuck = r.l.flipped = 0;
+        r.to = depot;
+        r.at = -1;
         return true;
     }
 
@@ -214,7 +232,7 @@ public class Lorries : MonoBehaviour
         l.launch = -1;
         l.wait = Wait;
         if (l.once) l.wanted = l.once = false;
-        if (l == hauler) { haulState = haulLoad = 0; haulWait = Wait; }
+        if (l.rig != null) { l.rig.at = l.rig.to = -1; l.rig.load = 0; l.rig.wait = Wait; }
     }
 
     void Update()
@@ -252,17 +270,16 @@ public class Lorries : MonoBehaviour
             }
         }
 
-        // the quarry: an empty truck comes to the loading bay whenever there is none
-        var quarry = g.plots[Plot.Quarry];
-        if (quarry.Ready && !hauler.Alive)
+        // a truck that waits to be sent: a new one stands at its home depot whenever there is none
+        foreach (var rig in rigs)
         {
-            haulWait -= Time.deltaTime;
-            if (haulWait <= 0 && quarry.HaulRoute(hauler.path))
-            {
-                SetOff(hauler);
-                haulState = Loading;
-                haulLoad = 0;
-            }
+            if (rig.l.Alive || !g.plots[rig.plot].Ready) continue;
+            rig.wait -= Time.deltaTime;
+            if (rig.wait > 0 || !g.plots[rig.plot].DepotStand(rig.home, out Vector3 stand, out Quaternion facing)) continue;
+            Build(rig.l, stand, facing);
+            rig.at = rig.home;
+            rig.to = -1;
+            rig.load = 0;
         }
 
         // the map: once the towns are joined, a truck from each every few seconds
@@ -295,9 +312,18 @@ public class Lorries : MonoBehaviour
             snapshot.V3(l.body.transform.position);
             snapshot.Rot(l.body.transform.rotation);
         }
-        snapshot.U8((byte)haulLoad);
-        snapshot.U8((byte)haulState);
+        foreach (var rig in rigs)
+        {
+            snapshot.U8((byte)(rig.at + 1));
+            snapshot.U8((byte)(rig.to + 1));
+            snapshot.U8((byte)rig.load);
+        }
+        var quarry = g.plots[Plot.Quarry];
         snapshot.U16((ushort)Mathf.Clamp(quarry.stock, 0, 65535));
+        snapshot.U8((byte)quarry.carrying);
+        snapshot.U8((byte)(quarry.heapPlaced ? 1 : 0));
+        snapshot.F32(quarry.heapAt.x);
+        snapshot.F32(quarry.heapAt.z);
         Net.ToClients(snapshot, false);
     }
 
@@ -339,9 +365,17 @@ public class Lorries : MonoBehaviour
             l.netPos = position;
             l.netRot = rotation;
         }
-        haulLoad = m.U8();
-        haulState = m.U8();
-        Game.I.plots[Plot.Quarry].stock = m.U16();
+        foreach (var rig in rigs)
+        {
+            rig.at = m.U8() - 1;
+            rig.to = m.U8() - 1;
+            rig.load = m.U8();
+        }
+        var quarry = Game.I.plots[Plot.Quarry];
+        quarry.stock = m.U16();
+        quarry.carrying = m.U8();
+        quarry.heapPlaced = m.U8() != 0;
+        quarry.heapAt = new Vector3(m.F32(), 0, m.F32());
     }
 
     static Vector3 Flat(Vector3 v) { v.y = 0; return v; }
@@ -375,10 +409,10 @@ public class Lorries : MonoBehaviour
                 rb.AddForceAtPosition(-tr.right * Vector3.Dot(v, tr.right) * Grip * mass * 0.25f, origin);
             }
             if (l.launch >= 0) continue;
-            if (l == hauler && (haulState == Loading || haulState == Unloading))
+            if (l.rig != null && l.rig.at >= 0)
             {
-                // standing while it is shovelled into or out of
-                rb.AddForce(-Flat(rb.linearVelocity) * 5f * mass);
+                // standing at a depot until it is sent
+                rb.AddForce(-Flat(rb.linearVelocity) * 20f * mass);
                 l.stuck = 0;
                 continue;
             }
@@ -409,7 +443,7 @@ public class Lorries : MonoBehaviour
             if (l.index >= path.Count - 2)
             {
                 // it made it
-                if (l == hauler && haulState == Hauling) { haulState = Unloading; continue; }
+                if (l.rig != null) { l.rig.at = l.rig.to; continue; }
                 l.trips++;
                 Remove(l);
                 continue;

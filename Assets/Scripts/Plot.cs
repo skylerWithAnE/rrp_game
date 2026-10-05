@@ -121,7 +121,14 @@ public class Plot : MonoBehaviour
     // a stake here takes more than two ropes. Only on the junction test ground until it has been played.
     bool Junctions => id >= 12 && id <= 16;
     public bool IsQuarry => id == Quarry;
-    public int stock;                       // the quarry: gravel unloaded at the drop and not yet laid, in clicks' worth
+    public int stock;                       // the quarry: gravel on the heap and not yet laid, in clicks' worth
+    public int carrying;                    // the quarry: which players' shovels are loaded, a bit each
+    public bool heapPlaced;                 // the quarry: a player has said where the heap goes
+    public Vector3 heapAt;
+    bool placing;                           // the local player is choosing where
+    public readonly List<int> depots = new List<int>();     // stakes where a truck stands until it is sent on
+    const float PitDepth = 8f, PitRim = 30f, PitFloor = 14f;    // the quarry's pit: how deep, and its radius at the top and at the floor
+    Vector3 PitCentre => origin + new Vector3(110f, 0, 55f);
     bool canLay, laid;                      // host, during a click: may gravel go down, and did any
     Transform quarryRoot, pile;             // the quarry: its rock, and the heap of gravel at the drop
 
@@ -206,7 +213,9 @@ public class Plot : MonoBehaviour
         coarse = null;
         edited = null;
         rocks.Clear();
-        stock = 0;
+        stock = carrying = 0;
+        heapPlaced = placing = false;
+        depots.Clear();
         quarryRoot = pile = null;
         fixedStakes = 0;
         joined = false;
@@ -274,18 +283,36 @@ public class Plot : MonoBehaviour
             case 14: Spokes(first - 25f, -50f, length, 180f, 30f, -30f); Lay(t, ox, oz, 0); break;
             case Quarry:
                 {
-                    // A field with the quarry at its far side. Stake 0 is the quarry's loading
-                    // bay and stake 1 the drop; neither can be pulled out. A service road runs
-                    // from the bay past the drop to a junction with a road for everyone, which
-                    // is on its line and bare: the work the gravel is for.
-                    Field(new Vector3(lane + 12f, 0, -8f), 104f, 76f, t.roughHeight * 0.4f, ox, oz);
-                    float[] at = { 80, 38,  40, 38,  60, 38,  20, 38,  20, 18,  20, 58 };
-                    for (int i = 0; i < at.Length; i += 2) stakes.Add(new Vector3(origin.x + at[i], BaseHeight, origin.z + at[i + 1]));
-                    links.Add(new Vector3Int(0, 2, 1));
-                    links.Add(new Vector3Int(2, 1, 1));
-                    links.Add(new Vector3Int(1, 3, 1));
-                    links.Add(new Vector3Int(4, 3, 0));
-                    links.Add(new Vector3Int(3, 5, 0));
+                    // High ground with a pit dug into it. The pit is a cone 8 m deep; a
+                    // service road comes along its rim and winds down three quarters of the
+                    // way round to the floor, where the rock is. The cone falls exactly as
+                    // fast as the road does, so the road is a bench cut into its side.
+                    // Stake 0 is the quarry's loading bay, on the floor, and stake 1 the drop,
+                    // up on top near a road for everyone that is bare and needs the gravel.
+                    // Those two are depots and cannot be pulled out.
+                    float top = BaseHeight + PitDepth;
+                    Field(new Vector3(lane + 12f, 0, -8f), 170f, 110f, t.roughHeight * 0.3f, ox, oz, top, 18f);
+                    Vector3 pit = PitCentre;
+                    for (int i = 0; i < h.Length; i++)
+                    {
+                        float u = i % w * Cell - (pit.x - origin.x), v = i / w * Cell - (pit.z - origin.z);
+                        float into = Mathf.Clamp01((PitRim - Mathf.Sqrt(u * u + v * v)) / (PitRim - PitFloor));
+                        // the pit's sides and floor are smooth: only the high ground is rough
+                        if (into > 0) h[i] = Mathf.Lerp(h[i], top, Mathf.Clamp01(into * 4f)) - PitDepth * into;
+                    }
+                    float[] at = { 0, 0,  38, 55,  20, 55,  20, 35,  20, 75,  51.9f, 63,  61, 76.1f,  73.2f, 83.1f,  92, 85 };
+                    for (int i = 0; i < at.Length; i += 2) stakes.Add(new Vector3(origin.x + at[i], top, origin.z + at[i + 1]));
+                    // the way down: ten stakes 30 degrees apart, the last of them the loading bay
+                    for (int i = 0; i <= 9; i++)
+                    {
+                        float angle = (90f - 30f * i) * Mathf.Deg2Rad, radius = PitRim - (PitRim - PitFloor) * i / 9f;
+                        var stake = new Vector3(pit.x + Mathf.Cos(angle) * radius, top - PitDepth * i / 9f, pit.z + Mathf.Sin(angle) * radius);
+                        if (i == 9) stakes[0] = stake; else stakes.Add(stake);
+                    }
+                    int[] service = { 2, 1,  1, 5,  5, 6,  6, 7,  7, 8,  8, 9,  9, 10,  10, 11,  11, 12,  12, 13,  13, 14,  14, 15,  15, 16,  16, 17,  17, 0 };
+                    for (int i = 0; i < service.Length; i += 2) links.Add(new Vector3Int(service[i], service[i + 1], 1));
+                    links.Add(new Vector3Int(3, 2, 0));
+                    links.Add(new Vector3Int(2, 4, 0));
                     fixedStakes = 2;
                     Rebuild();
                     for (int i = 0; i < h.Length; i++)
@@ -372,7 +399,7 @@ public class Plot : MonoBehaviour
     }
 
     // A rough, roughly level field with no line, falling away to the yard at its edges.
-    void Field(Vector3 corner, float width, float depth, float rough, float ox, float oz)
+    void Field(Vector3 corner, float width, float depth, float rough, float ox, float oz, float height = BaseHeight, float fall = Margin)
     {
         origin = corner;
         w = Mathf.CeilToInt(width / Cell) + 1;
@@ -382,7 +409,7 @@ public class Plot : MonoBehaviour
         {
             float u = i % w * Cell, v = i / w * Cell;
             float edge = Mathf.Min(Mathf.Min(u, width - u), Mathf.Min(v, depth - v));
-            h[i] = Mathf.Max(0, (BaseHeight + Noise(origin.x + u, origin.z + v, ox, oz) * rough) * Mathf.SmoothStep(0, 1, Mathf.Clamp01(edge / Margin)));
+            h[i] = Mathf.Max(0, (height + Noise(origin.x + u, origin.z + v, ox, oz) * rough) * Mathf.SmoothStep(0, 1, Mathf.Clamp01(edge / fall)));
         }
     }
 
@@ -645,6 +672,13 @@ public class Plot : MonoBehaviour
                 h[iz * w + ix] = mm / 1000f;
             }
         }
+    }
+
+    // where players start at the quarry: up on top, by the road that needs the gravel
+    public Vector3 QuarrySpawn(int slot)
+    {
+        float x = origin.x + 30f + slot * 1.3f, z = origin.z + 47f;
+        return new Vector3(x, Ready ? HeightAt(x, z) + 0.2f : 12f, z);
     }
 
     // where players start on the map: beside the first town's stake, looking at the other town
@@ -919,22 +953,26 @@ public class Plot : MonoBehaviour
             case 14: text = "A fork: two branches 60 degrees apart, the closest allowed."; at = stakes[0] + Vector3.up * 2.2f; break;
             case Quarry:
                 {
-                    text = "The quarry. Press 3 and hold left click on the rock\nto shovel gravel into the truck. Full, it drives to the drop.";
-                    at = stakes[0] + new Vector3(8f, 3.5f, 0);
-                    labels.Add(new Yard.Label());       // the heap at the drop, and the truck: written each frame
+                    text = "The quarry. Press 3. Click the rock to load your shovel,\nthen click the truck to fling it in. Right click the truck to send it.";
+                    at = new Vector3(PitCentre.x, stakes[0].y + 7f, PitCentre.z);
+                    labels.Add(new Yard.Label());       // the heap, and the truck: written each frame
                     labels.Add(new Yard.Label());
+                    depots.Add(0);
+                    depots.Add(1);
                     quarryRoot = new GameObject("Quarry").transform;
                     quarryRoot.SetParent(transform, false);
                     var stone = Mats.Make(new Color(0.36f, 0.35f, 0.38f), true);
                     for (int n = 0; n < 9; n++)
                     {
-                        float radius = 2.6f + n % 3 * 0.9f;
-                        Vector3 centre = stakes[0] + new Vector3(10f + n / 3 * 3.5f, radius * 0.45f + n % 2 * 1.5f - 1.2f, (n % 3 - 1) * 5.5f);
+                        float radius = 2.2f + n % 3 * 0.8f;
+                        Vector3 centre = new Vector3(PitCentre.x + 1f + n / 3 * 3f, stakes[0].y + radius * 0.4f + n % 2 * 1.2f - 0.6f, PitCentre.z + (n % 3 - 1) * 4.5f);
                         var rock = Mats.Part(quarryRoot, Mats.Sphere, stone, centre, new Vector3(radius * 2f, radius * 1.8f, radius * 2f));
                         rock.localRotation = Quaternion.Euler(n * 37f, n * 71f, n * 13f);
                         rock.gameObject.AddComponent<SphereCollider>();
                     }
-                    pile = Mats.Part(quarryRoot, Mats.Sphere, Mats.Make(GravelLoose, true), stakes[1] + new Vector3(0, -1.2f, -9f), Vector3.one * 0.1f);
+                    pile = Mats.Part(quarryRoot, Mats.Sphere, Mats.Make(GravelLoose, true), Vector3.zero, Vector3.one);
+                    pile.gameObject.AddComponent<SphereCollider>();
+                    pile.gameObject.SetActive(false);
                     break;
                 }
             case 15: text = "A junction to build. Press 1, click the middle stake,\nthen click the ground to one side for a branch.\nA stake here takes up to four ropes."; at = stakes[1] + Vector3.up * 2.2f; break;
@@ -1812,31 +1850,33 @@ public class Plot : MonoBehaviour
         return ends;
     }
 
-    // The quarry: the gravel truck's way from the loading bay to the drop, by any road. It
-    // stops a few metres short of the drop's stake.
-    public bool HaulRoute(List<Vector3> path)
+    // A depot is a stake where a truck stands until it is sent somewhere. This is the way from
+    // one depot to another, by any road, service roads included. It stops a few metres short
+    // of the stake it is going to.
+    public bool DepotRoute(List<Vector3> path, int from, int to)
     {
         path.Clear();
-        if (!Ready || !PathBetween(0, 1)) return false;
-        Lane(path, false, 2f, 0);
-        if (path.Count > 14) path.RemoveRange(path.Count - 7, 7);
+        if (!Ready || from < 0 || to < 0 || from >= depots.Count || to >= depots.Count || !PathBetween(depots[from], depots[to])) return false;
+        Lane(path, false, 0, 0);
+        if (path.Count > 16) path.RemoveRange(path.Count - 7, 7);
         return path.Count > 6;
     }
 
-    // The quarry: the emptied truck's way out, from the drop to an end of the roads for everyone.
-    public bool LeaveRoute(List<Vector3> path)
+    // where a truck stands at a depot, and which way it faces: as if it had just driven in
+    // from the next depot along
+    public bool DepotStand(int depot, out Vector3 at, out Quaternion facing)
     {
-        path.Clear();
-        if (!Ready) return false;
-        var ends = TownEnds();
-        for (int tries = 0, first = Random.Range(0, Mathf.Max(1, ends.Count)); tries < ends.Count; tries++)
-        {
-            if (!PathBetween(1, ends[(first + tries) % ends.Count])) continue;
-            Lane(path, false, 0, 14f);
-            return path.Count > 6;
-        }
-        return false;
+        at = Vector3.zero;
+        facing = Quaternion.identity;
+        var path = new List<Vector3>();
+        if (!DepotRoute(path, (depot + 1) % Mathf.Max(1, depots.Count), depot)) return false;
+        at = path[path.Count - 3];
+        at.y = HeightAt(at.x, at.z) + 0.3f;
+        facing = Quaternion.LookRotation(Flat(path[path.Count - 1] - path[path.Count - 5]));
+        return true;
     }
+
+    public string DepotName(int depot) { return IsQuarry ? (depot == 0 ? "the quarry" : "the drop") : depot == 0 ? "the yard" : "the far end"; }
 
     // The points of a truck's way along the sections in `chain`: a run-up, the right-hand lane
     // of each section, and a run-off; or, with `back`, the same road the other way in the other lane.
@@ -1904,21 +1944,50 @@ public class Plot : MonoBehaviour
         Net.ToHost(m, true);
     }
 
-    // host: one shovel of gravel, into the truck at the quarry (0) or off it at the drop (1),
-    // no faster than clicks go
-    public bool HostShovel(int slot, int what)
+    public const int Scoop = 0, FlingIn = 1, TakeOff = 2, FlingToHeap = 3, PlaceHeap = 4, SendRig = 5;
+
+    // host: one thing a player does with a shovel or a truck here.
+    //   Scoop        load the shovel at the rock
+    //   FlingIn      fling it into the gravel truck, which must be standing at the quarry
+    //   TakeOff      load the shovel from the truck, which must be standing somewhere else
+    //   FlingToHeap  fling it onto the heap
+    //   PlaceHeap    say where the heap is to be (a, b are x and z)
+    //   SendRig      send truck number a to depot number b
+    public bool HostShovel(int slot, int what, float a, float b)
     {
-        if (!Ready || !IsQuarry || Time.time < hostNextClick[slot]) return false;
-        hostNextClick[slot] = Time.time + 0.8f / Game.I.tuning.clicksPerSecond;
-        return Game.I.lorries.Shovel(this, what);
+        if (!Ready) return false;
+        var t = Game.I.tuning;
+        var rigs = Game.I.lorries;
+        if (what == SendRig) return rigs.Send(Mathf.RoundToInt(a), Mathf.RoundToInt(b));
+        if (!IsQuarry) return false;
+        if (what == PlaceHeap)
+        {
+            // only while there is nothing on it to move
+            if ((heapPlaced && stock > 0) || !Inside(a, b, 1f)) return false;
+            heapPlaced = true;
+            heapAt = new Vector3(a, 0, b);
+            return true;
+        }
+        if (Time.time < hostNextClick[slot]) return false;
+        hostNextClick[slot] = Time.time + 0.8f / t.clicksPerSecond;
+        bool full = (carrying & 1 << slot) != 0;
+        int at = rigs.StandingAt(Lorries.GravelTruck);
+        if (what == Scoop && !full) carrying |= 1 << slot;
+        else if (what == FlingIn && full && at == 0 && rigs.rigs[Lorries.GravelTruck].load < Mathf.RoundToInt(t.haulLoad)) { rigs.rigs[Lorries.GravelTruck].load++; carrying &= ~(1 << slot); }
+        else if (what == TakeOff && !full && at > 0 && heapPlaced && rigs.rigs[Lorries.GravelTruck].load > 0) { rigs.rigs[Lorries.GravelTruck].load--; carrying |= 1 << slot; }
+        else if (what == FlingToHeap && full && heapPlaced) { stock += Mathf.RoundToInt(t.shovelWorth); carrying &= ~(1 << slot); }
+        else return false;
+        return true;
     }
 
-    public void RequestShovel(int what)
+    public void RequestShovel(int what, float a = 0, float b = 0)
     {
-        if (Net.IsHost) { HostShovel(Game.I.localSlot, what); return; }
-        var m = Msg.New(Op.Shovel, 8);
+        if (Net.IsHost) { HostShovel(Game.I.localSlot, what, a, b); return; }
+        var m = Msg.New(Op.Shovel, 16);
         m.U8((byte)id);
         m.U8((byte)what);
+        m.F32(a);
+        m.F32(b);
         Net.ToHost(m, true);
     }
 
@@ -2009,15 +2078,76 @@ public class Plot : MonoBehaviour
         if (stage >= 0 && mouse.leftButton.wasPressedThisFrame) RequestFinish(link);
     }
 
-    // The quarry's own business each frame: what its labels say and how big the heap is, and
-    // shovelling, which is the gravel tool held on the rock or on the truck.
+    // A truck that stands at depots, under the crosshair with any tool in hand: say where it
+    // can be sent, and send it on a right click. With more than two depots the wheel would pick.
+    bool RigTool(Game g, Tuning tuning, Mouse mouse, RaycastHit hit)
+    {
+        int rig = g.lorries.RigOf(hit.collider);
+        if (rig < 0 || g.lorries.rigs[rig].plot != id) return false;
+        int at = g.lorries.rigs[rig].at;
+        if (at < 0) { Say("on its way to " + DepotName(g.lorries.rigs[rig].to), false); return true; }
+        int to = (at + 1) % Mathf.Max(1, depots.Count);
+        rigLine = "right click sends it to " + DepotName(to);
+        if (mouse.rightButton.wasPressedThisFrame) RequestShovel(SendRig, rig, to);
+        return false;   // the caller may have more to say about it
+    }
+    string rigLine = "";
+
+    // The quarry with the gravel tool in hand. A shovel holds one load: load it at the rock and
+    // fling it into the truck, or load it from the truck and fling it onto the heap. The heap
+    // has to be put somewhere first: the first click on a loaded truck at the drop starts that.
     bool QuarryTool(Game g, Tuning tuning, Mouse mouse, Transform eye)
     {
-        if (Tool != Gravel || !Physics.Raycast(eye.position, eye.forward, out var hit, tuning.clickReach, ~0, QueryTriggerInteraction.Ignore)) return false;
-        int what = hit.collider.transform.parent == quarryRoot && hit.collider.transform != pile ? 0 : g.lorries.IsHauler(hit.collider) ? 1 : -1;
-        if (what < 0) return false;
-        Say(what == 0 ? "hold left click to shovel gravel into the truck" : "hold left click to shovel the gravel off", false);
-        if (mouse.leftButton.isPressed && Time.time >= nextClick)
+        bool full = (carrying & 1 << g.localSlot) != 0;
+        bool click = mouse.leftButton.isPressed && Time.time >= nextClick;
+        string hands = full ? "Your shovel is loaded. " : "";
+        if (placing)
+        {
+            // choosing where the heap goes
+            if (mouse.rightButton.wasPressedThisFrame || heapPlaced && stock > 0) { placing = false; return true; }
+            if (!Physics.Raycast(eye.position, eye.forward, out var ground, tuning.flingReach, ~0, QueryTriggerInteraction.Ignore) || ground.collider.transform.parent != transform) { Say("point at the ground where the heap should go", false); return true; }
+            Ring(ground.point, 1.6f, GravelLoose);
+            Say("left click puts the heap here. Right click cancels", false);
+            if (mouse.leftButton.wasPressedThisFrame) { RequestShovel(PlaceHeap, ground.point.x, ground.point.z); placing = false; nextClick = Time.time + 0.3f; }
+            return true;
+        }
+        rigLine = "";
+        if (!Physics.Raycast(eye.position, eye.forward, out var hit, tuning.flingReach, ~0, QueryTriggerInteraction.Ignore)) return false;
+        bool near = hit.distance <= tuning.clickReach;
+        if (RigTool(g, tuning, mouse, hit)) return true;
+        int what = -1;
+        if (hit.collider.transform == pile)
+        {
+            if (full) { what = FlingToHeap; Say("left click flings it onto the heap", false); }
+            else Say("the heap: " + stock + " clicks' worth of gravel", false);
+        }
+        else if (hit.collider.transform.parent == quarryRoot)
+        {
+            if (full) Say(hands + "Fling it into the truck", false);
+            else if (!near) Say("go closer to the rock to load your shovel", false);
+            else { what = Scoop; Say("left click loads your shovel", false); }
+        }
+        else if (g.lorries.RigOf(hit.collider) == Lorries.GravelTruck)
+        {
+            var rig = g.lorries.rigs[Lorries.GravelTruck];
+            int most = Mathf.RoundToInt(tuning.haulLoad);
+            if (rig.at == 0)
+            {
+                if (full && rig.load < most) { what = FlingIn; Say("left click flings it into the truck (" + rig.load + " of " + most + ").   " + rigLine, false); }
+                else Say((rig.load >= most ? "The truck is full.   " : "Load your shovel at the rock.   ") + rigLine, false);
+            }
+            else if (rig.load == 0) Say("The truck is empty.   " + rigLine, false);
+            else if (full) Say(hands + (heapPlaced ? "Fling it onto the heap" : ""), false);
+            else if (!heapPlaced)
+            {
+                Say("left click, then say where the heap of gravel should go", false);
+                if (mouse.leftButton.wasPressedThisFrame) placing = true;
+            }
+            else if (!near) Say("go closer to the truck to load your shovel from it", false);
+            else { what = TakeOff; Say("left click loads your shovel from the truck (" + rig.load + " left)", false); }
+        }
+        else return false;
+        if (what >= 0 && click)
         {
             nextClick = Time.time + 1f / tuning.clicksPerSecond;
             RequestShovel(what);
@@ -2025,12 +2155,32 @@ public class Plot : MonoBehaviour
         return true;
     }
 
+    // a ring on the ground
+    void Ring(Vector3 centre, float radius, Color color)
+    {
+        const int Points = 24;
+        cursor.enabled = true;
+        cursor.startColor = cursor.endColor = color;
+        cursor.positionCount = Points;
+        for (int k = 0; k < Points; k++)
+        {
+            float angle = k * Mathf.PI * 2f / Points;
+            Vector3 p = centre + new Vector3(Mathf.Cos(angle), 0, Mathf.Sin(angle)) * radius;
+            cursor.SetPosition(k, new Vector3(p.x, HeightAt(p.x, p.z) + 0.06f, p.z));
+        }
+    }
+
     void QuarryLabels(Game g)
     {
-        float size = Mathf.Pow(Mathf.Max(stock, 0.02f), 1f / 3f) * 0.9f;
-        pile.localScale = new Vector3(size * 2f, size * 1.2f, size * 2f);
-        labels[1] = new Yard.Label { at = pile.position + Vector3.up * (size * 0.6f + 1.6f), text = "Gravel at the drop: " + stock + " clicks' worth" + (stock == 0 && g.tuning.gravelFromStock >= 0.5f ? "\nNone can be laid here until the truck is unloaded." : "") };
-        labels[2] = new Yard.Label { at = g.lorries.HaulerAt + Vector3.up * 4f, text = g.lorries.HaulerSays };
+        float size = Mathf.Pow(Mathf.Max(stock, 1f), 1f / 3f) * 0.6f + 0.4f;
+        pile.gameObject.SetActive(heapPlaced);
+        if (heapPlaced)
+        {
+            pile.position = new Vector3(heapAt.x, HeightAt(heapAt.x, heapAt.z) + size * 0.2f, heapAt.z);
+            pile.localScale = new Vector3(size * 2f, size * 1.2f, size * 2f);
+        }
+        labels[1] = new Yard.Label { at = pile.position + Vector3.up * (size * 0.6f + 1.4f), text = !heapPlaced ? "" : "The heap: " + stock + " clicks' worth of gravel." + (stock == 0 ? "\nNone can be laid here until some is unloaded." : "") };
+        labels[2] = new Yard.Label { at = g.lorries.RigAt(Lorries.GravelTruck) + Vector3.up * 4f, text = g.lorries.RigSays(Lorries.GravelTruck) };
     }
 
     // host: a truck is on this road, its wheels touching the ground at these spots. It does a
@@ -2118,7 +2268,14 @@ public class Plot : MonoBehaviour
             DevTool(tuning, mouse, eye);
             return;
         }
-        if (IsQuarry && QuarryTool(g, tuning, mouse, eye)) return;
+        if (IsQuarry && Tool == Gravel && QuarryTool(g, tuning, mouse, eye)) return;
+        // any other truck that waits to be sent: say so, and send it on a right click
+        if (depots.Count > 1 && !(IsQuarry && Tool == Gravel) && Physics.Raycast(eye.position, eye.forward, out var truck, tuning.flingReach, ~0, QueryTriggerInteraction.Ignore))
+        {
+            rigLine = "";
+            if (RigTool(g, tuning, mouse, truck)) return;
+            if (rigLine.Length > 0) { Say(rigLine, false); return; }
+        }
         if (hotPlot == this) DrawHot(tuning);
         if (!Physics.Raycast(eye.position, eye.forward, out var hit, tuning.clickReach, ~0, QueryTriggerInteraction.Ignore) || hit.collider.transform.parent != transform) return;
         Vector3 aim = hit.point;

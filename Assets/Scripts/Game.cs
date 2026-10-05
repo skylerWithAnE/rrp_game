@@ -314,10 +314,10 @@ public class Game : MonoBehaviour
         players[slot] = null;
     }
 
-    public Vector3 SpawnPoint(int slot) { return Plot.LandMap(map) ? plots[Plot.Land].SpawnAt(slot) : yard.Spawn(slot); }
+    public Vector3 SpawnPoint(int slot) { return Plot.LandMap(map) ? plots[Plot.Land].SpawnAt(slot) : map == Plot.QuarryMap ? plots[Plot.Quarry].QuarrySpawn(slot) : yard.Spawn(slot); }
 
     // is there ground to stand on yet? A client waits for the host to send it.
-    public bool WorldReady => Plot.LandMap(map) ? plots[Plot.Land].Ready : yard.Ready;
+    public bool WorldReady => Plot.LandMap(map) ? plots[Plot.Land].Ready : map == Plot.QuarryMap ? plots[Plot.Quarry].Ready : yard.Ready;
 
     // host: choose a map. Everyone gets its ground and starts again at its beginning. With
     // `again`, the land is made afresh from a new seed.
@@ -422,7 +422,8 @@ public class Game : MonoBehaviour
             else if (op == Op.Shovel)
             {
                 int plot = m.U8(), what = m.U8();
-                if (plot < plots.Length) plots[plot].HostShovel(slot, what);
+                float a = m.F32(), b = m.F32();
+                if (plot < plots.Length) plots[plot].HostShovel(slot, what, a, b);
             }
             else if (op == Op.Verb)
             {
