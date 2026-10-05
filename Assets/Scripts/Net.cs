@@ -18,6 +18,8 @@ public enum Op : byte
     Map, PlotCoarse, PlotPoints,    // the maps: which one, its land a height every metre, and the points changed since
     Zone, Shovel,                   // client -> host: give a section a role; a shovel of gravel on or off the truck
     Finish,                         // client -> host, the dev tool: do a whole section's next stage
+    Car, CarPose,                   // client -> host: get in or out of a vehicle or tip its bucket; where the one I drive is
+    Cars,                           // host -> clients: every driven vehicle
 }
 
 // A byte buffer with the few field types the game sends.

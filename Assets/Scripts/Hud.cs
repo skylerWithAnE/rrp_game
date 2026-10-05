@@ -37,6 +37,7 @@ public class Hud : MonoBehaviour
             if (kb.digit5Key.wasPressedThisFrame) Plot.Tool = Plot.Pave;
             if (kb.digit6Key.wasPressedThisFrame) Plot.Tool = Plot.Paint;
             if (kb.digit7Key.wasPressedThisFrame) Plot.Tool = Plot.Dev;
+            if (kb.digit8Key.wasPressedThisFrame) Plot.Tool = Plot.Brush;
         }
         if (!inGame) { Playing = false; ShowPanel = false; }
         Cursor.lockState = Playing ? CursorLockMode.Locked : CursorLockMode.None;
@@ -188,7 +189,7 @@ public class Hud : MonoBehaviour
 
     void Lobby(Game g, float width)
     {
-        GUILayout.BeginArea(new Rect(width / 2 - 250, 10, 520, Net.IsHost ? 132 : 60), box);
+        GUILayout.BeginArea(new Rect(width / 2 - 260, 10, 560, Net.IsHost ? 132 : 60), box);
         GUILayout.Label("<b>" + Plot.MapNames[g.map] + "</b>   " + g.PlayerCount + " of " + Session.MaxPlayers + " players", label);
         if (Net.IsHost)
         {
@@ -236,7 +237,7 @@ public class Hud : MonoBehaviour
         if (near != null && near.IsLand) text.Append("<size=12>road staked from town A: ").Append(Mathf.RoundToInt(near.roadLength)).Append(" m   towns joined: ").Append(near.joined ? "<b>YES</b>" : "no").Append("</size>\n");
         if (near != null && near.IsQuarry) text.Append("<size=12>gravel on the heap: ").Append(near.stock).Append(" clicks' worth").Append((near.carrying & 1 << g.localSlot) != 0 ? "   <b>shovel loaded</b>" : "").Append("</size>\n");
         if (near != null) g.lorries.Readout(text, near.id);
-        text.Append("holding: <b>").Append(Plot.Tool == Plot.Stakes ? "1 stakes" : Plot.Tool == Plot.Grade ? "2 grade" : Plot.Tool == Plot.Zone ? "4 zoning" : Plot.Tool == Plot.Dev ? "7 DEV: finish a section" : Plot.Tool == Plot.Pave ? "5 asphalt" : Plot.Tool == Plot.Paint ? "6 paint" : "3 gravel").Append("</b>   sprint ").Append(Player.Sprinting ? "ON" : "off").Append(Player.Flying ? "   <b>FLYING</b>" : "").Append('\n');
+        text.Append("holding: <b>").Append(Plot.Tool == Plot.Stakes ? "1 stakes" : Plot.Tool == Plot.Grade ? "2 grade" : Plot.Tool == Plot.Zone ? "4 zoning" : Plot.Tool == Plot.Dev ? "7 DEV: finish a section" : Plot.Tool == Plot.Pave ? "5 asphalt" : Plot.Tool == Plot.Paint ? "6 paint lines" : Plot.Tool == Plot.Brush ? "8 paint brush" : "3 gravel").Append("</b>   sprint ").Append(Player.Sprinting ? "ON" : "off").Append(Player.Flying ? "   <b>FLYING</b>" : "").Append('\n');
         if (g.phase == Phase.Job) text.Append("towns joined by asphalt: ").Append(g.road.asphaltLinked ? "YES" : "no").Append("   by paint: ").Append(g.road.paintedLinked ? "YES" : "no").Append('\n');
         if (g.phase == Phase.Job) text.Append("truck: ").Append(g.truck.alive ? "driving" : "none").Append('\n');
 
@@ -259,10 +260,10 @@ public class Hud : MonoBehaviour
             text.Append("from host ").Append(Kb(host.receivedRate)).Append("  to host ").Append(Kb(host.sentRate));
             text.Append("  rtt ").Append(g.utp.GetCurrentRtt(NetworkManager.ServerClientId)).Append(" ms\n");
         }
-        text.Append("<size=11>F1 tuning   F3 readout   Tab mouse\nWASD walk   Shift sprint on/off   Space hop   1 to 6 tools\ndev: 7 finishes a section   V flies (Space up, Ctrl down)\nstakes: left click places or chooses, wheel moves\nthe chosen rope, X removes, right click lets go</size>");
+        text.Append("<size=11>F1 tuning   F3 readout   Tab mouse\nWASD walk   Shift sprint on/off   Space hop   1 to 6 and 8 tools\nE drives a vehicle   right click sends a waiting truck\ndev: 7 finishes a section   V flies (Space up, Ctrl down)\nstakes: left click places or chooses, wheel moves\nthe chosen rope, X removes, right click lets go</size>");
 
-        GUI.Box(new Rect(8, 8, 360, 262), GUIContent.none, box);
-        GUI.Label(new Rect(16, 12, 350, 257), text.ToString(), label);
+        GUI.Box(new Rect(8, 8, 360, 278), GUIContent.none, box);
+        GUI.Label(new Rect(16, 12, 350, 273), text.ToString(), label);
     }
 
     // What each thing in the yard is and how big, written over it.

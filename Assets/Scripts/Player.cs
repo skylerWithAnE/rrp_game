@@ -27,6 +27,16 @@ public class Player : MonoBehaviour
 
     public static bool Sprinting;   // the local player's sprint toggle
     public static bool Flying;      // dev: the local player flies, through anything
+    bool wasDriving;
+    int drove;
+
+    // host: a blob in a vehicle's seat must not push the vehicle
+    public void Riding(bool riding)
+    {
+        if (pusher == null) return;
+        var capsule = pusher.GetComponent<Collider>();
+        if (capsule.enabled == riding) capsule.enabled = !riding;
+    }
     public Vector3 netPos;
     public float netYaw;
 
@@ -144,6 +154,22 @@ public class Player : MonoBehaviour
         if (bot == null) yaw = Mathf.LerpAngle(yaw, g.cam.yaw, 1f - Mathf.Exp(-16f * dt));
 
         if (!g.WorldReady || g.respawn) return;     // nothing to stand on yet
+        // driving: the blob sits in the seat and goes where the vehicle goes
+        if (Cars.Mine >= 0)
+        {
+            controller.enabled = false;
+            transform.position = g.cars.Seat(Cars.Mine);
+            wasDriving = true;
+            drove = Cars.Mine;
+            grounded = true;
+            return;
+        }
+        if (wasDriving)
+        {
+            // out of the door, on the left, well clear: a blob inside a vehicle would shove it away
+            wasDriving = false;
+            if (drove < g.cars.cars.Length) Teleport(g.cars.ExitSpot(drove));
+        }
         // Dev: flying. No gravity and nothing is solid: the way the camera looks is forward,
         // Space is up and Ctrl is down, at three times the speed on foot.
         controller.enabled = !Flying;

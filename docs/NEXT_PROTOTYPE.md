@@ -12,6 +12,10 @@ are not lost. Nothing here is designed or decided unless it says the user said i
   them. The current prototype has fixed depots and one place to send a truck. (2026-10-05)
 - **Set dressing for flinging gravel**: something that shows it going through the air.
   "We'll work on the mechanics for now and add set-dressing later." (2026-10-05)
+- **Signage.** Blocking roads with signs. Stop signs. (2026-10-05)
+- **Vehicles are damaged by "hot" (unspread) asphalt and by uncompacted gravel.** (2026-10-05)
+- **Paving will do more** than it does now. A point to discuss, not yet said what. Today its
+  only effect is that trucks drive half as fast again on rolled asphalt. (2026-10-05)
 - From earlier, still parked: dirt flinging as a mechanic; where earth comes from and goes
   once it stops being free; what ends a job, scores, a clock; wear as part of the game; the
   look.
@@ -45,6 +49,15 @@ Paving
   other obvious answer (paved road does not wear), and wear is off.
 - Paint is the two edge lines and a broken centre line, all at once, per square. Colours,
   crossings and junction markings are not in.
+
+Driving
+- Vehicles are on the Driving test ground only. Whether they belong on the maps, and whether
+  the trucks and roller that are sent today should be driven instead.
+- Passengers, and carrying anything in the pick-up.
+- The loader fills from one fixed pile and carries one bucket. Loading a truck with it, and
+  digging with it, are not in.
+- A driven vehicle cannot be wrecked: on its side, it is set back on its wheels.
+- Nothing stops two players' vehicles, or a vehicle and a truck, from hitting each other.
 
 Roads
 - What gravel is for on the flat: a truck needs nothing but graded ground up to 10 degrees.

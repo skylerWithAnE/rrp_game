@@ -15,6 +15,7 @@ using UnityEngine;
 //   -rrpStakes          first put three linked stakes down on the station 3 hillside; on a map,
 //                       stake a road out from the first town to the second
 //   -rrpMap <n>         host: choose map n (0 is the stations)
+//   -rrpDrive <n>       on the Driving test ground: get into vehicle n and drive it in a circle
 //   -rrpWork <percent>  on a map, after -rrpStakes: click wherever there is work, at the cap, until
 //                       the road is graded and gravelled, with that share of clicks on the hot
 //                       spot; prints RRPWORK lines with the time each took
@@ -29,6 +30,7 @@ public class AutoTest : MonoBehaviour
     public static bool Bot, Log;
     int clicksLeft, clicksTotal, stakesLeft;
     int mapWanted = -1;
+    int driveWanted = -1;
     int workHot = -1, workPhase, workClicks;
     float workStart;
     float stakeTimer;
@@ -68,6 +70,7 @@ public class AutoTest : MonoBehaviour
             else if (args[i] == "-rrpClicks" && i + 1 < args.Length) { int.TryParse(args[++i], out clicksLeft); clicksTotal = clicksLeft; }
             else if (args[i] == "-rrpStakes") stakesLeft = 3;
             else if (args[i] == "-rrpMap" && i + 1 < args.Length) int.TryParse(args[++i], out mapWanted);
+            else if (args[i] == "-rrpDrive" && i + 1 < args.Length) int.TryParse(args[++i], out driveWanted);
             else if (args[i] == "-rrpWork" && i + 1 < args.Length) int.TryParse(args[++i], out workHot);
         }
         if (host) Game.I.Host(false);
@@ -97,6 +100,12 @@ public class AutoTest : MonoBehaviour
         }
         clickTimer += Time.unscaledDeltaTime;
         stakeTimer += Time.unscaledDeltaTime;
+        if (driveWanted >= 0 && g.phase == Phase.Lobby && g.map == Plot.DrivingMap && driveWanted < g.cars.cars.Length && g.local != null && !g.respawn)
+        {
+            Cars.TestThrottle = 1f;
+            Cars.TestSteer = 0.35f;
+            if (Cars.Mine < 0 && stakeTimer > 2f) { stakeTimer = 0; g.cars.Ask(driveWanted, 1); }
+        }
         if (Plot.LandMap(g.map))
         {
             if (g.phase == Phase.Lobby && g.plots[Plot.Land].Ready && !g.respawn) OnLand(g.plots[Plot.Land]);
@@ -227,6 +236,7 @@ public class AutoTest : MonoBehaviour
             s.Append(" plot").Append(plot.id).Append('=').Append(plot.Hash().ToString("x8")).Append(" level=").Append((plot.roadShare * 100f).ToString("0.0")).Append('/').Append((plot.shoulderShare * 100f).ToString("0.0"))
                 .Append('/').Append((plot.gravelShare * 100f).ToString("0.0")).Append('/').Append((plot.packedShare * 100f).ToString("0.0")).Append(" clicks=").Append(plot.clicks).Append(" stakes=").Append(plot.stakes.Count).Append('+').Append(plot.links.Count);
         s.Append(" lorries=").Append(g.lorries.State());
+        s.Append(" cars=").Append(g.cars.State());
         s.Append(" rigs=").Append(g.lorries.RigState()).Append(" stock=").Append(g.plots[Plot.Quarry].stock).Append(" carrying=").Append(g.plots[Plot.Quarry].carrying)
             .Append(" heap=").Append(g.plots[Plot.Quarry].heapPlaced ? g.plots[Plot.Quarry].heapAt.ToString("0.0") : "none");
         s.Append(" blocks=").Append(g.blocks.Count);

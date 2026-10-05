@@ -11,8 +11,9 @@ next morning and said it "went great" and "is looking much more like what I envi
 other maps are unplayed. The same day the user asked for, and got: a rope steepness limit, a map
 with rocks that forces a winding road, the Stations map cut into focused test grounds, junctions,
 service roads with a zoning tool, a quarry pit where gravel is shovelled into a truck that is
-sent to a drop, a paving and painting process, a dev tool and flying. The user has tried the
-junctions and accepted them; the rest is unplayed. `docs/NEXT_PROTOTYPE.md` collects what is
+sent to a drop, a paving and painting process, vehicles a player drives (pick-up, roller, front
+loader, paint truck), a dev tool and flying. The user has tried the junctions and accepted
+them; the rest is unplayed. `docs/NEXT_PROTOTYPE.md` collects what is
 being left for the prototype after this one. There is no end, score or clock, by decision.
 
 ## Start here

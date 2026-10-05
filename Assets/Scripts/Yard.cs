@@ -84,11 +84,36 @@ public class Yard : MonoBehaviour
         orangeMaterial = Mats.Make(new Color(0.90f, 0.42f, 0.10f));
     }
 
-    // A dump truck is the truck with an orange load on its back, for now.
-    public void MarkDumpTruck(Transform truck, Tuning t)
+    // A dump truck: the truck's cab and wheels, and in place of the box an open orange bed that
+    // tips up about a hinge at the back. Returns the bed, for whoever tips it.
+    public Transform MakeDumpTruck(Transform parent, Tuning t)
     {
         Materials();
-        Mats.Part(truck, Mats.Cube, orangeMaterial, new Vector3(0, t.truckHeight + 0.2f, -t.truckLength * 0.17f), new Vector3(t.truckWidth * 0.85f, 0.4f, t.truckLength * 0.55f));
+        var root = new GameObject("Dump truck").transform;
+        root.SetParent(parent, false);
+        float w = t.truckWidth, l = t.truckLength, wheel = t.truckWheel;
+        float back = -l * 0.5f, front = l * 0.5f, deck = wheel + 0.25f, floor = wheel * 0.6f;
+        float cargoFront = back + l * 0.62f, cabWidth = Mathf.Min(w, 2.0f);
+        Box(root, tyreMaterial, -w * 0.35f, w * 0.35f, floor, deck, back + 0.2f, cargoFront, false);                 // the chassis
+        Box(root, bodyMaterial, -cabWidth * 0.5f, cabWidth * 0.5f, floor, 2.15f, cargoFront + 0.1f, front - l * 0.1f, false);  // the cab
+        Box(root, bodyMaterial, -cabWidth * 0.5f, cabWidth * 0.5f, floor, 1.35f, front - l * 0.1f, front, false);
+        Box(root, glassMaterial, -cabWidth * 0.5f - 0.01f, cabWidth * 0.5f + 0.01f, 1.45f, 2.03f, front - l * 0.1f - 0.9f, front - l * 0.1f + 0.01f, false);
+        float frontAxle = front - l * 0.13f, rearAxle = frontAxle - l * 0.66f;
+        for (int side = -1; side <= 1; side += 2)
+        {
+            Wheel(root, new Vector3(side * (cabWidth * 0.5f - 0.09f), wheel * 0.5f, frontAxle), wheel, 0.26f);
+            Wheel(root, new Vector3(side * (w * 0.5f - 0.26f), wheel * 0.5f, rearAxle), wheel, 0.5f);
+        }
+        // the bed: a floor, two sides and a front wall, hinged at the back of the chassis
+        var bed = new GameObject("Bed").transform;
+        bed.SetParent(root, false);
+        bed.localPosition = new Vector3(0, deck, back + 0.3f);
+        float length = cargoFront - back - 0.3f;
+        Box(bed, orangeMaterial, -w * 0.5f, w * 0.5f, 0, 0.12f, 0, length, false);
+        Box(bed, orangeMaterial, -w * 0.5f, -w * 0.5f + 0.12f, 0, 1.1f, 0, length, false);
+        Box(bed, orangeMaterial, w * 0.5f - 0.12f, w * 0.5f, 0, 1.1f, 0, length, false);
+        Box(bed, orangeMaterial, -w * 0.5f, w * 0.5f, 0, 1.3f, length - 0.12f, length, false);
+        return bed;
     }
 
     // A road roller: a yellow box on two drums as wide as a lane's wheel tracks.

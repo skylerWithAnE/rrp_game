@@ -23,6 +23,7 @@ public class Game : MonoBehaviour
     public Truck truck;
     public Yard yard;
     public Lorries lorries;
+    public Cars cars;
     public Plot[] plots;    // see the list at the top of Plot
     public CameraRig cam;
 
@@ -99,6 +100,7 @@ public class Game : MonoBehaviour
         plots = new Plot[Plot.Count];
         for (int i = 0; i < plots.Length; i++) plots[i] = Child<Plot>("Plot " + Plot.Names[i]);
         lorries = Child<Lorries>("Lorries");
+        cars = Child<Cars>("Cars");
         for (int i = 0; i < plots.Length; i++) plots[i].id = i;
         cam = Child<CameraRig>("Camera");
         Child<Hud>("Hud");
@@ -176,6 +178,7 @@ public class Game : MonoBehaviour
         ground.h = null;
         yard.Clear();
         lorries.Clear();
+        cars.Clear();
         foreach (var plot in plots) plot.Clear();
         blocks.Clear();
         road.Setup(false);
@@ -338,6 +341,7 @@ public class Game : MonoBehaviour
         lorries.Clear();
         foreach (var plot in plots) plot.Clear();
         if (Plot.LandMap(map)) yard.Clear(); else yard.Refresh();
+        if (map == Plot.DrivingMap) cars.Build(); else cars.Clear();
         if (Net.IsHost)
             foreach (var plot in plots)
                 if (plot.ShownOn(map)) plot.Generate();
@@ -395,7 +399,7 @@ public class Game : MonoBehaviour
                 float x = m.F32(), z = m.F32();
                 bool hot = m.U8() != 0;
                 int tool = m.U8();
-                if (plot < plots.Length && (tool == Plot.Grade || tool == Plot.Gravel || tool == Plot.Pave || tool == Plot.Paint)) plots[plot].HostClick(slot, x, z, hot, tool);
+                if (plot < plots.Length && (tool == Plot.Grade || tool == Plot.Gravel || tool == Plot.Pave || tool == Plot.Paint || tool == Plot.Brush || tool == Plot.BrushYellow)) plots[plot].HostClick(slot, x, z, hot, tool);
             }
             else if (op == Op.StakeEdit)
             {
@@ -414,6 +418,12 @@ public class Game : MonoBehaviour
                 int plot = m.U8(), link = m.U8(), role = m.U8();
                 if (plot < plots.Length) plots[plot].HostZone(link, role);
             }
+            else if (op == Op.Car)
+            {
+                int car = m.U8(), what = m.U8();
+                cars.HostAsk(slot, car, what);
+            }
+            else if (op == Op.CarPose) cars.OnPose(slot, m);
             else if (op == Op.Finish)
             {
                 int plot = m.U8(), link = m.U8();
@@ -482,6 +492,7 @@ public class Game : MonoBehaviour
             case Op.PlotEdit: plots[m.U8()].OnEdit(m); break;
             case Op.PlotStakes: plots[m.U8()].OnStakes(m); break;
             case Op.Lorry: lorries.OnState(m); break;
+            case Op.Cars: cars.OnState(m); break;
             case Op.CubeSpawn: cubes.OnSpawn(m); break;
             case Op.CubeRemove: cubes.OnRemove(m); break;
             case Op.CubeRest: cubes.OnRest(m); break;

@@ -67,6 +67,16 @@ Decided by the user on 2026-10-05, after trying the test grounds:
   see where your initial design decisions lead us".
 - **Notes are kept for the next prototype**: `NEXT_PROTOTYPE.md`.
 
+Decided by the user later on 2026-10-05:
+
+- **Test player driving**: a test ground with a drivable pick-up truck, a steam roller and a
+  front loader.
+- **A drivable painting truck, and an additional painting tool players can use by hand.**
+- **The asphalt dump truck works similarly to how one would work in reality.**
+- **Paving will do more** than it does now: a point to discuss for the next prototype.
+- For the next prototype: signage, blocking roads with signs, stop signs, and vehicles damaged
+  by "hot" (unspread) asphalt and uncompacted gravel. These are in `NEXT_PROTOTYPE.md`.
+
 Everything under "Decided by the user" was said by the user. Everything marked **[Claude]** is a
 proposal that the user has seen and not objected to; it is not a decision until it has been played.
 Do not add anything that is not on this page. If something seems missing, ask.
@@ -158,7 +168,7 @@ have not been played.
 
 ### The test grounds
 
-The host's choices are now two rows of buttons: six test grounds and five maps. A test ground
+The host's choices are now two rows of buttons: seven test grounds and five maps. A test ground
 is flat yard with a few plots on it, each plot one thing to try.
 
 | Test ground | What is on it | What it is for |
@@ -169,6 +179,7 @@ is flat yard with a few plots on it, each plot one thing to try.
 | Junctions | A T, a crossroads and a fork, finished, with trucks. A rough field with a road across it to rope a branch to | Junctions |
 | Quarry | A quarry pit, a winding service road, a drop, and a road that needs gravel | Loading and hauling gravel, sending trucks, service roads, zoning |
 | Paving | A gravel road to pave with a dump truck and a roller, and the same road finished | Paving and painting |
+| Driving | A pick-up, a roller, a front loader and a paint truck to drive; a road in four states; a gravel pile; a rough field | How driving feels, and what each vehicle does |
 
 - **The four ramps** each climb for two sections, level off and come down, so trucks from both
   ends meet the same climb. 14 degrees bare: every truck wrecks. 14 degrees under loose gravel:
@@ -261,6 +272,40 @@ Asked for by the user. Neither is part of the game.
 - **V toggles flying.** No gravity and nothing is solid. The way the camera looks is forward,
   Space is up and Ctrl is down, at three times walking speed, six with sprint on.
 
+### Driving
+
+Asked for by the user on 2026-10-05, to test driving. **A first proposal, not played.** It is
+on the Driving test ground only.
+
+- **Getting in and out:** E beside a vehicle gets in, E gets out, on its left side. One player
+  to a vehicle and one vehicle to a player.
+- **Controls:** W and S drive forward and back, A and D steer. A vehicle steers only while it
+  rolls. Letting go of W brakes it. The view is from the driver's seat, first person, and
+  turns with the vehicle; the mouse still looks around.
+- **The pick-up** is fast (14 m/s, `pickupSpeed`) and does nothing else.
+- **The roller** is slow (3 m/s). It packs loose gravel and rolls spread asphalt under it, the
+  same as the roller that is sent on the Paving ground, but where the driver takes it.
+- **The front loader**: R raises the bucket and F lowers it. Driven into the gravel pile with
+  the bucket down, the bucket fills. A left click tips it. Tipped on road that is on its line,
+  the gravel is laid there, loose, 2.2 m round; anywhere else it is left as a heap.
+- **The paint truck** (asked for by the user): a left click turns its sprayers on and off.
+  With them on it paints the lines of the rolled asphalt it drives over, a lane at a time.
+- **The ground:** a road whose four sections are bare, loose gravel, spread asphalt and rolled
+  asphalt, so each vehicle has something to do; a pile of gravel; a rough field to drive over.
+- A vehicle on its side for two seconds is set back on its wheels where it is.
+- While driving, the tools are put away.
+- **Who works out the motion:** the driver's own machine, which sends where the vehicle is, as
+  players do for themselves. So the wheel answers at once for a client as well as for the host.
+- **In a check by script:** the pick-up reached about 11 m/s in four seconds and turned; the
+  roller packed and rolled its lane; the paint truck painted its lane; the loader filled at the
+  pile and laid gravel on the bare section. With a client driving the pick-up in circles and
+  the host driving the roller, each saw the other's vehicle where it was, and the road's hash
+  agreed afterwards.
+- **Open, for the user:** how each vehicle should feel (the numbers are sliders: speeds,
+  `drivePower`, `driveTurn`); whether the view should be from the seat; whether passengers
+  ride; whether vehicles belong on the maps; whether the sent trucks and roller should be
+  driven instead.
+
 ### Paving and painting
 
 Asked for by the user, with the process left to Claude: "would like to see where your initial
@@ -268,10 +313,15 @@ design decisions lead us". **This is a first proposal and has not been played.**
 
 The process, on a road that is already gravelled and packed:
 
-1. **A dump truck tips asphalt.** It stands at the yard end with a load. Right click it and it
-   drives the road to the far end, tipping a ridge of asphalt down the middle of its lane as it
-   goes. It tips only on packed gravel that has none yet. One load is about 90 m of ridge
-   (`dumpLoad`), and it fills again whenever it is back at the yard.
+1. **A dump truck tips asphalt, the way a real one spreads from its tailgate** (user,
+   2026-10-05: "work similarly to how one would work in reality"). It stands at the yard end
+   with a load and its bed down. Left click it and the bed swings up; right click it and it is
+   sent. With the bed up it creeps (a quarter of its speed, `tipSpeed`) and asphalt runs out of
+   the back in a strip as wide as the truck. Empty, the bed comes down by itself and it drives
+   on at full speed. Sent with the bed down it just drives, tipping nothing. It tips only on
+   packed gravel that has none yet. One load is about 75 m (`dumpLoad`), and it fills again
+   whenever it is back at the yard. Claude's reading of "in reality": a truck does not tip
+   while driving at speed, the bed has to be raised, and the asphalt comes out behind it.
 2. **Players spread it with the asphalt tool, key 5.** Hold left click on the road, as with
    gravel: two clicks spread a square (`spreadPerClick`). A square can be spread only if there
    is asphalt somewhere in its row across the road, so the work goes outward from the ridge,
@@ -282,6 +332,11 @@ The process, on a road that is already gravelled and packed:
 4. **Players paint the lines with the paint tool, key 6.** Hold left click on rolled asphalt:
    one click paints a square's share of the lines, a white line inside each edge and a broken
    yellow one down the middle.
+5. **Or by hand with the brush, key 8** (asked for by the user as an additional hand tool).
+   It paints wherever it points on rolled asphalt, a hand's width at a time, as fast as the
+   hand moves: left click white, right click yellow. It is for drawing, not for work: no
+   squares, no cap, no hot spot. The paint tool's lines go over it.
+6. **Or with the paint truck**, which a player drives: see "Driving" below.
 
 - **What it is for:** trucks drive half as fast again on rolled asphalt (`pavedSpeed`). That is
   the only effect; the lines are for looks.

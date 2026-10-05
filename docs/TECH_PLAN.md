@@ -26,7 +26,8 @@ technical plan is in `archive/TECH_PLAN_badscale.md`.
 | `CameraRig.cs` | First-person camera at eye height, horizontal field of view |
 | `Yard.cs` | Station 1: flat ground, the parked truck, the road strip, three painted hairpins. Also the truck's shape |
 | `Plot.cs` | A piece of ground with its stakes, sections and tools. Eight small ones are the stations; a ninth is the land of a map, with its towns |
-| `Lorries.cs` | The trucks, on the stations' roads and on a map's |
+| `Lorries.cs` | The trucks that drive themselves, on the test grounds' roads and on a map's, and the ones that wait to be sent |
+| `Cars.cs` | The vehicles players drive |
 | `Hud.cs` | Menu, readout (F3), tuning panel (F1), labels over things, tool keys |
 | `AutoTest.cs` | Test tooling: command-line flags for self-hosting, self-joining, clicking and logging |
 | `Mats.cs` | Materials and primitive meshes |
@@ -152,6 +153,17 @@ Everything a player does with a shovel or a rig is one `Shovel` message (`Plot.H
 load the shovel, fling it into the truck, take from the truck, fling to the heap, place the
 heap, send a rig. The host decides each. The rigs' states and loads, whose shovels are loaded,
 and the heap's place and size go to clients on the end of every truck snapshot.
+
+**Driven vehicles** (`Cars`) are built in the same places on every machine when the Driving
+ground is chosen; nothing creates them over the network. Whoever drives one simulates it (the
+same four sprung rays as a truck) and, if not the host, sends its pose 20 times a second
+(`CarPose`); a vehicle with no driver is the host's. Getting in, getting out, tipping the
+bucket and switching the paint on are asked of the host (`Car`). The host sends every
+vehicle's driver, load, bucket and pose to all clients (`Cars`), and from the poses decides what
+each does to the ground, four times a second (`Cars.Work`): `Plot.Pack` and `Plot.Roll` under
+the roller, `Plot.PaintUnder` under the paint truck, `Plot.Tip` for the loader's bucket. A
+driving player's blob sits at the seat, and on the host its pusher is switched off so it does
+not shove the vehicle.
 
 The dev tool is a `Finish` message: `Plot.HostFinish` does a section's next stage and sends the
 points like any other edit.

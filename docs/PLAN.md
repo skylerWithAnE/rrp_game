@@ -27,8 +27,13 @@ a paving and painting process on a new test ground; and notes for the next proto
 built and checked on two instances. The user's words are in `DESIGN.md`; what was left out is
 in `NEXT_PROTOTYPE.md`.
 
-The next step is the user playing: the reworked Quarry, the Paving ground, the Middle map and
-the Switchback map.
+**2026-10-05, later still.** The user asked for a test ground for driving (pick-up, roller,
+front loader, and then a paint truck), a second hand tool for painting, and a dump truck that
+tips as a real one does. All built and checked on two instances; see "Driving" and "Paving and
+painting" in `DESIGN.md`. The user also gave more items for `NEXT_PROTOTYPE.md`.
+
+The next step is the user playing: the Driving ground, the reworked Quarry, the Paving ground,
+the Middle map and the Switchback map.
 
 Rewritten 2026-10-05 after the user answered the first version's questions. The section "Decided
 by the user" is the user's. Everything else is Claude's proposal, and the session that builds it

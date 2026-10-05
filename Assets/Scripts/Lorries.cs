@@ -46,6 +46,8 @@ public class Lorries : MonoBehaviour
         public Vector3 netPos;
         public Quaternion netRot = Quaternion.identity;
         public Rig rig;                     // set if it is a truck that waits to be sent
+        public Transform bedPart;           // a dump truck's bed, which tips
+        public float bedAngle;
         public bool Alive => body != null;
     }
 
@@ -62,6 +64,7 @@ public class Lorries : MonoBehaviour
         public int plot, kind, home;    // which plot's roads it uses, what it is, and the depot it first stands at
         public int at, to;              // the depot it stands at (-1 while it drives), and the one it is going to
         public int load;                // what is on it
+        public bool bed;                // a dump truck's bed is up: it tips as it drives
         public float wait;              // host: seconds until a new one stands at home, when there is none
         internal Lorry l;
     }
@@ -97,7 +100,7 @@ public class Lorries : MonoBehaviour
             l.launch = -1;
             l.wait = Wait + (l.back ? 1.5f : 0);
             // the example roads always have trucks on the way
-            l.wanted = l.plot >= 3 && l.plot != Plot.Land && l.plot != Plot.Paving && l.rig == null;
+            l.wanted = l.plot >= 3 && l.plot != Plot.Land && l.plot != Plot.Paving && l.plot != Plot.DriveRoad && l.rig == null;
             l.once = false;
         }
         landWait[0] = 2f;
@@ -129,7 +132,7 @@ public class Lorries : MonoBehaviour
         var plot = Game.I.plots[r.plot];
         if (r.l == null || !r.l.Alive) return "The next truck is on its way.\n(If none comes, no road joins the depots.)";
         string what = r.kind == GravelTruck ? "Gravel truck: " + r.load + " of " + Mathf.RoundToInt(Game.I.tuning.haulLoad) + " shovels aboard."
-            : r.kind == DumpTruck ? "Dump truck: " + (r.load > 0 ? "asphalt aboard. It tips as it drives." : "empty. It fills at the yard.")
+            : r.kind == DumpTruck ? "Dump truck: " + (r.load > 0 ? "asphalt aboard, bed " + (r.bed ? "UP: it will tip as it drives." : "down. Left click it to raise the bed.") : "empty. It fills at the yard.")
             : "Roller: it rolls spread asphalt as it drives.";
         return r.at < 0 ? what + "\nOn its way to " + plot.DepotName(r.to) + "." : what + "\nStanding at " + plot.DepotName(r.at) + ". Right click it to send it on.";
     }
@@ -143,6 +146,14 @@ public class Lorries : MonoBehaviour
 
     // host: send a standing truck to another depot. It is put at the start of its way, facing
     // along it: there is no turning round at the end of a road yet.
+    // host: a standing dump truck's bed goes up, or comes down
+    public bool RaiseBed(int rig)
+    {
+        if (rig < 0 || rig >= rigs.Length || rigs[rig].kind != DumpTruck || StandingAt(rig) < 0) return false;
+        rigs[rig].bed = !rigs[rig].bed && rigs[rig].load > 0;
+        return true;
+    }
+
     public bool Send(int rig, int depot)
     {
         if (rig < 0 || rig >= rigs.Length) return false;
@@ -215,8 +226,8 @@ public class Lorries : MonoBehaviour
         if (l.rig != null && l.rig.kind == Roller) g.yard.MakeRoller(l.body.transform, t);
         else
         {
-            var truck = g.yard.MakeTruck(l.body.transform, t, false);
-            if (l.rig != null && l.rig.kind == DumpTruck) g.yard.MarkDumpTruck(truck, t);
+            if (l.rig != null && l.rig.kind == DumpTruck) l.bedPart = g.yard.MakeDumpTruck(l.body.transform, t);
+            else g.yard.MakeTruck(l.body.transform, t, false);
         }
 
         float w = t.truckWidth, length = t.truckLength, h = t.truckHeight, clearance = t.truckWheel * 0.6f;
@@ -254,6 +265,13 @@ public class Lorries : MonoBehaviour
     {
         var g = Game.I;
         if (lorries == null || g.phase != Phase.Lobby) return;
+        // a dump truck's bed swings up and down, on every machine
+        foreach (var rig in rigs)
+        {
+            if (rig.l == null || rig.l.bedPart == null) continue;
+            rig.l.bedAngle = Mathf.MoveTowards(rig.l.bedAngle, rig.bed ? 48f : 0, 30f * Time.deltaTime);
+            rig.l.bedPart.localRotation = Quaternion.Euler(rig.l.bedAngle, 0, 0);
+        }
         if (!Net.IsHost)
         {
             float k = 1f - Mathf.Exp(-14f * Time.deltaTime);
@@ -332,6 +350,7 @@ public class Lorries : MonoBehaviour
             snapshot.U8((byte)(rig.at + 1));
             snapshot.U8((byte)(rig.to + 1));
             snapshot.U8((byte)rig.load);
+            snapshot.U8((byte)(rig.bed ? 1 : 0));
         }
         var quarry = g.plots[Plot.Quarry];
         snapshot.U16((ushort)Mathf.Clamp(quarry.stock, 0, 65535));
@@ -385,6 +404,7 @@ public class Lorries : MonoBehaviour
             rig.at = m.U8() - 1;
             rig.to = m.U8() - 1;
             rig.load = m.U8();
+            rig.bed = m.U8() != 0;
         }
         var quarry = Game.I.plots[Plot.Quarry];
         quarry.stock = m.U16();
@@ -439,7 +459,12 @@ public class Lorries : MonoBehaviour
             {
                 l.wear = 0;
                 if (l.rig.kind == Roller) g.plots[l.plot].Roll(touching);
-                else if (l.rig.load > 0 && g.plots[l.plot].Dump(tr.position - Flat(tr.forward).normalized * 3.2f)) l.rig.load--;
+                else if (l.rig.bed && l.rig.load > 0)
+                {
+                    // out of the back of the raised bed, the width of the truck
+                    if (g.plots[l.plot].Dump(tr.position - Flat(tr.forward).normalized * (t.truckLength * 0.5f + 0.3f), Flat(tr.right).normalized, t.truckWidth * 0.5f)) l.rig.load--;
+                    if (l.rig.load == 0) l.rig.bed = false;     // empty: the bed comes down by itself
+                }
             }
             if (g.plots[l.plot].Wears && l.wear >= 0.25f && touching.Count > 0)
             {
@@ -494,6 +519,7 @@ public class Lorries : MonoBehaviour
                 rb.AddTorque(Vector3.up * (turn - rb.angularVelocity.y) * 6f, ForceMode.Acceleration);
                 float wanted = t.lorrySpeed * Mathf.Lerp(1f, 0.35f, Mathf.Clamp01(bend / 40f));
                 if (l.rig != null && l.rig.kind == Roller) wanted *= t.rollerSpeed;
+                else if (l.rig != null && l.rig.bed) wanted *= t.tipSpeed;      // creeping, to lay it evenly
                 else if (g.plots[l.plot].IsPaved(position.x, position.z)) wanted *= t.pavedSpeed;
                 float speed = Vector3.Dot(rb.linearVelocity, tr.forward);
                 // the wheels only bite as well as the surface lets them
