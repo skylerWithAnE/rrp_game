@@ -1356,9 +1356,11 @@ public class Plot : MonoBehaviour
     public bool Route(List<Vector3> path, bool back)
     {
         path.Clear();
-        int start = Ready ? ChainStart() : -1;
-        if (start < 0 || !Chain(start, -1)) return false;
-        const float RunUp = 14f;
+        // on the map the road runs from one town's stake to the other's, and there is no road
+        // until the ropes join them
+        int start = !Ready ? -1 : IsLand ? 0 : ChainStart();
+        if (start < 0 || !Chain(start, IsLand ? 1 : -1)) return false;
+        float RunUp = IsLand ? 9f : 14f;    // a town's pad is smaller than the yard
         float half = (back ? -1f : 1f) * lane * 0.5f;       // to the right of the way the chain runs
         int c0 = chain[0], c1 = chain[chain.Count - 1];
         Seg first = segs[c0 < 0 ? ~c0 : c0], last = segs[c1 < 0 ? ~c1 : c1];

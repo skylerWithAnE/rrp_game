@@ -97,6 +97,8 @@ public class Tuning : ScriptableObject
     [Range(40, 400)] public float mapDistance = 150f;
     [Tooltip("How far the humps and hollows on a map rise and fall (m). The stations use roughHeight instead.")]
     [Range(0, 1)] public float landRoughness = 0.35f;
+    [Tooltip("Seconds between trucks setting off from each town, once the towns are joined.")]
+    [Range(3, 60)] public float truckEvery = 12f;
 
     [Header("Old: Player")]
     [Range(1, 12)] public float moveSpeed = 6f;

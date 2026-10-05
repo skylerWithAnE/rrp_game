@@ -13,6 +13,10 @@ using UnityEngine;
 // 5's two, the wear road and the hairpins) send them one after another by themselves; the host can
 // send a pair down station 2 or 4 from the panel. On the wear road the trucks damage what they
 // drive on: see Plot.Wear.
+//
+// On a map there is one road, from town to town, and nothing drives until the ropes join the two
+// towns' stakes. From then on a truck sets off from each town every few seconds, whatever state
+// the road is in, up to six on the way in each lane.
 public class Lorries : MonoBehaviour
 {
     const float Travel = 1.1f;              // length of a wheel's ray: spring travel plus the wheel's radius
@@ -20,6 +24,7 @@ public class Lorries : MonoBehaviour
     const float Damper = 1.1f;
     const float Grip = 3f;                  // sideways grip per wheel
     const float Wait = 3f;                  // seconds before the next truck sets off
+    const int LandLorries = 12;             // the most on a map's road at once, both lanes together
 
     class Lorry
     {
@@ -31,7 +36,7 @@ public class Lorries : MonoBehaviour
         public Rigidbody rb;
         public Vector3[] wheels;
         public readonly List<Vector3> path = new List<Vector3>();
-        public int index, trips, wrecks;
+        public int index, reached, trips, wrecks;
         public float stuck, flipped, launch = -1, wait, wear;
         public Vector3 netPos;
         public Quaternion netRot = Quaternion.identity;
@@ -40,14 +45,17 @@ public class Lorries : MonoBehaviour
 
     Lorry[] lorries;
     float sendTimer;
+    readonly float[] landWait = new float[2];   // host: seconds until the next truck sets off from each town
     readonly Msg snapshot = new Msg(512);
     readonly List<Vector3> touching = new List<Vector3>();
 
     void Ensure()
     {
         if (lorries != null) return;
-        lorries = new Lorry[Game.I.plots.Length * 2];
-        for (int i = 0; i < lorries.Length; i++) lorries[i] = new Lorry { plot = i / 2, back = i % 2 == 1 };
+        // two for each station's plot, then the map's
+        int stations = Plot.Land * 2;
+        lorries = new Lorry[stations + LandLorries];
+        for (int i = 0; i < lorries.Length; i++) lorries[i] = new Lorry { plot = i < stations ? i / 2 : Plot.Land, back = i % 2 == 1 };
     }
 
     public void Clear()
@@ -64,6 +72,8 @@ public class Lorries : MonoBehaviour
             l.wanted = l.plot >= 3 && l.plot != Plot.Land;
             l.once = false;
         }
+        landWait[0] = 2f;
+        landWait[1] = 3.5f;
     }
 
     // host: a truck each way along this road
@@ -81,13 +91,19 @@ public class Lorries : MonoBehaviour
     public void Readout(StringBuilder text, int plot)
     {
         if (lorries == null) return;
-        for (int i = plot * 2; i < plot * 2 + 2; i += 2)
+        int alive = 0, trips = 0, wrecks = 0;
+        bool wanted = false;
+        foreach (var l in lorries)
         {
-            Lorry a = lorries[i], b = lorries[i + 1];
-            if (!a.wanted && !b.wanted && a.trips + a.wrecks + b.trips + b.wrecks == 0) continue;
-            text.Append("<size=12>trucks ").Append(Plot.Names[a.plot]).Append(": on the road ").Append((a.Alive ? 1 : 0) + (b.Alive ? 1 : 0))
-                .Append("   arrived ").Append(a.trips + b.trips).Append("   wrecked ").Append(a.wrecks + b.wrecks).Append("</size>\n");
+            if (l.plot != plot) continue;
+            if (l.Alive) alive++;
+            trips += l.trips;
+            wrecks += l.wrecks;
+            wanted |= l.wanted;
         }
+        if (!wanted && alive + trips + wrecks == 0) return;
+        text.Append("<size=12>trucks ").Append(Plot.Names[plot]).Append(": on the road ").Append(alive)
+            .Append("   arrived ").Append(trips).Append("   wrecked ").Append(wrecks).Append("</size>\n");
     }
 
     public string State()
@@ -95,7 +111,7 @@ public class Lorries : MonoBehaviour
         var s = new StringBuilder();
         if (lorries == null) return "";
         foreach (var l in lorries)
-            if (l.wanted || l.trips + l.wrecks > 0)
+            if (l.wanted || l.Alive || l.trips + l.wrecks > 0)
                 s.Append(' ').Append(l.plot).Append(l.back ? "b:" : "a:").Append(l.Alive ? l.body.transform.position.ToString("0.0") : "none").Append('t').Append(l.trips).Append('w').Append(l.wrecks);
         return s.ToString();
     }
@@ -127,7 +143,7 @@ public class Lorries : MonoBehaviour
         float front = length * 0.5f - length * 0.13f, rear = front - length * 0.66f, track = w * 0.5f - 0.3f;
         float top = Travel - 0.25f;     // at rest the springs are squashed a little under a quarter
         l.wheels = new[] { new Vector3(-track, top, front), new Vector3(track, top, front), new Vector3(-track, top, rear), new Vector3(track, top, rear) };
-        l.index = 0;
+        l.index = l.reached = 0;
         l.stuck = l.flipped = 0;
         l.launch = -1;
     }
@@ -160,7 +176,7 @@ public class Lorries : MonoBehaviour
                 if (!l.wanted) continue;
                 l.wait -= Time.deltaTime;
                 if (l.wait > 0 || !g.plots[l.plot].Route(l.path, l.back)) continue;
-                Build(l, l.path[0] + Vector3.up * 0.3f, Quaternion.LookRotation(l.path[4] - l.path[0]));
+                SetOff(l);
             }
             else if (l.launch >= 0)
             {
@@ -176,6 +192,23 @@ public class Lorries : MonoBehaviour
             }
         }
 
+        // the map: once the towns are joined, a truck from each every few seconds
+        var land = g.plots[Plot.Land];
+        for (int lane = 0; lane < 2; lane++)
+        {
+            if (!land.Ready || !land.joined) { landWait[lane] = 2f + lane * 1.5f; continue; }
+            landWait[lane] -= Time.deltaTime;
+            if (landWait[lane] > 0) continue;
+            foreach (var l in lorries)
+            {
+                if (l.plot != Plot.Land || l.back != (lane == 1) || l.Alive) continue;
+                if (!land.Route(l.path, l.back) || !StartClear(l.path[0])) break;
+                SetOff(l);
+                landWait[lane] = g.tuning.truckEvery;
+                break;
+            }
+        }
+
         sendTimer += Time.unscaledDeltaTime;
         if (sendTimer < 0.05f) return;
         sendTimer = 0;
@@ -183,13 +216,31 @@ public class Lorries : MonoBehaviour
         foreach (var l in lorries)
         {
             snapshot.U8((byte)(l.Alive ? 1 : 0));
-            snapshot.U8((byte)l.trips);
-            snapshot.U8((byte)l.wrecks);
+            snapshot.U16((ushort)l.trips);
+            snapshot.U16((ushort)l.wrecks);
             if (!l.Alive) continue;
             snapshot.V3(l.body.transform.position);
             snapshot.Rot(l.body.transform.rotation);
         }
         Net.ToClients(snapshot, false);
+    }
+
+    // host: a truck at the start of its path, standing on whatever is there
+    void SetOff(Lorry l)
+    {
+        Vector3 start = l.path[0];
+        start.y = Game.I.plots[l.plot].HeightAt(start.x, start.z) + 0.3f;
+        Vector3 ahead = l.path[4] - l.path[0];
+        ahead.y = 0;
+        Build(l, start, Quaternion.LookRotation(ahead));
+    }
+
+    // is the place a truck would set off from free of the last one?
+    bool StartClear(Vector3 start)
+    {
+        foreach (var l in lorries)
+            if (l.Alive && Flat(l.body.transform.position - start).sqrMagnitude < 100f) return false;
+        return true;
     }
 
     public void OnState(Msg m)
@@ -198,8 +249,8 @@ public class Lorries : MonoBehaviour
         foreach (var l in lorries)
         {
             bool alive = m.U8() != 0;
-            l.trips = m.U8();
-            l.wrecks = m.U8();
+            l.trips = m.U16();
+            l.wrecks = m.U16();
             l.wanted = alive;
             if (!alive)
             {
@@ -288,7 +339,11 @@ public class Lorries : MonoBehaviour
             }
 
             // stuck, on its side or fallen off the world: it bounces away and blows up
-            l.stuck = Flat(rb.linearVelocity).magnitude < 0.3f ? l.stuck + Time.fixedDeltaTime : 0;
+            // Stuck is standing still, or getting no further along the road: a truck that
+            // creeps up a slope and slides back is as stuck as one against a hump.
+            bool further = l.index > l.reached;
+            if (further) l.reached = l.index;
+            l.stuck = Flat(rb.linearVelocity).magnitude < 0.3f || !further ? l.stuck + Time.fixedDeltaTime : 0;
             l.flipped = up.y < 0.45f ? l.flipped + Time.fixedDeltaTime : 0;
             if (l.stuck > t.lorryStuckSeconds || l.flipped > 1.5f || position.y < -5f)
             {

@@ -40,15 +40,7 @@ public class Yard : MonoBehaviour
         if (signature == built) return;
         Clear();
         built = signature;
-        if (groundMaterial == null)
-        {
-            groundMaterial = Mats.Make(new Color(0.50f, 0.50f, 0.50f));
-            roadMaterial = Mats.Make(new Color(0.34f, 0.34f, 0.36f));
-            lineMaterial = Mats.Make(new Color(0.93f, 0.93f, 0.90f));
-            bodyMaterial = Mats.Make(new Color(0.74f, 0.74f, 0.76f));
-            glassMaterial = Mats.Make(new Color(0.20f, 0.22f, 0.26f));
-            tyreMaterial = Mats.Make(new Color(0.12f, 0.12f, 0.13f));
-        }
+        Materials();
 
         var ground = Mats.Part(transform, Mats.Cube, groundMaterial, new Vector3(0, -0.5f, 40f), new Vector3(400f, 1f, 400f));
         ground.name = "Ground";
@@ -73,6 +65,18 @@ public class Yard : MonoBehaviour
                 "Hairpin " + t.hairpinAcross.ToString("0.#") + " m across " + names[k]);
             x += outer * 2f + HairpinGap;
         }
+    }
+
+    // the trucks on a map use these too, and there the yard is never built
+    void Materials()
+    {
+        if (groundMaterial != null) return;
+        groundMaterial = Mats.Make(new Color(0.50f, 0.50f, 0.50f));
+        roadMaterial = Mats.Make(new Color(0.34f, 0.34f, 0.36f));
+        lineMaterial = Mats.Make(new Color(0.93f, 0.93f, 0.90f));
+        bodyMaterial = Mats.Make(new Color(0.74f, 0.74f, 0.76f));
+        glassMaterial = Mats.Make(new Color(0.20f, 0.22f, 0.26f));
+        tyreMaterial = Mats.Make(new Color(0.12f, 0.12f, 0.13f));
     }
 
     Vector3 TruckPosition(Tuning t) { return new Vector3(t.laneWidth * 0.5f, 0, t.truckLength * 0.5f + 1f); }
@@ -179,6 +183,7 @@ public class Yard : MonoBehaviour
     // The truck's shape, standing on the ground at its parent's origin. solid: it can be walked into.
     public Transform MakeTruck(Transform parent, Tuning t, bool solid)
     {
+        Materials();
         var root = new GameObject("Truck").transform;
         root.SetParent(parent, false);
         float w = t.truckWidth, l = t.truckLength, h = t.truckHeight, wheel = t.truckWheel;
