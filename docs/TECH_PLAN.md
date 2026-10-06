@@ -212,8 +212,18 @@ load the shovel, fling it into the truck, take from the truck, fling to the heap
 heap, send a rig. The host decides each. The rigs' states and loads, whose shovels are loaded,
 and the heap's place and size go to clients on the end of every truck snapshot.
 
+**Seats.** A vehicle has a driver and, for the pick-up and the paint truck, riders
+(`Car.riders`, with `riderSeats` for where their feet are). `Cars.Mine` is the vehicle the local
+player is in and `Cars.MySeat` which seat. Only the driver's machine moves it; with no driver
+it is the host's and stands still. Getting in, out and from seat to seat, and the nozzles, are
+all `Cars.HostAsk`. The camera (`CameraRig`) sits behind the vehicle while `Cars.Outside`.
+
+**The Wear ground** is four plots, one to a road, each a strip of the same high ground
+(`Plot.WearGround`): the strips are exactly 24 m wide and share their edge points, so the
+ground is continuous. `Plot.WearRoad(id)` says which road a plot is.
+
 **Driven vehicles** (`Cars`) are built in the same places on every machine when the Driving
-ground is chosen; nothing creates them over the network. Whoever drives one simulates it (the
+ground or the Painting ground is chosen; nothing creates them over the network. Whoever drives one simulates it (the
 same four sprung rays as a truck) and, if not the host, sends its pose 20 times a second
 (`CarPose`); a vehicle with no driver is the host's. Getting in, getting out, tipping the
 bucket and switching the paint on are asked of the host (`Car`). The host sends every

@@ -60,6 +60,7 @@ public class Blob : MonoBehaviour
 
     // First person: the local player does not see their own blob.
     public void Hide() { body.gameObject.SetActive(false); }
+    public void Show(bool shown) { if (body.gameObject.activeSelf != shown) body.gameObject.SetActive(shown); }
 
     public void SetLoad(int load, int bits)
     {

@@ -35,12 +35,38 @@ public class Cars : MonoBehaviour
         public Vector3 netPos;
         public Quaternion netRot = Quaternion.identity;
         public float flipped, lastYaw;
+        // The seats beside the driver's: who is in each (-1 nobody), and where its feet are. The
+        // pick-up has three: beside the driver, and two in the bed. The paint truck has two, in
+        // the bed: whoever is in them works the nozzles.
+        public int[] riders = new int[0];
+        public Vector3[] riderSeats = new Vector3[0];
         public Vector3 lastWhite, lastYellow;   // host: where the paint truck's two nozzles last were
         public bool sprayed;
     }
 
     public Car[] cars = new Car[0];
-    public static int Mine = -1;                // the vehicle the local player is driving
+    public static int Mine = -1;                // the vehicle the local player is in
+    public static int MySeat;                   // and which seat: 0 is the driver's
+    public static bool ThirdPerson = true;      // the camera sits behind the vehicle; C switches to the view from the seat
+    public static bool Outside => Mine >= 0 && ThirdPerson && Game.I.tuning.driveCamDistance > 0.5f;
+
+    // which seat a player is in: 0 the driver's, 1 and up the others, -1 not aboard
+    static int SeatOf(Car car, int slot)
+    {
+        if (slot < 0) return -1;
+        if (car.driver == slot) return 0;
+        for (int k = 0; k < car.riders.Length; k++) if (car.riders[k] == slot) return k + 1;
+        return -1;
+    }
+    static bool Free(Car car, int seat) { return seat == 0 ? car.driver < 0 : seat <= car.riders.Length && car.riders[seat - 1] < 0; }
+    static void Put(Car car, int seat, int slot) { if (seat == 0) car.driver = slot; else car.riders[seat - 1] = slot; }
+    static bool AnyRider(Car car) { foreach (int r in car.riders) if (r >= 0) return true; return false; }
+    static string SeatName(Car car, int seat)
+    {
+        if (seat == 0) return "the driver's seat";
+        if (car.kind == Painter) return seat == 1 ? "the white nozzle, on the right" : "the yellow nozzle, on the left";
+        return seat == 1 ? "the seat beside the driver" : seat == 2 ? "the bed, on the left" : "the bed, on the right";
+    }
     public static float TestThrottle, TestSteer;    // test tooling: the controls held by a script
     public readonly List<Vector4> heaps = new List<Vector4>();     // gravel tipped off a road: where, and how many buckets
     readonly List<Transform> heapParts = new List<Transform>();
@@ -84,6 +110,16 @@ public class Cars : MonoBehaviour
             car.seat = kind == Pickup || kind == Painter ? new Vector3(-0.45f, 0.15f, 0.5f) : kind == Roller ? new Vector3(0, 1.25f, -0.2f) : new Vector3(0, 1.5f, -0.6f);
             car.home = new Vector3(13f + kind * 6f, 0.5f, 8f);
             // on the Painting ground it stands on the near end of the marked strip, in its right-hand lane
+            if (kind == Pickup)
+            {
+                car.riders = new[] { -1, -1, -1 };
+                car.riderSeats = new[] { new Vector3(0.45f, 0.15f, 0.5f), new Vector3(-0.45f, 1.15f, -1.5f), new Vector3(0.45f, 1.15f, -1.5f) };
+            }
+            else if (kind == Painter)
+            {
+                car.riders = new[] { -1, -1 };
+                car.riderSeats = new[] { new Vector3(0.5f, 1.15f, -1.9f), new Vector3(-0.5f, 1.15f, -1.9f) };
+            }
             if (paintOnly) car.home = new Vector3(-t.laneWidth - 5f - (t.laneWidth + t.shoulderWidth) - 12f + t.laneWidth * 0.5f, 2f, 5f);
             car.body = new GameObject(Names[kind]);
             car.body.transform.SetParent(transform, false);
@@ -162,15 +198,20 @@ public class Cars : MonoBehaviour
 
     float TopSpeed(Car car, Tuning t) { return car.kind == Pickup ? t.pickupSpeed : car.kind == Roller ? t.rollerDriveSpeed : car.kind == Painter ? t.painterSpeed : t.loaderSpeed; }
 
-    // where someone getting out of a vehicle stands: clear of its left side
-    public Vector3 ExitSpot(int car)
+    // where someone getting out of a vehicle stands: clear of the side their seat is on, and level with it
+    public Vector3 ExitSpot(int car, int seat)
     {
         var tr = cars[car].body.transform;
-        return tr.position - tr.right * (cars[car].size.x * 0.5f + 1.4f) + Vector3.up * 0.4f;
+        Vector3 from = seat == 0 || seat > cars[car].riderSeats.Length ? cars[car].seat : cars[car].riderSeats[seat - 1];
+        return tr.position + tr.right * (from.x > 0.1f ? 1f : -1f) * (cars[car].size.x * 0.5f + 1.4f) + tr.forward * from.z + Vector3.up * 0.4f;
     }
 
-    // where the driver's feet are, in the world
-    public Vector3 Seat(int car) { return cars[car].body.transform.TransformPoint(cars[car].seat); }
+    // where the feet of whoever is in a seat are, in the world
+    public Vector3 Seat(int car, int seat)
+    {
+        var c = cars[car];
+        return c.body.transform.TransformPoint(seat == 0 || seat > c.riderSeats.Length ? c.seat : c.riderSeats[seat - 1]);
+    }
 
     // ---- getting in and out, and the controls
 
@@ -183,7 +224,11 @@ public class Cars : MonoBehaviour
 
         // which one is mine is whatever the host last said
         Mine = -1;
-        for (int i = 0; i < cars.Length; i++) if (cars[i].driver == g.localSlot && g.localSlot >= 0) Mine = i;
+        for (int i = 0; i < cars.Length; i++)
+        {
+            int seat = SeatOf(cars[i], g.localSlot);
+            if (seat >= 0) { Mine = i; MySeat = seat; }
+        }
 
         throttle = steer = 0;
         if (g.local != null && Hud.Playing && kb != null)
@@ -195,20 +240,66 @@ public class Cars : MonoBehaviour
                 for (int i = 0; i < cars.Length; i++)
                 {
                     float distance = Vector3.Distance(g.local.transform.position, cars[i].body.transform.position);
-                    if (cars[i].driver < 0 && distance < best) { best = distance; near = i; }
+                    bool room = cars[i].driver < 0;
+                    for (int s = 1; s <= cars[i].riders.Length; s++) room |= Free(cars[i], s);
+                    if (room && distance < best) { best = distance; near = i; }
                 }
                 if (near >= 0)
                 {
-                    Plot.Hint("E: drive " + Names[cars[near].kind]);
+                    int free = 0;
+                    while (!Free(cars[near], free)) free++;
+                    Plot.Hint(free == 0 ? "E: drive " + Names[cars[near].kind] : "E: get into " + Names[cars[near].kind] + ": " + SeatName(cars[near], free));
                     if (kb.eKey.wasPressedThisFrame) Ask(near, 1);
                 }
+            }
+            else if (MySeat > 0)
+            {
+                // a passenger: change seats, work a nozzle of the paint truck, or get out
+                var car = cars[Mine];
+                string keys = "You are in " + SeatName(car, MySeat) + " of " + Names[car.kind] + ".   E get out   C camera";
+                if (car.riders.Length > 0)
+                {
+                    keys += "\nChange seat: ";
+                    for (int s = 0; s <= car.riders.Length; s++)
+                    {
+                        keys += (s + 1) + " " + (s == MySeat ? "(you)" : Free(car, s) ? SeatName(car, s) : "taken") + "   ";
+                        if (s != MySeat && Free(car, s) && kb[(Key)((int)Key.Digit1 + s)].wasPressedThisFrame) Ask(Mine, 10 + s);
+                    }
+                }
+                if (car.kind == Painter)
+                {
+                    // each nozzle seat has its own nozzle on the left button; alone, the other one is on the right button
+                    bool alone = !(car.riders[0] >= 0 && car.riders[1] >= 0);
+                    int mine = MySeat == 1 ? 3 : 4, other = MySeat == 1 ? 4 : 3;
+                    keys += "\nleft click: " + (MySeat == 1 ? "white" : "yellow") + " nozzle " + ((car.load & (MySeat == 1 ? 1 : 2)) != 0 ? "ON" : "off")
+                        + (alone ? "   right click: " + (MySeat == 1 ? "yellow" : "white") + " nozzle " + ((car.load & (MySeat == 1 ? 2 : 1)) != 0 ? "ON" : "off") : "");
+                    if (mouse != null && mouse.leftButton.wasPressedThisFrame) Ask(Mine, mine);
+                    if (alone && mouse != null && mouse.rightButton.wasPressedThisFrame) Ask(Mine, other);
+                }
+                Plot.Hint(keys);
+                if (kb.eKey.wasPressedThisFrame) Ask(Mine, 0);
+                if (kb.cKey.wasPressedThisFrame) ThirdPerson = !ThirdPerson;
+                float yaw = car.body.transform.eulerAngles.y;
+                g.cam.yaw += Mathf.DeltaAngle(car.lastYaw, yaw);
+                car.lastYaw = yaw;
             }
             else
             {
                 var car = cars[Mine];
                 throttle = (kb.wKey.isPressed ? 1 : 0) - (kb.sKey.isPressed ? 1 : 0);
                 steer = (kb.dKey.isPressed ? 1 : 0) - (kb.aKey.isPressed ? 1 : 0);
-                string keys = "W S drive   A D steer   E get out";
+                string keys = "W S drive   A D steer   E get out   C camera";
+                if (car.riders.Length > 0)
+                {
+                    keys += "\nChange seat: ";
+                    for (int s = 1; s <= car.riders.Length; s++)
+                    {
+                        keys += (s + 1) + " " + (Free(car, s) ? SeatName(car, s) : "taken") + "   ";
+                        if (Free(car, s) && kb[(Key)((int)Key.Digit1 + s)].wasPressedThisFrame) Ask(Mine, 10 + s);
+                    }
+                    keys += "\n";
+                }
+                if (kb.cKey.wasPressedThisFrame) ThirdPerson = !ThirdPerson;
                 if (car.kind == Loader)
                 {
                     car.bucket = Mathf.Clamp01(car.bucket + ((kb.rKey.isPressed ? 1 : 0) - (kb.fKey.isPressed ? 1 : 0)) * 0.7f * Time.deltaTime);
@@ -216,10 +307,11 @@ public class Cars : MonoBehaviour
                     if (mouse != null && mouse.leftButton.wasPressedThisFrame && car.load > 0) Ask(Mine, 2);
                 }
                 else if (car.kind == Roller) keys += "   it packs gravel and rolls asphalt under it";
+                else if (car.kind == Painter && painting && AnyRider(car)) keys += "Whoever is in the bed has the nozzles: white " + ((car.load & 1) != 0 ? "ON" : "off") + ", yellow " + ((car.load & 2) != 0 ? "ON" : "off");
                 else if (car.kind == Painter && painting)
                 {
-                    // it sprays where it is: a nozzle on each side, each on its own button
-                    keys += "   left click: white nozzle (right side) " + ((car.load & 1) != 0 ? "ON" : "off") + "   right click: yellow nozzle (left side) " + ((car.load & 2) != 0 ? "ON" : "off");
+                    // it sprays where it is: a nozzle on each side, each on its own button, while nobody is in the bed to work them
+                    keys += "left click: white nozzle (right side) " + ((car.load & 1) != 0 ? "ON" : "off") + "   right click: yellow nozzle (left side) " + ((car.load & 2) != 0 ? "ON" : "off");
                     if (mouse != null && mouse.leftButton.wasPressedThisFrame) Ask(Mine, 3);
                     if (mouse != null && mouse.rightButton.wasPressedThisFrame) Ask(Mine, 4);
                 }
@@ -257,11 +349,15 @@ public class Cars : MonoBehaviour
             {
                 if (p == null) continue;
                 bool riding = false;
-                foreach (var car in cars) if (car.driver == p.slot) riding = true;
+                foreach (var car in cars) if (SeatOf(car, p.slot) >= 0) riding = true;
                 p.Riding(riding);
             }
-            // a driver who has left the game leaves the vehicle too
-            foreach (var car in cars) if (car.driver >= 0 && g.players[car.driver] == null) car.driver = -1;
+            // anyone who has left the game leaves the vehicle too
+            foreach (var car in cars)
+            {
+                if (car.driver >= 0 && g.players[car.driver] == null) car.driver = -1;
+                for (int s = 0; s < car.riders.Length; s++) if (car.riders[s] >= 0 && g.players[car.riders[s]] == null) car.riders[s] = -1;
+            }
             workTimer += Time.deltaTime;
             if (workTimer >= 0.25f) { workTimer = 0; Work(g); }
         }
@@ -270,7 +366,7 @@ public class Cars : MonoBehaviour
         if (sendTimer < 0.05f) return;
         sendTimer = 0;
         if (Net.IsHost) { if (painting) Spray(g); SendAll(); }
-        else if (Mine >= 0)
+        else if (Mine >= 0 && MySeat == 0)
         {
             var m = Msg.New(Op.CarPose, 32);
             m.U8((byte)Mine);
@@ -307,7 +403,8 @@ public class Cars : MonoBehaviour
     // is this machine the one that works out this vehicle's motion?
     bool Simulated(Car car) { return car.driver >= 0 ? car.driver == Game.I.localSlot : Net.IsHost; }
 
-    // ask the host: 1 get in, 0 get out, 2 tip the bucket
+    // ask the host: 1 get in (the driver's seat if it is free, else the next free one), 0 get out,
+    // 2 tip the bucket, 3 and 4 the paint truck's white and yellow nozzles, 10 and up move to that seat
     public void Ask(int car, int what)
     {
         if (Net.IsHost) { HostAsk(Game.I.localSlot, car, what); return; }
@@ -321,15 +418,34 @@ public class Cars : MonoBehaviour
     {
         if (index < 0 || index >= cars.Length) return;
         var car = cars[index];
+        int seat = SeatOf(car, slot);
         if (what == 1)
         {
-            foreach (var other in cars) if (other.driver == slot) return;    // one vehicle each
-            if (car.driver < 0) car.driver = slot;
+            foreach (var other in cars) if (SeatOf(other, slot) >= 0) return;    // one seat each
+            for (int s = 0; s <= car.riders.Length; s++)
+                if (Free(car, s)) { Put(car, s, slot); break; }
         }
-        else if (car.driver != slot) return;
-        else if (what == 0) car.driver = -1;
-        else if (what == 3 && car.kind == Painter) car.load ^= 1;      // its sprayers, on and off
-        else if (what == 4 && car.kind == Painter && painting) car.load ^= 2;     // on the Painting ground the yellow nozzle has a button of its own
+        else if (seat < 0) return;
+        else if (what == 0) Put(car, seat, -1);
+        else if (what >= 10)
+        {
+            // from one seat to another, if it is empty
+            int to = what - 10;
+            if (to == seat || to > car.riders.Length || !Free(car, to)) return;
+            Put(car, seat, -1);
+            Put(car, to, slot);
+        }
+        else if ((what == 3 || what == 4) && car.kind == Painter)
+        {
+            // The nozzles belong to whoever is in the bed: the white one to the seat on the
+            // right and the yellow one to the seat on the left, and both to one person alone
+            // there. With nobody in the bed they are the driver's.
+            bool both = car.riders[0] >= 0 && car.riders[1] >= 0;
+            bool allowed = seat == 0 ? !AnyRider(car) : !both || (seat == 1) == (what == 3);
+            if (!allowed || (what == 4 && !painting)) return;
+            car.load ^= what == 3 ? 1 : 2;
+        }
+        else if (seat != 0) return;
         else if (what == 2 && car.kind == Loader && car.load > 0)
         {
             // gravel tipped on a road that is on its line is laid there; anywhere else it is a heap
@@ -432,6 +548,8 @@ public class Cars : MonoBehaviour
         foreach (var car in cars)
         {
             snapshot.U8((byte)(car.driver + 1));
+            snapshot.U8((byte)car.riders.Length);
+            foreach (int rider in car.riders) snapshot.U8((byte)(rider + 1));
             snapshot.U8((byte)car.load);
             snapshot.U8((byte)Mathf.RoundToInt(car.bucket * 255f));
             snapshot.V3(car.body.transform.position);
@@ -449,7 +567,13 @@ public class Cars : MonoBehaviour
         int n = m.U8();
         for (int i = 0; i < n; i++)
         {
-            int driver = m.U8() - 1, load = m.U8();
+            int driver = m.U8() - 1, seats = m.U8();
+            for (int s = 0; s < seats; s++)
+            {
+                int rider = m.U8() - 1;
+                if (i < cars.Length && s < cars[i].riders.Length) cars[i].riders[s] = rider;
+            }
+            int load = m.U8();
             float bucket = m.U8() / 255f;
             Vector3 position = m.V3();
             Quaternion rotation = m.Rot();
@@ -496,7 +620,7 @@ public class Cars : MonoBehaviour
     public string State()
     {
         var s = new System.Text.StringBuilder();
-        foreach (var car in cars) s.Append(' ').Append(car.kind).Append(':').Append(car.body.transform.position.ToString("0.0")).Append('d').Append(car.driver).Append('l').Append(car.load);
+        foreach (var car in cars) s.Append(' ').Append(car.kind).Append(':').Append(car.body.transform.position.ToString("0.0")).Append('r').Append(string.Join("/", car.riders)).Append('d').Append(car.driver).Append('l').Append(car.load);
         s.Append(" heaps=").Append(heaps.Count);
         return s.ToString();
     }

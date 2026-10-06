@@ -188,10 +188,60 @@ Built unattended, overnight, as six slices. **None of it has been played by the 
 few minutes of gravity on the Trucks ground during the build.** Every number here is Claude's and
 is a slider; every choice of Claude's is listed in `SESSION_2026-10-06.md` for a yes or no.
 
+### What the user asked for after first playing them
+
+2026-10-06, after a first go at the slices. The words in quotation marks are the user's. All of
+it is built and checked on two instances; none of it has been played.
+
+- **"Let's move forward with moon 0.16 as default gravity."** It starts at the Moon now.
+- **"Let's get a third person camera for driving."** In a vehicle the camera sits behind and
+  above it and turns with the mouse. C switches to the view from the seat and back
+  [Claude: the key; `driveCamDistance`, 9 m, and 0 puts it in the seat for good].
+- **"Pickup truck also needs to be 4 passenger vehicle with seat swapping mechanics."** E gets
+  into the driver's seat if it is free, and otherwise the next free seat: beside the driver, or
+  one of two in the bed. Aboard, the number keys 1 to 4 move you to that seat if it is empty.
+  With nobody in the driver's seat it does not move. [Claude: the keys, and the bed as seats.]
+- **"Painting truck needs to be multiple players. So one can drive, one or two could operate
+  the paint nozzles."** It has two seats in the bed. Whoever is in the right-hand one has the
+  white nozzle on left click; the left-hand one has the yellow. One person alone in the bed has
+  both: their own on left click and the other on right click. While anyone is in the bed the
+  driver has no nozzles; a driver alone has both, as before.
+- **"Another spin out scene where the trucks enter the road on a more level surface, and get
+  more time to speed up. Enter on less of a ramp, drive 3 finished paved road tiles, then enter
+  loose gravel. Add a bend after two segments of loose gravel."** A second road on the Spin-out
+  ground, to the right of where you start: 0.45 m above the yard, not 1.2; three paved
+  sections; two of loose gravel; a 90 degree bend; two more of loose gravel; and three paved
+  again [Claude: the far half, so that trucks from the other end meet the same thing]. Trucks
+  reach the gravel at 9 m/s, not 6. By script at the Moon: 95 spins and 16 wrecks in the first
+  35 trucks, against 45 and 8 on the first road beside it.
+- **"Let's move the wear scene on to a much larger height of the height map ... on top of some
+  terrain that's 10m above sea level. And include a test for dirt, gravel, dirt with a paved
+  road leading into it, and gravel with a paved on ramp, too."** The Wear ground is now one piece
+  of high ground 10 m above the yard (`wearHeight`) with four roads on it, from the left: dirt,
+  gravel, dirt with two paved sections leading into each end, gravel with the same. The stretch
+  that wears is 100 m on all four. You start on top, between the dirt and the gravel.
+  `wearDeepest` is still 0.8 m but its slider now goes to 8 [Claude: left where it was; the
+  roads were 1.2 m up before, so a hole could never have gone deeper than that].
+- **"Let's add a counter for the trucks passing through roads in the wear scene."** Each road
+  has signs over it, at both ends of the stretch that wears and its middle: trucks so far, how
+  many got through, how many were wrecked, and how much of it is rutted and how deep.
+- **"After about 4 lines, text cuts off."** A sign is now as tall as its text needs, and so are
+  the line under the crosshair and the F3 readout.
+- **"Glad to see the speed multiplier in the panel."**
+- **"No review on quarry/dump truck right now."**
+- **"Are we implementing that in a way that affects the engine appropriately or are we taking
+  some other more narrow measure?"** Both. The slider sets the physics engine's own gravity,
+  so everything with a rigid body falls by it: trucks, driven vehicles, wrecks. The blob is not
+  a rigid body and has its own fall, which is multiplied by the same number. On top of that are
+  the two switches below, which are narrower and are Claude's: they change how hard wheels
+  bite and how stiff springs are, because the trucks' wheels and springs are written by hand
+  and would otherwise take no notice of gravity.
+
 ### Gravity
 
 `planetGravity` on the F1 panel, and three buttons on the host's bar: Earth 1.00, Mars 0.38,
-Moon 0.16. It starts at Mars. It acts on trucks, driven vehicles and blobs, everywhere.
+Moon 0.16. It started at Mars and, since the user's word on 2026-10-06, starts at the Moon. It
+acts on trucks, driven vehicles and blobs, everywhere.
 
 Two switches of Claude's sit beside it, both on:
 
@@ -239,10 +289,12 @@ ramps 16 m high as before. "All" is every truck over the top; otherwise how many
 
 ### Wear
 
-**New > Wear**: a dirt road (bare ground on its line) and a packed gravel road, 100 m each, side
-by side, with a truck setting off from each end every 4 seconds (`wearTruckEvery`). The F3
-readout counts the trucks that have set off down the road you are nearest, and says how much of
-it is rutted and how deep.
+**New > Wear**: as first built, a dirt road (bare ground on its line) and a packed gravel road,
+100 m each, side by side, with a truck setting off from each end every 4 seconds
+(`wearTruckEvery`). It is four roads on high ground now: see the section above. The F3 readout
+counts the trucks that have set off down the road you are nearest, and says how much of it is
+rutted and how deep; so do the signs over each road. The pace below was measured on the first
+two roads, at Mars.
 
 The rule, for every road that wears but the first wear road on the Trucks ground, which keeps
 the rule it was played with:
@@ -474,7 +526,8 @@ box body from Claude's memory. U-Haul does not publish them. Its turning circle 
 | 9 | Drop-off survey, at the quarry: left click a stake in the middle of a road, then the ground beside it |
 | T, G | On the Painting ground: tar spray, and the grinder. Hold left click |
 | Right click on a waiting truck or roller | Send it to its other depot, with any tool in hand |
-| E | Get into or out of a vehicle. W S drive, A D steer. In the Painting ground's paint truck, left click is the white nozzle and right click the yellow |
+| E | Get into or out of a vehicle: the driver's seat if it is free, else the next. W S drive, A D steer. In a pick-up or a paint truck, 1 to 4 change seat. In the Painting ground's paint truck the nozzles are on the mouse buttons, for whoever is in the bed, or for a driver alone |
+| C | In a vehicle: the camera behind it, or the view from the seat |
 | 7, V | Dev: finish a section's next stage in one click; fly |
 | F1, F3, Tab | Sliders (host), readout, free the mouse |
 
@@ -737,8 +790,8 @@ few plots on it.
 | Quarry | The pit, the winding service road, the drop, the road that needs gravel | Loading and hauling gravel, sending trucks, service roads |
 | Paving | A packed gravel road, the dump truck and the roller; beside it the same road finished, with trucks | Paving and painting |
 | Driving | The four vehicles; a road whose sections are bare, loose gravel, spread asphalt and rolled asphalt; a gravel pile; a rough field | How driving feels, and what each vehicle does |
-| Wear (New) | A dirt road and a packed gravel road, 100 m each, with a truck from each end every 4 seconds | Whether a road falls apart at the right pace |
-| Spin-out (New) | A road with a 90 degree bend under loose gravel, packed at each end, with the same traffic | Whether loose gravel is dangerous for long enough |
+| Wear (New) | High ground, 10 m up, with four roads: dirt, gravel, and each again with a paved way in. A truck from each end every 4 seconds, and a count over each road | Whether a road falls apart at the right pace |
+| Spin-out (New) | Two roads with a 90 degree bend under loose gravel and the same traffic: one packed at each end, and one on low ground with three paved sections to get up to speed on | Whether loose gravel is dangerous for long enough |
 | Painting (New) | Two strips of rolled asphalt, one with the lines' places marked and one without; a paint truck | Whether drawing a line by hand is hard in a good way |
 
 ### Maps

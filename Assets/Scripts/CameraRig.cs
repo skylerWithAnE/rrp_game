@@ -44,7 +44,19 @@ public class CameraRig : MonoBehaviour
 
         // the tuned field of view is horizontal; Unity's camera takes a vertical one
         cam.fieldOfView = Camera.HorizontalToVerticalFieldOfView(g.tuning.fieldOfView, cam.aspect);
-        transform.SetPositionAndRotation(p.transform.position + Vector3.up * g.tuning.eyeHeight, Quaternion.Euler(pitch, yaw, 0));
+        var facing = Quaternion.Euler(pitch, yaw, 0);
+        if (Cars.Outside && Cars.Mine < g.cars.cars.Length)
+        {
+            // In a vehicle: from behind and above it, turning with the mouse round a point over
+            // its roof, and no further back than the ground or anything else solid allows.
+            var car = g.cars.cars[Cars.Mine];
+            Vector3 pivot = car.body.transform.position + Vector3.up * (car.size.y + 0.6f);
+            float back = g.tuning.driveCamDistance * Mathf.Max(1f, car.size.z / 5.4f);
+            if (Physics.Raycast(pivot, facing * Vector3.back, out var hit, back + 0.4f, ~0, QueryTriggerInteraction.Ignore) && hit.collider.gameObject != car.body) back = Mathf.Max(1f, hit.distance - 0.4f);
+            transform.SetPositionAndRotation(pivot + facing * Vector3.back * back, facing);
+            return;
+        }
+        transform.SetPositionAndRotation(p.transform.position + Vector3.up * g.tuning.eyeHeight, facing);
     }
 
     // First prototype: the nearest thing a shovel can act on along a ray. Unused in station 1.

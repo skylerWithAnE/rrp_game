@@ -125,6 +125,8 @@ public class Tuning : ScriptableObject
     [Range(2, 15)] public float loaderSpeed = 7f;
     [Tooltip("Top speed of the paint truck (m/s).")]
     [Range(1, 15)] public float painterSpeed = 5f;
+    [Tooltip("How far behind a vehicle the camera sits for whoever is in it (m). 0: the view from the seat. C switches between the two.")]
+    [Range(0, 20)] public float driveCamDistance = 9f;
     [Tooltip("The hardest a driven vehicle pushes or brakes (m/s2).")]
     [Range(1, 12)] public float drivePower = 5f;
     [Tooltip("How fast a driven vehicle turns at speed (radians a second).")]
@@ -150,7 +152,9 @@ public class Tuning : ScriptableObject
     [Tooltip("Bare ground is cut this many times as deep as gravel each time.")]
     [Range(1, 10)] public float wearDirtCut = 6f;
     [Tooltip("The deepest a hole gets, below the road's line (m).")]
-    [Range(0.05f, 1.2f)] public float wearDeepest = 0.8f;
+    [Range(0.05f, 8f)] public float wearDeepest = 0.8f;
+    [Tooltip("How high the Wear ground stands above the yard (m). Used when the ground is made again.")]
+    [Range(2, 20)] public float wearHeight = 10f;
     [Tooltip("0: all damage comes from time spent on a square. 1: all of it comes from how hard each wheel lands. Between: a share of each.")]
     [Range(0, 1)] public float wearByLanding = 0.5f;
     [Tooltip("A wheel coming down this fast (m/s) does a full quarter second's damage to the square it lands on; twice as fast does twice, and that is the most.")]
@@ -202,7 +206,7 @@ public class Tuning : ScriptableObject
 
     [Header("Planet (everywhere)")]
     [Tooltip("Gravity as a share of Earth's, for trucks, driven vehicles and blobs. 1 is Earth, 0.38 Mars, 0.16 the Moon.")]
-    [Range(0.16f, 1)] public float planetGravity = 0.38f;
+    [Range(0.16f, 1)] public float planetGravity = 0.16f;
     [Tooltip("[Claude] 1: wheels push, brake and hold sideways in proportion to gravity, as tyres do, so a truck climbs about the same slopes on any planet. 0: wheels bite as hard as on Earth whatever the gravity, and low gravity makes every climb easy.")]
     [Range(0, 1)] public float gripFollowsGravity = 1f;
     [Tooltip("[Claude] 1: springs are as soft as the gravity, so a vehicle rides at the same height on any planet and bounces slowly. 0: Earth's springs everywhere: it rides high and is thrown about more.")]

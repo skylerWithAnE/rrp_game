@@ -39,7 +39,10 @@ using UnityEngine.InputSystem;
 //  23  spin-out         a road with a bend in it, under loose gravel but for its two ends
 //  24  paint, marked    a strip of rolled asphalt to paint by hand, with the place for each line marked
 //  25  paint, plain     the same strip with nothing marked
-//  26  the map          one big piece of land with a town at each end: see "the map" below
+//  26  spin-out, fast   three paved sections on low ground, then loose gravel: two sections, a bend, two more; and three paved again
+//  27  wear, dirt in    the dirt road again, with two paved sections leading into each end
+//  28  wear, gravel in  the gravel road again, with the same paved sections
+//  29  the map          one big piece of land with a town at each end: see "the map" below
 //
 // Each belongs to one of the host's choices (see MapOf) and exists only while that is chosen:
 // the test grounds for building, for trucks, for junctions and for the quarry, or the land of
@@ -55,10 +58,11 @@ public class Plot : MonoBehaviour
 {
     public const float Cell = 0.25f;        // distance between ground points
     public const int PresetSections = 3;    // station 2: level, climbing, falling
-    public const int Count = 27, Quarry = 16, Paving = 17, Paved = 18, DriveRoad = 19, DriveField = 20, WearDirt = 21, WearGravel = 22, SpinOut = 23, PaintMarked = 24, PaintPlain = 25, Land = 26;
+    public const int Count = 30, Quarry = 16, Paving = 17, Paved = 18, DriveRoad = 19, DriveField = 20, WearDirt = 21, WearGravel = 22, SpinOut = 23, PaintMarked = 24, PaintPlain = 25,
+        SpinOut2 = 26, WearDirtPaved = 27, WearGravelPaved = 28, Land = 29;
     public static readonly string[] Names = { "clicking", "hillside", "gravel", "good road", "bad road", "wear", "hairpin", "hairpin good",
         "ramp bare", "ramp gravel", "steep gravel", "steep packed", "T", "crossroads", "Y", "junction", "quarry", "paving", "paved", "driving road", "driving field",
-        "dirt road", "gravel road", "loose gravel", "marked strip", "unmarked strip", "map" };
+        "dirt road", "gravel road", "loose gravel", "marked strip", "unmarked strip", "loose gravel after paved", "dirt road, paved way in", "gravel road, paved way in", "map" };
     // What the host can choose. 1 to 5 are land between two towns. The others are test grounds,
     // each about one thing: the sizes, building a road, what trucks can drive, and junctions.
     public static readonly string[] MapNames = { "Scale yard", "Short, 60 m", "Middle, a hill in the way", "Long, 300 m", "Climb, 16 m up", "Switchback, rocks",
@@ -70,16 +74,18 @@ public class Plot : MonoBehaviour
     public static bool LandMap(int map) { return map >= 1 && map <= 5; }
 
     // roads with steady traffic: a truck sets off down each lane every few seconds
-    public static bool Steady(int id) { return id == Land || id == WearDirt || id == WearGravel || id == SpinOut; }
+    public static bool Steady(int id) { return id == Land || WearRoad(id) >= 0 || id == SpinOut || id == SpinOut2; }
     // how many trucks a plot's road can have on it at once, both lanes together
-    public static int Traffic(int id) { return id == WearDirt || id == WearGravel || id == SpinOut ? 12 : 2; }
+    public static int Traffic(int id) { return WearRoad(id) >= 0 ? 10 : id == SpinOut ? 12 : id == SpinOut2 ? 16 : 2; }
+    // which of the Wear ground's four roads a plot is, from the left: dirt, gravel, dirt with a paved way in, gravel with one. -1: none of them
+    public static int WearRoad(int id) { return id == WearDirt ? 0 : id == WearGravel ? 1 : id == WearDirtPaved ? 2 : id == WearGravelPaved ? 3 : -1; }
 
     // which of the host's choices a plot belongs to
     public static int MapOf(int id)
     {
         if (id == Land) return -1;
-        if (id == WearDirt || id == WearGravel) return WearMap;
-        if (id == SpinOut) return SpinMap;
+        if (WearRoad(id) >= 0) return WearMap;
+        if (id == SpinOut || id == SpinOut2) return SpinMap;
         if (id == PaintMarked || id == PaintPlain) return PaintMap;
         if (id <= 2 || id == 6) return BuildingMap;     // clicking, the hillside, gravel, and the hairpin to level
         if (id == Quarry) return QuarryMap;
@@ -131,8 +137,8 @@ public class Plot : MonoBehaviour
     public int selected = -1;               // the local player's stake: the next one is roped to it
 
     // trucks damage this road: the first wear road, the two of the Wear ground, and a map while its switch is on
-    public bool Wears => id == 5 || id == WearDirt || id == WearGravel || (IsLand && Game.I.tuning.mapWear >= 0.5f) || (IsQuarry && Game.I.tuning.quarryWear >= 0.5f);
-    public bool TrucksPack => IsLand || id == SpinOut;      // trucks pack the gravel they drive over
+    public bool Wears => id == 5 || WearRoad(id) >= 0 || (IsLand && Game.I.tuning.mapWear >= 0.5f) || (IsQuarry && Game.I.tuning.quarryWear >= 0.5f);
+    public bool TrucksPack => IsLand || id == SpinOut || id == SpinOut2;      // trucks pack the gravel they drive over
     public bool IsLand => id == Land;
     public float rutShare, deepest;         // how much of the road's ground has been cut below its line, 0 to 1, and the deepest cut (m)
     public int fixedStakes;                 // the map: the first stakes are the towns', and stay where they are
@@ -153,7 +159,7 @@ public class Plot : MonoBehaviour
     public static void Hint(string what) { Say(what, false); }
     // how a plot's road starts: 2 gravelled and packed, 1 gravelled, 0 bare
     int StartsAs => TestSurface != null && id >= 8 && id <= 11 ? TestSurface[id - 8]
-        : id == 3 || id == 5 || id == 7 || (id >= 11 && id <= 14) || id == Paving || id == Paved || id == WearGravel || id == PaintMarked || id == PaintPlain ? 2 : id == 9 || id == 10 || id == SpinOut ? 1 : 0;
+        : id == 3 || id == 5 || id == 7 || (id >= 11 && id <= 14) || id == Paving || id == Paved || id == PaintMarked || id == PaintPlain ? 2 : id == 9 || id == 10 || id == SpinOut || id == SpinOut2 ? 1 : 0;
     // Test tooling: the four ramps of the Trucks ground (plots 8 to 11) made to order, for the
     // scripts that measure what a truck climbs. Degrees and surface (0 bare, 1 loose gravel,
     // 2 packed) for each, and how high they go. Null: the ramps as designed.
@@ -352,8 +358,27 @@ public class Plot : MonoBehaviour
                     Lay(t, ox, oz, 0);
                     break;
                 }
-            // the wear roads: five sections each, side by side, on their lines
-            case WearDirt: case WearGravel: Straight(first - 8f - (id - WearDirt) * 26f, 0, length, BaseHeight, BaseHeight, BaseHeight, BaseHeight, BaseHeight, BaseHeight); Lay(t, ox, oz, 0); break;
+            case WearDirt: case WearGravel: case WearDirtPaved: case WearGravelPaved: WearGround(t); break;
+            case SpinOut2:
+                {
+                    // Low ground, so trucks come onto it almost level. Three paved sections to
+                    // get up to speed on, two of loose gravel, a bend to the right of 90
+                    // degrees in three shorter ones, two more of loose gravel, and three paved
+                    // again, so that trucks from the other end meet the same thing.
+                    Vector3 at = new Vector3(30f, 0.45f, -20f);     // just high enough that its shoulders stand clear of the yard
+                    float[] turn = { 0, 0, 0, 0, 0, 30f, 30f, 30f, 0, 0, 0, 0, 0 };
+                    float heading = 0;
+                    stakes.Add(at);
+                    for (int k = 0; k < turn.Length; k++)
+                    {
+                        heading += turn[k];
+                        at += Quaternion.Euler(0, heading, 0) * Vector3.forward * (turn[k] != 0 ? 16f : length);
+                        stakes.Add(at);
+                        links.Add(new Vector3Int(k, k + 1, 0));
+                    }
+                    Lay(t, ox, oz, 0);
+                    break;
+                }
             // the two strips to paint by hand: three sections each, side by side
             case PaintMarked: case PaintPlain: Straight(first - 8f - (id - PaintMarked) * 26f, 0, length, BaseHeight, BaseHeight, BaseHeight, BaseHeight); Lay(t, ox, oz, 0); break;
             case SpinOut:
@@ -474,6 +499,24 @@ public class Plot : MonoBehaviour
             // the two ends are packed, so a truck is up to speed and straight when it meets the loose gravel
             for (int i = 0; i < h.Length; i++)
                 if (gravel[i] > 0 && Section(origin.x + i % w * Cell, origin.z + i / w * Cell, out int link, out _, out _) && (link == 0 || link == links.Count - 1)) packed[i] = 100;
+        }
+        if (id == SpinOut2)
+        {
+            // the three sections at each end are packed, paved and rolled
+            for (int i = 0; i < h.Length; i++)
+                if (gravel[i] > 0 && Section(origin.x + i % w * Cell, origin.z + i / w * Cell, out int link, out _, out _) && (link < 3 || link >= links.Count - 3)) { packed[i] = 100; top[i] = Rolled; }
+        }
+        if (WearRoad(id) >= 0)
+        {
+            // dirt is bare; gravel is laid and packed; and the two sections at each end of a road with a paved way in are paved and rolled
+            int road = WearRoad(id);
+            for (int i = 0; i < h.Length; i++)
+            {
+                if (!Section(origin.x + i % w * Cell, origin.z + i / w * Cell, out int link, out _, out float side) || Mathf.Abs(side) > lane) continue;
+                bool wayIn = road >= 2 && (link < 2 || link >= links.Count - 2);
+                if (wayIn || road == 1 || road == 3) { gravel[i] = (byte)FullGravel; packed[i] = 100; }
+                if (wayIn) top[i] = Rolled;
+            }
         }
         if (id == PaintMarked || id == PaintPlain)
         {
@@ -596,6 +639,58 @@ public class Plot : MonoBehaviour
             float rough = line + Noise(x, z, ox, oz) * t.roughHeight * roughness;
             h[i] = Mathf.Max(0, rough * Mathf.SmoothStep(1, 0, Mathf.Clamp01(outside / Margin)));
         }
+    }
+
+    // The Wear ground: four roads side by side on one piece of ground that stands high above
+    // the yard, so that a hole has a long way down to go. Each road is a plot of its own, a
+    // strip of the high ground 24 m wide; the strips meet exactly, and the ground falls away
+    // only at the two ends and at the outside of the first and last. Every road's stretch that
+    // wears is five sections, level with its neighbours'. Two of the roads have two paved
+    // sections leading into each end of it.
+    const float WearWide = 24f, WearFall = 14f, WearRun = 18f, WearLeft = -124f, WearNear = -30f;
+    void WearGround(Tuning t)
+    {
+        int road = WearRoad(id);
+        float top = t.wearHeight, length = t.sectionLength;
+        float left = road == 0 ? WearFall : 0, right = road == 3 ? WearFall : 0;
+        float width = WearWide + left + right, depth = length * 9f + (WearRun + WearFall) * 2f;
+        origin = new Vector3(WearLeft + road * WearWide - left, 0, WearNear);
+        w = Mathf.RoundToInt(width / Cell) + 1;
+        d = Mathf.RoundToInt(depth / Cell) + 1;
+        h = new float[w * d];
+        for (int i = 0; i < h.Length; i++)
+        {
+            float u = i % w * Cell, v = i / w * Cell;
+            float edge = Mathf.Min(v, depth - v);
+            if (left > 0) edge = Mathf.Min(edge, u);
+            if (right > 0) edge = Mathf.Min(edge, width - u);
+            h[i] = top * Mathf.SmoothStep(0, 1, Mathf.Clamp01(edge / WearFall));
+        }
+        bool wayIn = road >= 2;
+        float x = origin.x + left + WearWide * 0.5f, z0 = origin.z + WearFall + WearRun + (wayIn ? 0 : length * 2f);
+        for (int k = 0; k <= (wayIn ? 9 : 5); k++) stakes.Add(new Vector3(x, top, z0 + k * length));
+        for (int k = 0; k + 1 < stakes.Count; k++) links.Add(new Vector3Int(k, k + 1, 0));
+        Rebuild();
+        for (int i = 0; i < h.Length; i++)
+            if (Section(origin.x + i % w * Cell, origin.z + i / w * Cell, out int link, out float along_, out float side)) h[i] = TargetIn(link, along_, side);
+    }
+
+    // where players start on the Wear ground: on top, at the near end, between the dirt road and the gravel road
+    public Vector3 WearSpawn(int slot)
+    {
+        float x = origin.x + 1.5f + slot * 1.3f, z = origin.z + WearFall + 6f;
+        return new Vector3(x, Ready ? HeightAt(x, z) + 0.2f : Game.I.tuning.wearHeight + 0.2f, z);
+    }
+
+    // the count of trucks down a wearing road, on signs over it
+    void WearSigns(Game g)
+    {
+        if (labels.Count < 4) return;
+        int road = WearRoad(id), a = road >= 2 ? 2 : 0;
+        g.lorries.Count(id, out int sent, out int arrived, out int wrecked);
+        string says = "<b>" + (road == 0 ? "DIRT" : road == 1 ? "GRAVEL" : road == 2 ? "DIRT, paved way in" : "GRAVEL, paved way in") + "</b>\n<b>" + sent + "</b> trucks so far\n"
+            + arrived + " through, " + wrecked + " wrecked\nruts in " + Mathf.RoundToInt(rutShare * 100f) + " %, deepest " + Mathf.RoundToInt(deepest * 100f) + " cm";
+        for (int n = 0; n < 3; n++) labels[n] = new Yard.Label { at = stakes[a] + new Vector3(0, 3.4f, 2f + n * 48f), text = says };
     }
 
     // Station 3: a bare hillside with no line. It rises away from where players start and tilts
@@ -1209,8 +1304,13 @@ public class Plot : MonoBehaviour
             case SpinOut: text = "Loose gravel round a bend, packed at each end.\nTrucks slide on it, and pack it as they go (truckPacking on F1).\nThe host's button above makes it loose again."; at = stakes[1] + Vector3.up * 2.2f; break;
             case PaintMarked: text = "Rolled asphalt, with the place for each line marked.\n8: the roller brush. Hold left click and drag for white, right click for yellow.\nT: tar spray, to cover paint. G: the grinder, to take it off.\nE by the paint truck drives it: left click its white nozzle, right click its yellow."; at = stakes[0] + new Vector3(0, 2.4f, 6f); break;
             case PaintPlain: text = "The same strip with nothing marked.\nA white line inside each edge, and a yellow one down the middle."; at = stakes[0] + new Vector3(0, 2.4f, 6f); break;
-            case WearDirt: text = "A dirt road: bare ground on its line, under steady traffic.\nThe readout (F3) counts the trucks. Grade it (2) to mend it."; at = stakes[0] + new Vector3(0, 2.2f, 4f); break;
-            case WearGravel: text = "A gravel road, packed, under the same traffic.\nGrade (2) and gravel (3) mend it."; at = stakes[0] + new Vector3(0, 2.2f, 4f); break;
+            case WearDirt: case WearGravel: case WearDirtPaved: case WearGravelPaved:
+                // the count of trucks, written each frame: over each end of the stretch that wears, and its middle
+                for (int n = 0; n < 3; n++) labels.Add(new Yard.Label());
+                text = id == WearDirt ? "Grade it (2) to mend it." : id == WearGravel ? "Grade (2) and gravel (3) mend it." : "Trucks come onto it at speed,\noff two sections of paved road.";
+                at = stakes[0] + new Vector3(0, 1.2f, -3f);
+                break;
+            case SpinOut2: text = "Three paved sections, then loose gravel: two sections straight, a bend, two more.\nTrucks reach it at speed. They pack it as they go.\nThe host's button above makes it loose again."; at = stakes[0] + new Vector3(0, 2.6f, 8f); break;
             case 6: text = "Hairpin: stakes set round the tightest turn allowed\nlevel it and gravel it; trucks try it as it is"; break;
             case 8: text = "A 14 degree climb, bare ground on its line.\nToo steep for a truck without gravel."; break;
             case 9: text = "The same 14 degree climb under loose gravel."; break;
@@ -2409,14 +2509,14 @@ public class Plot : MonoBehaviour
         return (1f - packed[i] * 0.01f) * Mathf.Clamp01(gravel[i] / (float)FullGravel);
     }
 
-    // host, the Spin-out ground: the gravel between the two packed ends is loose again, and at full depth
+    // host, the Spin-out ground: the gravel between the two packed or paved ends is loose again, and at full depth
     public void HostLoosen()
     {
-        if (!Ready || id != SpinOut) return;
+        if (!Ready || (id != SpinOut && id != SpinOut2)) return;
         changed.Clear();
         for (int i = 0; i < h.Length; i++)
         {
-            if (zone[i] != 1 || linkOf[i] == 0 || linkOf[i] >= segs.Length - 1 || (packed[i] == 0 && gravel[i] == FullGravel)) continue;
+            if (zone[i] != 1 || top[i] > 0 || linkOf[i] == 0 || linkOf[i] >= segs.Length - 1 || (packed[i] == 0 && gravel[i] == FullGravel)) continue;
             packed[i] = 0;
             gravel[i] = (byte)FullGravel;
             changed.Add(i);
@@ -3072,6 +3172,7 @@ public class Plot : MonoBehaviour
         var tuning = g.tuning;
         cursor.enabled = preview.enabled = hotRing.enabled = false;
         if (IsQuarry && pile != null) QuarryLabels(g);
+        if (WearRoad(id) >= 0) WearSigns(g);
         if (Cars.Mine >= 0) return;     // both hands are on the wheel
         if (id == Paving && labels.Count >= 3)
             for (int r = 1; r <= 2; r++) labels[r] = new Yard.Label { at = g.lorries.RigAt(r) + Vector3.up * 4f, text = g.lorries.RigSays(r) };

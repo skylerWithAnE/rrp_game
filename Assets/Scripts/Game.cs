@@ -324,7 +324,7 @@ public class Game : MonoBehaviour
         players[slot] = null;
     }
 
-    public Vector3 SpawnPoint(int slot) { return Plot.LandMap(map) ? plots[Plot.Land].SpawnAt(slot) : map == Plot.QuarryMap ? plots[Plot.Quarry].QuarrySpawn(slot) : yard.Spawn(slot); }
+    public Vector3 SpawnPoint(int slot) { return Plot.LandMap(map) ? plots[Plot.Land].SpawnAt(slot) : map == Plot.QuarryMap ? plots[Plot.Quarry].QuarrySpawn(slot) : map == Plot.WearMap ? plots[Plot.WearGravel].WearSpawn(slot) : yard.Spawn(slot); }
 
     // The local player swung their shovel (one of Blob's swings): tell everyone else, so they
     // see it on this player's blob.
@@ -338,7 +338,7 @@ public class Game : MonoBehaviour
     }
 
     // is there ground to stand on yet? A client waits for the host to send it.
-    public bool WorldReady => Plot.LandMap(map) ? plots[Plot.Land].Ready : map == Plot.QuarryMap ? plots[Plot.Quarry].Ready : yard.Ready;
+    public bool WorldReady => Plot.LandMap(map) ? plots[Plot.Land].Ready : map == Plot.QuarryMap ? plots[Plot.Quarry].Ready : map == Plot.WearMap ? plots[Plot.WearGravel].Ready : yard.Ready;
 
     // host: choose a map. Everyone gets its ground and starts again at its beginning. With
     // `again`, the land is made afresh from a new seed.
@@ -613,7 +613,7 @@ public class Game : MonoBehaviour
         {
             respawn = false;
             local.Teleport(SpawnPoint(localSlot));
-            cam.yaw = local.yaw = Plot.LandMap(map) || map == Plot.TrucksMap ? 0 : Yard.SpawnYaw;
+            cam.yaw = local.yaw = Plot.LandMap(map) || map == Plot.TrucksMap || map == Plot.WearMap ? 0 : Yard.SpawnYaw;
             cam.pitch = 0;
         }
         if (phase == Phase.Job && nm.IsHost && !won)

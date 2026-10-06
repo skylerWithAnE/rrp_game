@@ -30,7 +30,8 @@ public class Hud : MonoBehaviour
             if (kb.f3Key.wasPressedThisFrame) ShowReadout = !ShowReadout;
             if (kb.escapeKey.wasPressedThisFrame || kb.tabKey.wasPressedThisFrame) Playing = !Playing;
             if (kb.enterKey.wasPressedThisFrame && g.won) g.BackToLobby();
-            // one tool in the hands at a time
+            // one tool in the hands at a time (in a vehicle the number keys change seats instead: see below)
+            int held = Plot.Tool;
             if (kb.digit1Key.wasPressedThisFrame) Plot.Tool = Plot.Stakes;
             if (kb.digit2Key.wasPressedThisFrame) Plot.Tool = Plot.Grade;
             if (kb.digit3Key.wasPressedThisFrame) Plot.Tool = Plot.Gravel;
@@ -42,6 +43,7 @@ public class Hud : MonoBehaviour
             if (kb.digit9Key.wasPressedThisFrame) Plot.Tool = Plot.DropTool;
             if (kb.tKey.wasPressedThisFrame) Plot.Tool = Plot.TarSpray;
             if (kb.gKey.wasPressedThisFrame) Plot.Tool = Plot.Grinder;
+            if (Cars.Mine >= 0) Plot.Tool = held;
         }
         if (!inGame) { Playing = false; ShowPanel = false; }
         Cursor.lockState = Playing ? CursorLockMode.Locked : CursorLockMode.None;
@@ -73,7 +75,7 @@ public class Hud : MonoBehaviour
             if (Playing) GUI.Label(new Rect(width / 2 - 5, height / 2 - 11, 20, 20), "+", label);
             // under the crosshair: why the red rope cannot be made, or what a click here would do
             if (Playing && Plot.WhyFrame >= Time.frameCount - 1 && Plot.Why.Length > 0)
-                GUI.Label(new Rect(width / 2 - 300, height / 2 + 24, 600, 22), (Plot.WhyBad ? "<color=#ff9080>" : "<color=#ffffff>") + Plot.Why + "</color>", new GUIStyle(label) { alignment = TextAnchor.UpperCenter });
+                GUI.Label(new Rect(width / 2 - 380, height / 2 + 24, 760, 110), (Plot.WhyBad ? "<color=#ff9080>" : "<color=#ffffff>") + Plot.Why + "</color>", new GUIStyle(label) { alignment = TextAnchor.UpperCenter, wordWrap = true });
             if (g.phase == Phase.Job) Clock(g, width, height);
             if (g.phase == Phase.Job && g.local != null) Hint(g, width, height);
             else GUI.Label(new Rect(width / 2 - 150, height - 30, 300, 22), "Click to play.  Tab frees the mouse.", label);
@@ -224,7 +226,7 @@ public class Hud : MonoBehaviour
             }
             GUI.enabled = true;
             GUILayout.Label("now " + g.tuning.planetGravity.ToString("0.00"), label, GUILayout.Width(70));
-            if (g.map == Plot.SpinMap && GUILayout.Button("Loosen the gravel again")) g.plots[Plot.SpinOut].HostLoosen();
+            if (g.map == Plot.SpinMap && GUILayout.Button("Loosen the gravel again")) { g.plots[Plot.SpinOut].HostLoosen(); g.plots[Plot.SpinOut2].HostLoosen(); }
             GUILayout.EndHorizontal();
             // on a map: a road at a button, to watch trucks on, and the switch for wear
             GUILayout.BeginHorizontal();
@@ -306,24 +308,30 @@ public class Hud : MonoBehaviour
             text.Append("from host ").Append(Kb(host.receivedRate)).Append("  to host ").Append(Kb(host.sentRate));
             text.Append("  rtt ").Append(g.utp.GetCurrentRtt(NetworkManager.ServerClientId)).Append(" ms\n");
         }
-        text.Append("<size=11>F1 tuning   F3 readout   Tab mouse\nWASD walk   Shift sprint on/off   Space hop   1 to 6, 8, 9 tools   T tar   G grinder\nE drives a vehicle   right click sends a waiting truck\ndev: 7 finishes a section   V flies (Space up, Ctrl down)\nstakes: left click places or chooses, wheel moves\nthe chosen rope, X removes, right click lets go</size>");
+        text.Append("<size=11>F1 tuning   F3 readout   Tab mouse\nWASD walk   Shift sprint on/off   Space hop   1 to 6, 8, 9 tools   T tar   G grinder\nE gets into a vehicle, C its camera   right click sends a waiting truck\ndev: 7 finishes a section   V flies (Space up, Ctrl down)\nstakes: left click places or chooses, wheel moves\nthe chosen rope, X removes, right click lets go</size>");
 
-        GUI.Box(new Rect(8, 8, 360, 356), GUIContent.none, box);
-        GUI.Label(new Rect(16, 12, 350, 351), text.ToString(), label);
+        // as tall as what it says
+        var wrapped = new GUIStyle(label) { wordWrap = true };
+        float tall = wrapped.CalcHeight(new GUIContent(text.ToString()), 350);
+        GUI.Box(new Rect(8, 8, 360, tall + 10), GUIContent.none, box);
+        GUI.Label(new Rect(16, 12, 350, tall + 4), text.ToString(), wrapped);
     }
 
     // What each thing in the yard is and how big, written over it.
     void Labels(Game g)
     {
         var cam = g.cam.GetComponent<Camera>();
-        var style = new GUIStyle(label) { alignment = TextAnchor.MiddleCenter };
+        var style = new GUIStyle(label) { alignment = TextAnchor.MiddleCenter, wordWrap = true };
         var all = new System.Collections.Generic.List<Yard.Label>(g.yard.labels);
         foreach (var plot in g.plots) all.AddRange(plot.labels);
         foreach (var l in all)
         {
             Vector3 s = cam.WorldToScreenPoint(l.at);
             if (s.z < 0.5f || s.z > 60f) continue;
-            GUI.Label(new Rect(s.x / scale - 220, (Screen.height - s.y) / scale - 30, 440, 60), l.text, style);
+            // as tall as the sign's text needs: a fixed box cut off everything after the fourth line
+            if (string.IsNullOrEmpty(l.text)) continue;
+            float tall = style.CalcHeight(new GUIContent(l.text), 520);
+            GUI.Label(new Rect(s.x / scale - 260, (Screen.height - s.y) / scale - tall * 0.5f, 520, tall), l.text, style);
         }
     }
 

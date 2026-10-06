@@ -32,7 +32,10 @@ gravity on a slider (it starts at Mars), wear on dirt and gravel, loose gravel t
 out, a gravel truck that runs its own round to a drop-off the player surveys, lines painted by
 hand and judged unseen, and a button that stakes and finishes the road on any map. Each exists
 to answer one question. `docs/SESSION_2026-10-06.md` opens with the play list and ends with
-every choice that was Claude's, for a yes or no.
+every choice that was Claude's, for a yes or no. After a first go the user set gravity to the
+Moon (0.16) and asked for a third-person camera in vehicles, seats in the pick-up and the paint
+truck, a second spin-out road, and the Wear ground raised to 10 m with four roads and counters;
+those are built and unplayed too.
 
 ## Start here
 
