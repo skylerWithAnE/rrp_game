@@ -169,6 +169,10 @@ public class Tuning : ScriptableObject
     [Range(0.02f, 1)] public float looseGrip = 0.1f;
     [Tooltip("How hard loose gravel throws a truck's tail about, and how much less the wheel answers. 0: not at all.")]
     [Range(0, 3)] public float looseFishtail = 2f;
+    [Tooltip("[A proposal] A truck that comes onto loose gravel off firm road, faster than a truck's own speed, has its tail kicked out: this many radians a second for each time over its own speed it is going. Measured at the Moon, trucks come off 40 m of paved road at about 7 m/s against their own 6, and 8 was the least that spun them. 0: no kick.")]
+    [Range(0, 20)] public float looseEntry = 8f;
+    [Tooltip("[A proposal] A truck that spins out is also thrown sideways, by this times the square of its speed over a truck's own speed (m/s). At 0.4 a spin at 9 m/s, off paved road, throws it sideways at 5 m/s, and one at 3 m/s, in a bend, at 0.6. 0: it only turns.")]
+    [Range(0, 1.5f)] public float spinShove = 0.4f;
     [Tooltip("A truck sliding more than this far sideways on loose gravel (degrees between where it points and where it is going) has spun out.")]
     [Range(10, 80)] public float spinAngle = 22f;
     [Tooltip("Seconds a truck that has spun out slides with its wheels locked before its driver has it back.")]

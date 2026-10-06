@@ -380,6 +380,7 @@ public class Hud : MonoBehaviour
         if (g.phase == Phase.Lobby) drawn.Add(new Rect(Screen.width / scale / 2 - 260, 10, 560, Net.IsHost ? 216 : 60));
         if (ShowReadout) drawn.Add(readoutRect);
         if (ShowGuide) drawn.Add(guideRect);
+        if (ShowPanel) drawn.Add(new Rect(Screen.width / scale - 370, 10, 360, Screen.height / scale - 20));
         foreach (int i in order)
         {
             string text = signText[i];
@@ -420,6 +421,10 @@ public class Hud : MonoBehaviour
     // One slider per Tuning field. Only the host can change them; clients see the host's values.
     void Panel(Game g, Rect rect)
     {
+        // solid behind the sliders: the world and its signs showing through made them hard to read
+        GUI.color = new Color(0.13f, 0.14f, 0.16f, 1f);
+        GUI.DrawTexture(rect, Texture2D.whiteTexture);
+        GUI.color = Color.white;
         GUILayout.BeginArea(rect, box);
         bool host = Net.IsHost;
         GUILayout.Label(host ? "<b>Tuning</b> (applies to everyone, live)" : "<b>Tuning</b> (set by the host)", label);

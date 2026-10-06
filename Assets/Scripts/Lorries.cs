@@ -42,6 +42,7 @@ public class Lorries : MonoBehaviour
         public Vector3[] wheels;
         public readonly List<Vector3> path = new List<Vector3>();
         public int index, reached, trips, wrecks, spins;
+        public float wasLoose;              // host: how loose the ground under it last was, when it was clearly one thing or the other
         public float spin, seed;            // host: seconds left of a spin-out; and what makes this truck's tail wag unlike the next one's
         public float stuck, flipped, launch = -1, wait, wear, off;
         // host: how fast each wheel has come down on the ground since the road was last worn (m/s), and where
@@ -332,7 +333,7 @@ public class Lorries : MonoBehaviour
         float top = Travel - 0.25f;     // at rest the springs are squashed a little under a quarter
         l.wheels = new[] { new Vector3(-track, top, front), new Vector3(track, top, front), new Vector3(-track, top, rear), new Vector3(track, top, rear) };
         l.index = l.reached = 0;
-        l.stuck = l.flipped = l.off = l.spin = l.hold = 0;
+        l.stuck = l.flipped = l.off = l.spin = l.hold = l.wasLoose = 0;
         l.reverse = false;
         l.seed = Random.value * 100f;
         l.launch = -1;
@@ -555,6 +556,7 @@ public class Lorries : MonoBehaviour
     // `off` is the furthest it strayed from its lane.
     public struct Trip { public int plot, reached, count; public bool arrived, flipped; public float off; public Vector3 at; }
     public readonly List<Trip> log = new List<Trip>();
+    public readonly List<Vector4> spinLog = new List<Vector4>();     // test tooling: where each spin began (x, z), how fast the truck was going (y), and on which plot (w)
     void Note(Lorry l, bool arrived)
     {
         if (log.Count > 20000) log.Clear();
@@ -706,6 +708,11 @@ public class Lorries : MonoBehaviour
                     rb.AddForce(-going * 0.8f * bite * mass);
                     goto spun;
                 }
+                // [a proposal] Coming onto loose gravel off something firm, faster than a truck's own speed, as it is off
+                // paved road: its tail kicks out, one way or the other, the harder the faster it is going.
+                if (loose > 0.5f && l.wasLoose < 0.2f && going.magnitude > t.lorrySpeed * 1.1f)
+                    rb.AddTorque(Vector3.up * (Random.value < 0.5f ? -1f : 1f) * t.looseEntry * (going.magnitude / Mathf.Max(1f, t.lorrySpeed) - 1f), ForceMode.VelocityChange);
+                if (loose > 0.5f || loose < 0.2f) l.wasLoose = loose;
                 float wag = (Mathf.PerlinNoise(Time.time * 0.7f, l.seed) - 0.5f) * 2f;
                 float answer = 6f * Mathf.Lerp(1f, 0.35f, Mathf.Clamp01(slide));
                 rb.AddTorque(Vector3.up * ((turn - rb.angularVelocity.y) * answer + (wag * 1.5f + turn * 1.2f) * slide * Mathf.Clamp01(going.magnitude / 4f)), ForceMode.Acceleration);
@@ -713,7 +720,13 @@ public class Lorries : MonoBehaviour
                 {
                     l.spin = t.spinSeconds;
                     l.spins++;
-                    rb.AddTorque(Vector3.up * Mathf.Sign(Vector3.SignedAngle(going, forward, Vector3.up)) * 2.5f, ForceMode.VelocityChange);
+                    if (spinLog.Count < 20000) spinLog.Add(new Vector4(position.x, going.magnitude, position.z, l.plot));
+                    float way = Mathf.Sign(Vector3.SignedAngle(going, forward, Vector3.up));
+                    rb.AddTorque(Vector3.up * way * 2.5f, ForceMode.VelocityChange);
+                    // [a proposal] and it is thrown sideways, the way its nose has gone, by the square of its speed: a truck
+                    // that spins at walking pace stays on the road, and one that spins at full speed off paved road leaves it
+                    Vector3 aside = Vector3.Cross(Vector3.up, going.normalized) * way;
+                    rb.AddForce(aside * t.spinShove * going.sqrMagnitude / Mathf.Max(1f, t.lorrySpeed), ForceMode.VelocityChange);
                 }
                 float wanted = t.lorrySpeed * Mathf.Lerp(1f, 0.35f, Mathf.Clamp01(bend / 40f));
                 if (l.rig != null && l.rig.kind == Roller) wanted *= t.rollerSpeed;

@@ -216,6 +216,16 @@ it is built and checked on two instances; none of it has been played.
   and the same again in reverse [Claude: the far half, so that trucks from the other end meet
   the same thing]. Trucks reach the gravel at 9 m/s, not 6. By script at the Moon: 69 spins
   and 18 wrecks in the first 37 trucks. The first road is still there, as Road 1.
+- **"I was hoping to see the trucks lose control when leaving a paved road at top speed and
+  entering uncompacted gravel."** They did not: by script, of about 100 spins on Road 2 only 7
+  began in the first 20 m of gravel, at 3 m/s; the rest began at the bend. Two proposals of
+  Claude's, both on sliders under "Loose gravel", neither played. `looseEntry` (8): a truck
+  that comes onto loose gravel off firm road, faster than its own speed, has its tail kicked
+  out. `spinShove` (0.4): a truck that spins is thrown sideways by the square of its speed, so
+  a spin at speed leaves the road and one in a slow bend does not. With both, 43 spins began in
+  the first 10 m of gravel, at 7 m/s on average, and 7 of 50 trucks got through. 0 on each
+  puts it back. `spinShove` acts on Road 1 and on maps too.
+- **"Tuning menu needs to be fully opaque."** It is.
 - **The words**: a **tile** is a grid square, about 2 m. A **segment** is 20 m of road between
   two stakes, which these pages have been calling a section.
 - **"Let's move the wear scene on to a much larger height of the height map ... on top of some
