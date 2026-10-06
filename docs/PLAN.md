@@ -1,52 +1,65 @@
 # Plan
 
-Rewritten 2026-10-05, at the end of the session that built the maps and the test grounds. The
-plan this replaces, for the unattended push, is in git history (commit `d7cf145`). What was done
-in that session is `SESSION_2026-10-05.md`.
+Rewritten 2026-10-05, at the end of the design session that followed the build of the maps and
+test grounds. The plan this replaces, which set that session's agenda, is in git history (commit
+`2f3f9b9`). What the session decided is in `DESIGN.md` under "What the design session decided".
 
 ## Where the project is going
 
-The user set out the long-term goals on 2026-10-05. They are quoted in full in `DESIGN.md` under
-"Where it is going". In one line: **a large map with several cities to connect; players start
-with a shovel and a dirt road, earn money from each traveller, spend it on gravel, asphalt and
-paint, and every tier of road has hazards that the next tier removes.**
-
-These are goals, not the next thing to build. The user has not said what to build next.
+The user's long-term goals are quoted in full in `DESIGN.md` under "Where it is going", with the
+design session's changes after them. In one line: **a crew on another planet, in low gravity,
+connects cities with roads; dirt and gravel fall apart under traffic and paved road does not;
+money from travellers comes later.**
 
 ## Where it stands
 
-- Everything asked for so far is built and passes a two-instance check. Most of it has not been
-  played: the table "What has been played" in `DESIGN.md` is the measure.
-- The mechanics exist as separate test grounds and five small maps. None of the later mechanics
-  (junctions, gravel from a quarry, paving, vehicles) is on a map.
-- Several things as built now disagree with the goals. They are listed in `DESIGN.md` under "What
-  the goals change", and are the natural agenda for the next session.
+- Everything asked for before the design session is built and passes a two-instance check. The
+  user has played every mechanic in its isolated setting, and the Short and Middle maps. The
+  Long and Climb maps were too much work to build by hand.
+- Nothing decided in the design session is built.
 
-## Next: a design session
+## Next: an overnight build of six slices
 
-The user asked for a prompt to start one; it is `NEXT_SESSION_PROMPT.md`. It is for deciding, not
-for building. What it should settle, in the order that unblocks the most:
+**"Next build should focus again on small isolated slices"** (user, 2026-10-05). It is to run
+unattended, in a new chat, from a prompt the user will ask for. **Latitude: "Give it wide
+latitude. Same as before"** (user, 2026-10-05): solve problems creatively and add a system if it
+streamlines the play, without asking; write down each addition as Claude's, with the reason, and
+make it something that can be switched off.
 
-1. **The tiers of road and their hazards.** Dirt, gravel, asphalt, painted: what goes wrong on
-   each, what a traveller is worth on each, and how fragile each is. This answers the two
-   questions that have been open longest: what gravel is for, and what paving is for.
-2. **Money.** What a traveller pays, when, and what gravel, asphalt and paint cost. Whether the
-   first road can pay for the second.
-3. **The map.** How many cities, how far apart, what "low volume traffic" is, and whether the
-   ground that was built for 300 m maps will do.
-4. **Automated and driven.** How one vehicle is both, and who decides which it is at a moment.
-5. **Hand-drawn paint.** What the roller brush and the paint truck draw, and how a drawn line is
-   judged against where a line should be.
-6. **Which of today's test grounds graduate**, and which mechanics are redone to fit the goals.
+The slices and their order are Claude's proposal. The user has seen the list and has not
+objected to it or confirmed it.
 
-How to run it is the user's standing rule: questions are answered by playing, so each answer
-worth testing becomes a station, and where there are two good answers, one station each.
+| # | Slice | What is built | The one question |
+|---|---|---|---|
+| 1 | Gravity | A slider for gravity, for trucks, vehicles and blobs, everywhere. The climbs, the coast and the tightest turn measured again by script at Earth, Mars (0.38) and the Moon (0.16). Starts at Mars | How low is fun? |
+| 2 | Wear | A dirt road and a packed gravel road under steady traffic. Wear on bare ground. Damage scales up past the threshold. A slider between damage by time on a square and damage by how hard a truck lands. No wear on paved | Does a road fall apart at the pace the user described, and is it good to watch? |
+| 3 | Spin-out | A loose gravel stretch with a bend. Sideways grip that depends on the surface. Truck packing on its slider | Is loose gravel dangerous for long enough to matter? |
+| 4 | Gravel delivery | On the Quarry ground: a survey tool that places a drop-off; a truck that runs its own round, backs in, waits to be unloaded and goes home; a road for everyone that it shares with travellers; the truck destroyed on a bad road and replaced; one shovel covers ten tiles, on a slider | Is bringing gravel over a road you built a job worth doing? |
+| 5 | Hand painting | Its own scene: a strip with the lines marked and one without; a roller brush that leaves a stripe; the paint truck spraying where it is; tar spray and a grinder to remove paint; the judging on the F3 readout only | Is drawing a line by hand hard in a good way? |
+| 6 | Long and Climb finished | A button that stakes and finishes a map's road, so the user can watch trucks on it with gravity and wear running | Is a long road worth having? |
+
+Why this order: every other slice behaves differently under low gravity, so it is first. Spin-out
+and the delivery truck's punishment both depend on wear, so it is second. Paint depends on
+nothing. The demos are last so that they show the rest.
+
+The pace the user gave for wear, to check slice 2 against: dirt has a square destroyed by the
+fifth truck and is a rut by the fiftieth; gravel has several squares damaged by 50, several very
+deep holes by 250, and is unusable by 500.
+
+### Risks to say out loud
+
+- **Gravity cannot be played before the rest is built on it.** The build picks a starting value
+  unplayed. Every slice must work across the slider's whole range, not only at the start value.
+- **The tightest turn may not be driveable in low gravity.** If so, report it; do not quietly
+  widen the turn the user chose.
+- **The truck's physics may have no sideways grip to lose.** Slice 3 may need it added.
+- **Reversing is new.** No truck can back up or turn round today.
+- **Not in this build**: money, a large map, signage, hot asphalt, vehicle health, driver
+  recklessness, vehicles hitting players, repaving over paint, wear on paved road, theming.
 
 ## After that
 
-Not planned. It depends on what the design session decides. The likeliest first build is a
-station for the road tiers and their hazards, because everything else (money, the reason to
-upgrade, the reason to pave) hangs on it. That is Claude's guess, not a decision.
+The user plays the slices. Nothing further is planned until then.
 
 ## Standing rules for building
 
@@ -54,6 +67,6 @@ upgrade, the reason to pave) hangs on it. That is Claude's guess, not a decision
   user accepts a step, or when it passes two instances if the user is away. Never push.
 - A scripted check of a rule is not a check of the control: stand the player there and read what
   the screen says. See `NOTES.md`.
-- Play before building more. On 2026-10-05 about ten systems were stacked on three that had been
-  played, and the one fault the user found came from that.
+- Play before building more.
 - Compiling stops the user's game. Check the editor's state before every compile.
+- What the user has played is what the user says, not what a note from a session guessed.

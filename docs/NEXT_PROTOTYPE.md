@@ -28,6 +28,26 @@ At the end of 2026-10-05 the user set out the long-term goals, which are quoted 
 The items below were said earlier the same day and still stand unless the goals above replace
 them.
 
+## Changed or parked in the design session of 2026-10-05
+
+In the user's words. The next build, six slices, is in `PLAN.md`; these are what it leaves out.
+
+- **"Just the shovel is officially no longer a goal of the final prototype."**
+- **Money**: "The players will build a dirt road to get initial money. Usage of the quarry will
+  cost money. That is for the final prototype. This next prototype will not involve money."
+- **Signage**: "not something we want to incorporate in the design right now." The user had
+  said a crew's first move at a ruined stretch is "a sign to deter/block traffic".
+- **Hot asphalt**: "Let's backburner hot asphalt until we develop more basic vehicle health
+  systems." Vehicle health is not designed.
+- **Paint and recklessness**: "Let's plan on driver recklessness as a future hazard that is
+  dampened by painted roads. Not to be worked on this sprint, but something to keep in mind as
+  we further develop traveler AI."
+- **Wear on paved roads**: "for now, we will not even implement road wear on paved roads."
+- **Repaving** as a way to fix bad paint: named by the user beside tar spray and a grinder; left
+  out of the next build by Claude, because the dump truck cannot lay over a finished road.
+- **The large map**: waits. "Next build should focus again on small isolated slices."
+- **Theming the planet**: "It might help with theming. I'm not sure about that."
+
 ## Said by the user
 
 - **Small, finite sources of gravel** that players can use before they set up or find a quarry.
@@ -94,7 +114,8 @@ Roads
 
 Tools
 - The dev tool (key 7) and flying (V) are for testing and should not ship as they are.
-- Six tools on number keys is a lot. What is in the player's hands is still not shown.
+- Seven tools on number keys (1 to 6 and 8, with the dev tool on 7 between them) is a lot. What
+  is in the player's hands is shown only for the shovel.
 
 Known faults
 - Killing a client's process (not closing it) makes the host stop hearing everyone.

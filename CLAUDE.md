@@ -20,14 +20,22 @@ being left for the prototype after this one. There is no end, score or clock, by
 start with a shovel and a dirt road, are paid for each traveller, and spend the money on gravel,
 asphalt and paint. Each tier of road has hazards that the next removes; all roads take damage
 and dirt is fragile; vehicles are both automated and drivable; paint is drawn by hand. The full
-text is in `docs/DESIGN.md`. None of it is built, and the next session is for designing it.
+text is in `docs/DESIGN.md`. None of it is built.
+
+**The design session (2026-10-05)** narrowed the goals and planned the next build. It is set on
+another planet, in low gravity, "to make things more dramatic and harder for players to
+predict". Dirt and gravel wear out fast and paved road does not. "Just the shovel" is dropped,
+and money waits for the final prototype. The next build is six isolated slices, unattended:
+gravity, wear, spin-out on loose gravel, a gravel truck that runs its own round, painting by
+hand, and the Long and Climb maps finished at a button. `docs/PLAN.md` has the list.
 
 ## Start here
 
 1. `docs/DESIGN.md` is the game as it stands: what the user decided, in their words and dated,
    how each thing was built, what has been played and what has not, and what is open. Start here.
-2. `docs/PLAN.md` is where the project is going, where it stands, and the agenda for the next
-   session. `docs/NEXT_SESSION_PROMPT.md` is the prompt the user means to start it with.
+2. `docs/PLAN.md` is where the project is going, where it stands, and the slices of the next
+   overnight build. `docs/NEXT_SESSION_PROMPT.md` is the prompt for that build, for the user to
+   paste.
    `docs/SESSION_2026-10-05.md` is what the last session built and what went wrong in it.
    `docs/PLAYTEST.md` is what was seen when the user played. `docs/NEXT_PROTOTYPE.md` is what is
    being left for the prototype after this one.
@@ -56,14 +64,18 @@ asking.
   a system if it would streamline the gameplay, without asking first. Write down each addition as
   Claude's, with the reason, and make it something that can be switched off. **That push is
   over.** The user called it "a big success".
-- Outside that push, the older rule stands: do not add features, systems or options that are not
+- **The next overnight build has the same latitude** (user, 2026-10-05: "Give it wide latitude.
+  Same as before"), under the same conditions. It covers the slices in `PLAN.md` and ends with
+  that build.
+- Outside those builds, the older rule stands: do not add features, systems or options that are not
   in `DESIGN.md` or `PLAN.md`; if something seems missing, ask.
 - **Build and confirm each mechanic on a station first** (user, 2026-10-05: "Using stations to
   build, test and confirm each mechanic seems like it worked out really well").
-- No end, score or clock yet. Wear is off. A second player has exactly the same controls as the
+- No end, score or clock yet. Wear is off as built, and comes on for dirt and gravel in the next
+  overnight build (user, 2026-10-05); paved road does not wear. A second player has exactly the same controls as the
   first. Do not spend long on the towns: the first prototype's were fine. (This is the prototype
-  as built. The long-term goals bring money per traveller and wear on every road; do not build
-  either until the user says so. "Scoring systems aren't important": score means what a
+  as built. The long-term goals bring money per traveller; do not build
+  it until the user says so. "Scoring systems aren't important": score means what a
   traveller pays.)
 - **Play before building more** (learned 2026-10-05): do not stack new systems on ones the user
   has not played.

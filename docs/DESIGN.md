@@ -1,6 +1,8 @@
 # Game design
 
-Rewritten 2026-10-05 as the game stands. The page it replaces had grown by addition through two
+Rewritten 2026-10-05 as the game stands, and amended the same day by a design session: "What
+the design session decided", "What has been played" and "Open" are new, and the version before
+them is commit `2f3f9b9`. The page the rewrite replaced had grown by addition through two
 days of building and is in git history (commit `abf2516`), as is the first prototype's design
 (`4348b8e`). How the code works is `TECH_PLAN.md`. What is being left for the prototype after
 this one is `NEXT_PROTOTYPE.md`.
@@ -17,8 +19,9 @@ bring the ground to it, lay and pack gravel, and, on the test grounds so far, pa
 Trucks drive whatever is there and wreck where it is bad. Gravel comes from a quarry by truck.
 
 It is a prototype for demonstrating and playing with mechanics. **There is no end, no score and
-no clock; wear is off; a second player has exactly the same controls as the first** (user,
-2026-10-05). That is the prototype as built. Where the user means to take it is next.
+no clock; a second player has exactly the same controls as the first** (user,
+2026-10-05). That is the prototype as built. Where the user means to take it is next, and the next build
+turns wear on for dirt and gravel.
 
 ## Where it is going
 
@@ -48,42 +51,153 @@ The user's long-term goals, set out on 2026-10-05, in full:
 > Scoring systems aren't important. Mentions of score here are more about the value paid to the
 > players per road traveler.
 
-None of this is built. It is the direction, and the next session is for designing toward it.
+None of this is built. A design session later on 2026-10-05 narrowed it and planned the next
+build. What it decided is the next section.
 
-### What the goals change
+## What the design session decided
 
-Where the build as it stands disagrees with the goals. Claude's reading; each is for the user to
-confirm.
+2026-10-05. Every decision here is the user's, and words in quotation marks are theirs. Anything
+marked [Claude] is a proposal or a default the user has not confirmed. None of it is built. The
+build that tries it is in `PLAN.md`.
 
-| Today | The goals | What follows |
+### Changes to the goals
+
+- **"Just the shovel is officially no longer a goal of the final prototype."** Players have their
+  tools from the start.
+- **Money is for the final prototype, not the next one.** "The players will build a dirt road to
+  get initial money. Usage of the quarry will cost money. That is for the final prototype. This
+  next prototype will not involve money."
+- **Paved roads do not wear for now.** "Paved is so much more sturdy that for now, we will not
+  even implement road wear on paved roads."
+- **An automated truck and a driven one are different vehicles.** "The gravel truck dispatched
+  from the quarry needs to be a separate entity, not something the player can take over. We'll
+  experiment with that in the next stage of scenarios." [Claude: assumed to hold for the asphalt
+  dump truck and the sent roller too.]
+- **"Next build should focus again on small isolated slices."** The large map waits. A road too
+  long for one player is built by "multiple players".
+- **"Signage is not something we want to incorporate in the design right now."**
+- **"Let's backburner hot asphalt until we develop more basic vehicle health systems."**
+- **The mechanics played so far stand.** "I'm happy with those mechanics and now I want to add
+  more complications to them."
+
+### Another planet
+
+**"I think I want to go to the moon. Not really the moon, but some other planet where we can
+have an excuse to lower gravity and cause more problems with small potholes."** It is
+"specifically a thought to make things more dramatic and harder for players to predict". On
+theming: "It might help with theming. I'm not sure about that." Nothing is themed.
+
+- **Low gravity applies to the blob too**: "Might want to reduce it later, but right now that
+  sounds fun." The 0.6 m hop is 3.6 m at the Moon's gravity.
+- What follows [Claude]: a truck at 6 m/s kicked up at 1 m/s rises 5 cm on Earth and 30 cm on
+  the Moon, and lands 7 m on. Every number measured at Earth gravity has to be measured again:
+  the climbs (25, 16 and 10 degrees), the 15 degree slope limit, the 20 m a truck coasts, the
+  springs. The user's tightest turn may not be driveable at 6 m/s. Gravity is to be a slider.
+
+### The tiers of road
+
+| Tier | What goes wrong | How fast |
 |---|---|---|
-| Separate test grounds, and five maps with two towns each | One large map, several cities | The later mechanics have to come onto a map. The ground was built and measured for 300 m; "large" has to be given a size before anyone knows if it will do |
-| No money. Earth, gravel, asphalt and paint are free, except gravel on the Quarry ground | Money from each traveller, spent on gravel, asphalt and paint; later a quarry of one's own | Something has to count travellers and pay. Free gravel on the maps ends. The first dirt road has to earn enough to buy the first gravel, or the game stalls at the start |
-| The player has every tool from the start | Players start with just their shovel | Stakes, zoning and the rest are either part of "the shovel" or have to be come by. Not said which |
-| A truck needs nothing but graded ground, up to 10 degrees. Gravel matters only on a slope | Dirt is for low-volume traffic and is fragile; gravel is "the first real step"; each tier has hazards | This answers what gravel is for. The hazards themselves are not designed: what goes wrong on dirt that gravel stops, and on gravel that asphalt stops |
-| Wear is off, and exists on one test road | All roads take damage; dirt much more so | Wear comes back on, everywhere, at a different strength for each tier. The user's earlier "wear is off" was for the prototype as it then was |
-| Paving makes trucks half as fast again | A paved road is almost entirely hazard-free | That is what paving is for. Speed may stay or go |
-| Trucks wreck by getting stuck or tipping over | More drama: suspension, vehicles flying around | The truck's springs and what throws it are to be turned up, not smoothed. Fits "explosions and jank" |
-| Vehicles pass through players | Vehicles run into the player | In the design, not to be built yet: "that will be its own system" |
-| The dump truck is automated only; the roller is sent on one ground and driven on another; the gravel truck is sent only | Dump trucks, rollers and gravel trucks are each both automated and drivable | One vehicle with two ways of being run, and a way to tell which it is in. The sent trucks cannot turn round at a road's end, which a driver will not accept |
-| Lines are painted a square at a time and drawn by rule; the brush paints free-hand dabs; the paint truck paints whole squares under it | Painting is hand drawn with a roller brush; the paint truck is hand drawn too, so a perfect result is hard | The square paint tool goes. The brush becomes a roller that leaves a continuous stripe. The paint truck paints where it actually is, not the square it is in. Something has to know where a line should have been, to pay for how close the drawn one is |
-| No end, no score, no clock | "Scoring systems aren't important." Score means what a traveller pays | Still no score screen and no clock. But pay per traveller is a number that depends on the road, and that is new |
+| Dirt | Holes and ruts. "Once a square passes a certain threshold, let's scale up damage dealt to it" | "By the fifth, a significant portion of at least one square has been destroyed." "By the fiftieth, the road is probably more of a rut. Untouched surrounding land is likely to be easier to travel at that point." "The fifth and the fiftieth might change to larger or smaller numbers" |
+| Gravel, loose | "Maybe unpacked gravel needs to encourage vehicles to spin out. Realistically, vehicles would pack gravel" | Until packed |
+| Gravel, packed | "gravel needs to develop potholes quickly, too" | "after 50, we are seeing significant damage to multiple squares. by 500, it is unusable. it would be full of holes, several being very deep, after 250" |
+| Paved | Nothing | No wear for now |
+| Painted | "Let's plan on driver recklessness as a future hazard that is dampened by painted roads. Not to be worked on this sprint, but something to keep in mind as we further develop traveler AI" | Later |
+
+- **What dirt is for**: "It degrades too rapidly to be something the player should use regularly.
+  They can get away with service roads with only on demand traffic as dirt roads." In the final
+  prototype it is also where the first money comes from.
+- **Wear is part of the next build**: "Let's make wear and tear a part of the next overnight
+  build that we're planning right now." "We need some good deterioration systems. Weird, jank,
+  emergent dumb game humor."
+- **Trucks keep to the road, ruts and all**: "trucks stick to the roads. players can drive their
+  pickup all over, though."
+- **The slope limit stays at 15 degrees**, though a bare road wrecks trucks from 12: "I don't
+  think this is an issue right now. It is worth considering adjusting this so that we can make
+  it a 'rake in the yard' for the player to step on."
+- [Claude] Trucks packing gravel stays, on its slider: packing in one pass would end the
+  spin-out after the first truck. Whether the truck's physics has sideways grip to lose is
+  unchecked.
+- [Claude] Wear already strips packing before it cuts, so a worn gravel road goes loose again.
+- [Claude] Repair is assumed to be the same grading and gravel clicks as building, as on the wear
+  road today. The user was asked and answered with signage, since parked.
+- [Claude] Damage could come from how hard a truck lands, not only from time on a square, so that
+  one hole starts the next. Proposed as a slider beside the present rule.
+- At today's traffic (a truck from each town every 12 seconds) the fifth truck is one minute and
+  the fiftieth is ten. How much traffic there is matters as much as the damage.
+
+### Gravel delivery
+
+**"Let's stick with a system where the player starts with access to the quarry. They will create
+a gravel drop off spot with a distinct survey tool. It will need to be connected to the quarry
+via road. The road will not necessarily need to be a service road, the gravel dump truck will be
+able to drive along standard zoned roads. When the truck arrives, have it back into the spot,
+dump, then return to the quarry. Using a standard road for this jobsite dump can definitely be a
+sort-of emergent hazard."**
+
+- Then, replacing "dump": **"The player will unload the gravel after the truck arrives."** The
+  unloading as built stays: place the heap, one click off the truck, one fling onto the heap.
+- **"Let's also go very high with the ratio of how many clicks it takes to load/unload vs the
+  number of tiles that can be covered with gravel. 1 load -> enough gravel to place on 10 tiles.
+  Make that as another lever that we can adjust for balance."** [Claude reads "load" as one
+  shovel: `shovelWorth` goes from 8 laying clicks to 30, and a truck of 12 covers 60 m of road.]
+- **On a bad road the truck is lost**: "I will probably want it to be destroyed to punish players
+  for low quality service roads." [Claude: an empty one appears at the quarry after a delay.]
+- Travellers stuck behind a truck that is backing in blow up after 4 seconds under Claude's
+  stuck rule. The user: "worth revisitng later; we'll see how it works/feels."
+- What follows [Claude]: the truck has to reverse and turn round by itself, which no truck can
+  today. Someone has to be at the quarry to load, which gives the pick-up and a second player a
+  job. A dirt quarry road is ruined by its own truck, so the first gravel may go on the road
+  that brings the gravel.
+
+### Painting by hand
+
+**"I would like an isolated scene of hand-painting the roads. We'll decide if it is good by
+checking the paint near designated places of the road's square. Add points for paint where we
+want it to be (edges and center) and deduce points for paint where we wouldn't expect it."**
+
+- **Fixing a bad line**: "We'll use a tar-spray tool to cover paint. A less precise airbrush
+  style of hand painting. Or, we can use a surface grinder. Or, repaving."
+- **"I think the mechanic/scoring system will be invisible to the player."** [Claude: the number
+  goes on the F3 readout only, so the judging can be checked.]
+- What follows [Claude]: paint has to be remembered in cells of about 0.1 m. The width of the
+  wanted band against the width of the roller is the main lever. A broken centre line is much
+  harder than a solid one. Whether the place for a line is marked on the asphalt is open, and
+  the scene is to have a strip of each. The paint truck is assumed to join the scene, spraying
+  where it actually is. Repaving is left out of the next build.
+
+### Where the build still disagrees with the goals
+
+| Today | The goals, as they now stand | State |
+|---|---|---|
+| Separate test grounds, and five maps with two towns each | One large map, several cities | Waits. The next build is slices |
+| No money | Money from each traveller; the quarry costs money | Waits for the final prototype |
+| A truck needs nothing but graded ground. Wear on one test road | Dirt and gravel wear fast; paved does not | Next build |
+| Earth gravity | Another planet | Next build |
+| Gravel is free off the Quarry ground; its truck is sent by a click to a fixed drop | A truck that runs its own round to a drop-off the player surveys | Next build, on a test ground |
+| Lines painted a square at a time, by rule | Drawn by hand and judged unseen | Next build, in its own scene |
+| Vehicles pass through players | Vehicles run into the player | "That will be its own system" |
+| Paint does nothing for traffic | Paint dampens driver recklessness | Later, with traveller AI |
 
 ## What has been played
 
-| | Built | Played by the user |
-|---|---|---|
-| Stakes and rope, grading, gravel, the hot spot, mitred corners, self-driving trucks, wear | yes | yes: accepted 2026-10-05, "they look good" |
-| The Short map | yes | yes: "The short playtest went great. The game is looking much more like what I envisioned." |
-| Building junctions | yes | yes: "looks good, and intuitive" |
-| Zoning | yes | not by hand: "it clearly worked from your example" |
-| The Middle, Long, Climb and Switchback maps | yes | no |
-| The rope's slope limit; the line that says why a rope is red | yes | no |
-| The quarry pit: loading, sending, the heap | yes | no |
-| Paving: the dump truck, spreading, the roller, paint, the brush | yes | only an earlier dump truck, which was faulty |
-| Driving: pick-up, roller, loader, paint truck | yes | no |
-| The shovel in the hands | yes | no |
-| The dev tool, flying, trucks keeping their lane at junctions | yes | no |
+As the user told it in the design session of 2026-10-05: "I have played with each mechanic in
+their isolated settings". The table this replaces was Claude's guess and understated it. Played
+is not the same as commented on: where there are no words, none were given.
+
+| | Played by the user |
+|---|---|
+| Stakes and rope, grading, gravel, the hot spot, mitred corners, self-driving trucks, wear | yes: accepted, "they look good" |
+| The Short map | yes: "The short playtest went great. The game is looking much more like what I envisioned." |
+| The Middle map | yes: "I have connected two towns in middle" |
+| The Long and Climb maps | no: "kinda too labor intensive for me, so, I would like to see demos of those completed" |
+| The Switchback map | not said |
+| Building junctions; trucks at junctions | yes: "looks good, and intuitive"; after the change, "I did observe lane-keeping being much more tight" |
+| Zoning | not by hand: "I haven't thought about zoning since establishing it" |
+| The quarry | yes: "loading, flinging, sending, I have played those mechanics" |
+| Paving | yes: "I have tested an asphalt dump truck that placed asphalt on the ground that I leveled with the 'asphalt' tool" |
+| Driving, the roller, the brush, the paint truck, the shovel in the hands | yes, in their isolated settings: "I'm happy with those mechanics and now I want to add more complications to them" |
+| The rope's slope limit; the dev tool; flying | not said |
 
 ## How the user wants it built
 
@@ -464,31 +578,37 @@ click, and from leveled to compacted gravel in 1 click"**, and **"some flying/no
 
 ## Open
 
-The goals answered three of these in principle on 2026-10-05, and each answer opens a question
-of how:
+Answered in the design session of 2026-10-05, and written up under "What the design session
+decided": what the hazards of dirt and gravel are, what paving is for, how one vehicle is both
+automated and driven (it is not: they are different vehicles), how a hand-drawn line is judged,
+whether trucks packing gravel is wanted, and where the first gravel comes from.
 
-- ~~What gravel is for.~~ It is "the first real step in a fully functional road", and dirt is
-  fragile and for low-volume traffic. **Open: what the hazards of a dirt road are.**
-- ~~What paving is for.~~ "A paved road is almost entirely hazard-free." **Open: what the hazards
-  of a gravel road are.**
-- ~~Whether the sent trucks and roller should be driven.~~ They "will be both automated and
-  drivable". **Open: how one vehicle is both.**
+To be answered by playing the next build:
 
-Still for the user to answer, most pressing first:
+- **How low the gravity should be**, for trucks and for the blob.
+- **Whether dirt and gravel fall apart at the pace the user described**, and whether damage by
+  landing is better than damage by time.
+- **Whether loose gravel is dangerous for long enough**, with trucks packing it.
+- **Whether a gravel truck that runs its own round is a job worth having**, what should happen
+  to travellers behind it, and whether losing it on a bad road is the right punishment.
+- **Whether the place for a painted line should be marked**, and tar spray against the grinder.
+- **Whether a long road is worth having**, from the finished Long and Climb maps.
 
-- **What a traveller pays, and what gravel, asphalt and paint cost.**
-- **How big the map is and how many cities.**
-- **How a hand-drawn line is judged.**
-- **What belongs on the map.** Junctions, gravel from quarries, paving and vehicles are on test
-  grounds only. Zoning and the slope limit are everywhere.
-- Whether any of the maps is the right distance. That is what they are for.
-- Whether Claude's two systems are wanted, and how strong.
+Still for the user to answer:
+
+- **Which test grounds are finished with.** Asked in the design session and not answered. Until
+  it is, none is removed.
+- **What a traveller pays, and what the quarry, asphalt and paint cost.** For the final
+  prototype.
+- **How big the map is, how many cities, and how much traffic is "low volume".**
+- **How a ruined stretch is repaired.** Claude's default is the same clicks as building.
+- Whether Claude's hot-spot row is wanted, and how strong.
 - Whether Claude's stuck rule should stay.
 - Curved sections in place of mitred corners.
-- How each vehicle should feel, and whether the view should be from the seat.
-- Whether loading at the quarry is right as two clicks, and where the heap may go.
+- Whether the view when driving should be from the seat.
+- Where the heap may go.
 - A rope across a rise runs under the ground, where it cannot be seen.
-- What a second player does that the first does not. Asked on 2026-10-04 and answered since
-  only with "the same controls".
+- What a second player does that the first does not. Loading at the quarry while another lays
+  gravel is the first candidate, and came out of the delivery rules, not from a decision.
 - Everyone starts at town A, so working from both ends means a walk.
 - A player whose game is killed, not closed, makes the host stop hearing everyone. See `NOTES.md`.
