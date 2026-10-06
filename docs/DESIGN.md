@@ -18,7 +18,56 @@ Trucks drive whatever is there and wreck where it is bad. Gravel comes from a qu
 
 It is a prototype for demonstrating and playing with mechanics. **There is no end, no score and
 no clock; wear is off; a second player has exactly the same controls as the first** (user,
-2026-10-05).
+2026-10-05). That is the prototype as built. Where the user means to take it is next.
+
+## Where it is going
+
+The user's long-term goals, set out on 2026-10-05, in full:
+
+> The shape of the final prototype is starting to look like a game that is on a large map with
+> multiple cities that need to be connected. Players start with just their shovel, build a dirt
+> road for low volume traffic, and start making money. Money is at first spent on buying gravel,
+> asphalt, and paint.
+>
+> Gravel is meant to be the first real step in a fully functional road. We need to introduce a
+> lot of hazards in each tier of road to further encourage roadwork. A paved road is almost
+> entirely hazard-free. All roads take damage. We need to make the dirt road much more fragile.
+> We need more dramatic actions occurring. Suspension leading to more vehicles flying around. We
+> need vehicles running into the player, but we don't want to implement that at this point. Keep
+> it in the design, but that will be its own system.
+>
+> Dump trucks, rollers, gravel trucks will be both automated and drivable. Players will
+> eventually be able to purchase their own quarry.
+>
+> Initial painting is handled by hand. Let's make this system hand drawn with a roller brush.
+> The paint truck should also work on a hand-drawn mechanic so that the last phase of completing
+> a road is hard to nail a perfect "score" on.
+>
+> These are the current long-term goals of this project.
+>
+> Scoring systems aren't important. Mentions of score here are more about the value paid to the
+> players per road traveler.
+
+None of this is built. It is the direction, and the next session is for designing toward it.
+
+### What the goals change
+
+Where the build as it stands disagrees with the goals. Claude's reading; each is for the user to
+confirm.
+
+| Today | The goals | What follows |
+|---|---|---|
+| Separate test grounds, and five maps with two towns each | One large map, several cities | The later mechanics have to come onto a map. The ground was built and measured for 300 m; "large" has to be given a size before anyone knows if it will do |
+| No money. Earth, gravel, asphalt and paint are free, except gravel on the Quarry ground | Money from each traveller, spent on gravel, asphalt and paint; later a quarry of one's own | Something has to count travellers and pay. Free gravel on the maps ends. The first dirt road has to earn enough to buy the first gravel, or the game stalls at the start |
+| The player has every tool from the start | Players start with just their shovel | Stakes, zoning and the rest are either part of "the shovel" or have to be come by. Not said which |
+| A truck needs nothing but graded ground, up to 10 degrees. Gravel matters only on a slope | Dirt is for low-volume traffic and is fragile; gravel is "the first real step"; each tier has hazards | This answers what gravel is for. The hazards themselves are not designed: what goes wrong on dirt that gravel stops, and on gravel that asphalt stops |
+| Wear is off, and exists on one test road | All roads take damage; dirt much more so | Wear comes back on, everywhere, at a different strength for each tier. The user's earlier "wear is off" was for the prototype as it then was |
+| Paving makes trucks half as fast again | A paved road is almost entirely hazard-free | That is what paving is for. Speed may stay or go |
+| Trucks wreck by getting stuck or tipping over | More drama: suspension, vehicles flying around | The truck's springs and what throws it are to be turned up, not smoothed. Fits "explosions and jank" |
+| Vehicles pass through players | Vehicles run into the player | In the design, not to be built yet: "that will be its own system" |
+| The dump truck is automated only; the roller is sent on one ground and driven on another; the gravel truck is sent only | Dump trucks, rollers and gravel trucks are each both automated and drivable | One vehicle with two ways of being run, and a way to tell which it is in. The sent trucks cannot turn round at a road's end, which a driver will not accept |
+| Lines are painted a square at a time and drawn by rule; the brush paints free-hand dabs; the paint truck paints whole squares under it | Painting is hand drawn with a roller brush; the paint truck is hand drawn too, so a perfect result is hard | The square paint tool goes. The brush becomes a roller that leaves a continuous stripe. The paint truck paints where it actually is, not the square it is in. Something has to know where a line should have been, to pay for how close the drawn one is |
+| No end, no score, no clock | "Scoring systems aren't important." Score means what a traveller pays | Still no score screen and no clock. But pay per traveller is a number that depends on the road, and that is new |
 
 ## What has been played
 
@@ -415,12 +464,22 @@ click, and from leveled to compacted gravel in 1 click"**, and **"some flying/no
 
 ## Open
 
-For the user to answer by playing, most pressing first.
+The goals answered three of these in principle on 2026-10-05, and each answer opens a question
+of how:
 
-- **What gravel is for** where a truck does not need it: the flat, and anything under 10 degrees.
-- **What paving is for**, beyond faster trucks. The user: it "will do more".
-- **Whether the trucks and roller that are sent should be driven**, now that driving exists.
-- **What belongs on the maps.** Junctions, gravel from quarries, paving and vehicles are on test
+- ~~What gravel is for.~~ It is "the first real step in a fully functional road", and dirt is
+  fragile and for low-volume traffic. **Open: what the hazards of a dirt road are.**
+- ~~What paving is for.~~ "A paved road is almost entirely hazard-free." **Open: what the hazards
+  of a gravel road are.**
+- ~~Whether the sent trucks and roller should be driven.~~ They "will be both automated and
+  drivable". **Open: how one vehicle is both.**
+
+Still for the user to answer, most pressing first:
+
+- **What a traveller pays, and what gravel, asphalt and paint cost.**
+- **How big the map is and how many cities.**
+- **How a hand-drawn line is judged.**
+- **What belongs on the map.** Junctions, gravel from quarries, paving and vehicles are on test
   grounds only. Zoning and the slope limit are everywhere.
 - Whether any of the maps is the right distance. That is what they are for.
 - Whether Claude's two systems are wanted, and how strong.

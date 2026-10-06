@@ -4,6 +4,30 @@ Started 2026-10-05 at the user's request ("Let's also start taking notes for the
 prototype"). This is a list of things deliberately left out of the current prototype, so they
 are not lost. Nothing here is designed or decided unless it says the user said it.
 
+## The shape of it
+
+At the end of 2026-10-05 the user set out the long-term goals, which are quoted in full in
+`DESIGN.md` under "Where it is going". In short, in the user's terms:
+
+- **A large map with multiple cities that need to be connected.**
+- **Players start with just their shovel, build a dirt road for low volume traffic, and start
+  making money.** Money is first spent on gravel, asphalt and paint.
+- **Gravel is the first real step in a fully functional road.** Each tier of road has a lot of
+  hazards, to encourage roadwork. **A paved road is almost entirely hazard-free.**
+- **All roads take damage. The dirt road is much more fragile.**
+- **More dramatic actions.** Suspension leading to more vehicles flying around.
+- **Vehicles running into the player**: in the design, not to be built yet. "That will be its own
+  system."
+- **Dump trucks, rollers and gravel trucks are both automated and drivable.**
+- **Players will eventually be able to purchase their own quarry.**
+- **Painting is hand drawn with a roller brush**, and the paint truck is hand drawn too, "so that
+  the last phase of completing a road is hard to nail a perfect score on".
+- **Scoring systems aren't important.** Score here means "the value paid to the players per road
+  traveler".
+
+The items below were said earlier the same day and still stand unless the goals above replace
+them.
+
 ## Said by the user
 
 - **Small, finite sources of gravel** that players can use before they set up or find a quarry.
@@ -15,8 +39,9 @@ are not lost. Nothing here is designed or decided unless it says the user said i
 - **Signage.** Blocking roads with signs. Stop signs. (2026-10-05)
 - **Vehicles are damaged by "hot" (unspread) asphalt and by uncompacted gravel.** (2026-10-05)
 - **Players dumping asphalt** is cut for now: the dump truck is automated. (2026-10-05)
-- **Paving will do more** than it does now. A point to discuss, not yet said what. Today its
-  only effect is that trucks drive half as fast again on rolled asphalt. (2026-10-05)
+- **Paving will do more** than it does now. Answered later the same day: a paved road is almost
+  entirely hazard-free. Today its only effect is that trucks drive half as fast again.
+  (2026-10-05)
 - From earlier, still parked: dirt flinging as a mechanic; where earth comes from and goes
   once it stops being free; what ends a job, scores, a clock; wear as part of the game; the
   look.
@@ -48,10 +73,8 @@ Paving
   plant, oil, the quarry) is not in.
 - The roller drives itself along its lane when sent. Whether a player should drive it.
 - Asphalt is spread and paint is laid for free and without limit.
-- What paving is for. Today: trucks drive half as fast again on rolled asphalt. Wear is the
-  other obvious answer (paved road does not wear), and wear is off.
-- Paint is the two edge lines and a broken centre line, all at once, per square. Colours,
-  crossings and junction markings are not in.
+- Paint is the two edge lines and a broken centre line, all at once, per square. The goals
+  replace this with lines drawn by hand. Colours, crossings and junction markings are not in.
 
 Driving
 - Vehicles are on the Driving test ground only. Whether they belong on the maps, and whether
@@ -63,7 +86,8 @@ Driving
 - Nothing stops two players' vehicles, or a vehicle and a truck, from hitting each other.
 
 Roads
-- What gravel is for on the flat: a truck needs nothing but graded ground up to 10 degrees.
+- The hazards of each tier of road are not designed. Today a truck needs nothing but graded
+  ground up to 10 degrees, so a dirt road has none.
 - Junctions on the maps. They are allowed on the Junctions and Quarry test grounds only.
 - A rope across a rise runs under the ground where it cannot be seen.
 - Everyone starts at town A.

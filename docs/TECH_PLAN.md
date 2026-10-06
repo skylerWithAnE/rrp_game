@@ -1,7 +1,8 @@
 # Technical description
 
-Written 2026-10-05, after the five stations, and brought up to date the same night after the
-maps were built. This says how the code works now. The plan is `PLAN.md`. The first prototype's
+Written 2026-10-05, after the five stations, and brought up to date through that day as the maps
+and the test grounds were built. This says how the code works now. It says nothing about the
+long-term goals in `DESIGN.md`, none of which is built. The plan is `PLAN.md`. The first prototype's
 technical plan is in `archive/TECH_PLAN_badscale.md`.
 
 ## Stack

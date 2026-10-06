@@ -21,6 +21,13 @@ session would otherwise learn again the slow way.
 - Explosions and jank are liked. Hold-to-click, the hot spot and trucks running on unfinished
   road were all liked.
 
+- **Do not build far ahead of what has been played.** On 2026-10-05 about ten systems were built
+  on three the user had played, and the user's one hands-on try of the newer ones found a fault
+  in the first minute. Say so when a request would add to an unplayed stack.
+- **The user's goals arrive as a direction, not an order.** The long-term goals of 2026-10-05
+  came with "update all docs", not "build". Write them down in the user's words, say what
+  follows from each, and wait.
+
 ## What went wrong, and the fix
 
 | Problem | What works |

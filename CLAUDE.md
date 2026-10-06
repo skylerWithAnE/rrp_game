@@ -16,13 +16,21 @@ loader, paint truck), a shovel in the player's hands, a dev tool and flying. The
 them; the rest is unplayed. `docs/NEXT_PROTOTYPE.md` collects what is
 being left for the prototype after this one. There is no end, score or clock, by decision.
 
+**Where it is going (user, 2026-10-05):** a large map with several cities to connect. Players
+start with a shovel and a dirt road, are paid for each traveller, and spend the money on gravel,
+asphalt and paint. Each tier of road has hazards that the next removes; all roads take damage
+and dirt is fragile; vehicles are both automated and drivable; paint is drawn by hand. The full
+text is in `docs/DESIGN.md`. None of it is built, and the next session is for designing it.
+
 ## Start here
 
 1. `docs/DESIGN.md` is the game as it stands: what the user decided, in their words and dated,
    how each thing was built, what has been played and what has not, and what is open. Start here.
-2. `docs/PLAN.md` is the plan for the unattended push that built the maps, and a log of what was
-   asked for and built since. `docs/PLAYTEST.md` is what was seen when the user played.
-   `docs/NEXT_PROTOTYPE.md` is what is being left for the prototype after this one.
+2. `docs/PLAN.md` is where the project is going, where it stands, and the agenda for the next
+   session. `docs/NEXT_SESSION_PROMPT.md` is the prompt the user means to start it with.
+   `docs/SESSION_2026-10-05.md` is what the last session built and what went wrong in it.
+   `docs/PLAYTEST.md` is what was seen when the user played. `docs/NEXT_PROTOTYPE.md` is what is
+   being left for the prototype after this one.
 3. `docs/TECH_PLAN.md` describes the code as it stands.
 4. `docs/NOTES.md` is what was learned building the stations: how the user works, and the
    technical traps. Read it before the first build of a session.
@@ -53,7 +61,12 @@ asking.
 - **Build and confirm each mechanic on a station first** (user, 2026-10-05: "Using stations to
   build, test and confirm each mechanic seems like it worked out really well").
 - No end, score or clock yet. Wear is off. A second player has exactly the same controls as the
-  first. Do not spend long on the towns: the first prototype's were fine.
+  first. Do not spend long on the towns: the first prototype's were fine. (This is the prototype
+  as built. The long-term goals bring money per traveller and wear on every road; do not build
+  either until the user says so. "Scoring systems aren't important": score means what a
+  traveller pays.)
+- **Play before building more** (learned 2026-10-05): do not stack new systems on ones the user
+  has not played.
 - It is a prototype: fast, simple and weird beats correct and polished. The user is enjoying the
   trucks' explosions and jank (2026-10-05): do not smooth them out.
 - First person. Several tools, each with one job. Throwing cubes around is out.
