@@ -13,6 +13,7 @@ public class Hud : MonoBehaviour
     public static bool ShowPanel;
 
     string joinText = "127.0.0.1";
+    string roadSays = "";       // what the last "stake and finish" staked
     Vector2 scroll;
     readonly StringBuilder text = new StringBuilder();
     GUIStyle label, title, box;
@@ -192,7 +193,7 @@ public class Hud : MonoBehaviour
 
     void Lobby(Game g, float width)
     {
-        GUILayout.BeginArea(new Rect(width / 2 - 260, 10, 560, Net.IsHost ? 184 : 60), box);
+        GUILayout.BeginArea(new Rect(width / 2 - 260, 10, 560, Net.IsHost ? 210 : 60), box);
         GUILayout.Label("<b>" + Plot.MapNames[g.map] + "</b>   " + g.PlayerCount + " of " + Session.MaxPlayers + " players", label);
         if (Net.IsHost)
         {
@@ -225,6 +226,23 @@ public class Hud : MonoBehaviour
             GUILayout.Label("now " + g.tuning.planetGravity.ToString("0.00"), label, GUILayout.Width(70));
             if (g.map == Plot.SpinMap && GUILayout.Button("Loosen the gravel again")) g.plots[Plot.SpinOut].HostLoosen();
             GUILayout.EndHorizontal();
+            // on a map: a road at a button, to watch trucks on, and the switch for wear
+            GUILayout.BeginHorizontal();
+            if (Plot.LandMap(g.map))
+            {
+                if (GUILayout.Button("Stake and finish this road")) roadSays = g.plots[Plot.Land].HostAutoRoad();
+                bool wears = g.tuning.mapWear >= 0.5f;
+                if (GUILayout.Button(wears ? "Wear on maps: ON" : "Wear on maps: off", GUILayout.Width(140))) { g.tuning.mapWear = wears ? 0 : 1; g.TuningChanged(); }
+            }
+            // [Claude] fast forward, for watching a road wear out
+            GUILayout.Label("Speed", label, GUILayout.Width(40));
+            foreach (int pace in new[] { 1, 4, 10 })
+            {
+                GUI.enabled = Mathf.Abs(g.tuning.fastForward - pace) > 0.01f;
+                if (GUILayout.Button("x" + pace, GUILayout.Width(40))) { g.tuning.fastForward = pace; g.TuningChanged(); }
+            }
+            GUI.enabled = true;
+            GUILayout.EndHorizontal();
         }
         if (Net.IsHost)
         {
@@ -251,6 +269,7 @@ public class Hud : MonoBehaviour
         foreach (var plot in g.plots)
             if (plot == near) text.Append("<size=12>").Append(Plot.Names[plot.id]).Append(": level ").Append(Mathf.FloorToInt(plot.roadShare * 100f)).Append("  shoulder ").Append(Mathf.FloorToInt(plot.shoulderShare * 100f))
                 .Append("  gravel ").Append(Mathf.FloorToInt(plot.gravelShare * 100f)).Append("  packed ").Append(Mathf.FloorToInt(plot.packedShare * 100f)).Append(" %   clicks ").Append(plot.clicks).Append("</size>\n");
+        if (near != null && near.IsLand && roadSays.Length > 0 && Net.IsHost) text.Append("<size=11>staked for you: ").Append(roadSays).Append("</size>\n");
         if (near != null && near.IsLand) text.Append("<size=12>road staked from town A: ").Append(Mathf.RoundToInt(near.roadLength)).Append(" m   towns joined: ").Append(near.joined ? "<b>YES</b>" : "no").Append("</size>\n");
         if (near != null && near.IsQuarry) text.Append("<size=12>gravel on the heap: ").Append(near.stock).Append(" clicks' worth").Append((near.carrying & 1 << g.localSlot) != 0 ? "   <b>shovel loaded</b>" : "").Append("</size>\n");
         if (near != null && near.Wears) text.Append("<size=12>wear: ruts and holes in ").Append((near.rutShare * 100f).ToString("0.0")).Append(" % of the road, the deepest ").Append(Mathf.RoundToInt(near.deepest * 100f)).Append(" cm</size>\n");

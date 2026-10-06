@@ -794,6 +794,123 @@ public class Plot : MonoBehaviour
         Upload(true);
     }
 
+    // host, a map: stake a road from the first town to the second and finish it, at a button, so
+    // that trucks can be watched on a road too long to build by hand. The way goes where a
+    // crew would take it: round the Middle map's hill, through the gap in the Long map's ridge,
+    // up the gentle side of the Climb, and up the two ramps of the Switchback. It is staked
+    // about 15 m to a rope, the ropes are eased so that none is steeper than the limit less a
+    // degree, every staked point is put on its line, and the road is gravelled and packed.
+    // Says what it staked.
+    public string HostAutoRoad()
+    {
+        if (!Ready || !IsLand || !Net.IsHost || stakes.Count < 2) return "";
+        var t = Game.I.tuning;
+        int map = Game.I.map;
+        float length = stakes[1].z;
+        var way = new List<Vector2> { new Vector2(0, 0) };
+        // x and z of the places the way goes through, between the towns
+        float[] via;
+        if (map == 2) via = new[] { 0, Mathf.Min(12f, length * 0.2f), -Mathf.Min(Mathf.Max(12f, length * 0.1f) * 2.2f + 4f, length * 0.25f), length * 0.5f, 0, length - Mathf.Min(12f, length * 0.2f) };
+        else if (map == 3) via = new[] { 0, 12f, 28f, length * 0.38f, 16f, length * 0.69f, 0, length - 12f };
+        // the Climb: out to the left edge, where the rise is spread over 130 m, and back
+        // (Every way leaves a town and comes into one straight along the map: a road that comes in at an angle sends its trucks into the houses.)
+        else if (map == 4) via = new[] { 0, 12f, -8f, 26f, -24f, 40f, -42f, 58f, -51f, 80f, -42f, 102f, -24f, 120f, -8f, 134f, 0, 148f };
+        // the Switchback: up the first ramp on the left, across in a long S, and up the second on the right
+        else if (map == Switchback) via = new[] { 0, 10f, -7f, 20f, -17f, 30f, -22f, 42f, -22f, 50f, -15.5f, 61f, -5.5f, 69.4f, 4.4f, 77.7f, 14.4f, 86.1f, 21f, 97.5f, 22f, 110f, 21f, 122f, 15f, 132f, 6f, 141f, 0, 146f };
+        else via = new float[0];
+        for (int k = 0; k + 1 < via.Length; k += 2) way.Add(new Vector2(via[k], via[k + 1]));
+        way.Add(new Vector2(0, length));
+
+        // a smooth line through those, as points half a metre or so apart
+        var line = new List<Vector2>();
+        for (int k = 0; k + 1 < way.Count; k++)
+        {
+            Vector2 p0 = way[Mathf.Max(k - 1, 0)], p1 = way[k], p2 = way[k + 1], p3 = way[Mathf.Min(k + 2, way.Count - 1)];
+            int steps = Mathf.Max(2, Mathf.CeilToInt(Vector2.Distance(p1, p2) * 2f));
+            for (int j = 0; j < steps; j++)
+            {
+                float u = (float)j / steps;
+                line.Add(0.5f * (2f * p1 + (p2 - p0) * u + (2f * p0 - 5f * p1 + 4f * p2 - p3) * u * u + (3f * p1 - p0 - 3f * p2 + p3) * u * u * u));
+            }
+        }
+        line.Add(way[way.Count - 1]);
+        float total = 0;
+        for (int k = 1; k < line.Count; k++) total += Vector2.Distance(line[k - 1], line[k]);
+
+        // stakes at even steps along it, standing on the ground as it is
+        int ropes = Mathf.Max(1, Mathf.RoundToInt(total / 15f));
+        var staked = new List<Vector3> { stakes[0] };
+        float gone = 0, next = total / ropes;
+        for (int k = 1; k < line.Count && staked.Count < ropes; k++)
+        {
+            gone += Vector2.Distance(line[k - 1], line[k]);
+            if (gone < next) continue;
+            next += total / ropes;
+            staked.Add(new Vector3(line[k].x, HeightAt(line[k].x, line[k].y), line[k].y));
+        }
+        staked.Add(stakes[1]);
+        // ease the ropes: smooth the heights, then hold every rope under the slope limit, working out from each town
+        for (int pass = 0; pass < 3; pass++)
+            for (int k = 1; k + 1 < staked.Count; k++)
+                staked[k] = new Vector3(staked[k].x, (staked[k - 1].y + staked[k].y * 2f + staked[k + 1].y) * 0.25f, staked[k].z);
+        float steep = Mathf.Tan(Mathf.Max(2f, t.maxSlope - 1f) * Mathf.Deg2Rad);
+        for (int pass = 0; pass < 4; pass++)
+        {
+            for (int k = 1; k + 1 < staked.Count; k++)
+            {
+                float reach = steep * Vector3.Distance(Flat(staked[k]), Flat(staked[k - 1]));
+                staked[k] = new Vector3(staked[k].x, Mathf.Clamp(staked[k].y, staked[k - 1].y - reach, staked[k - 1].y + reach), staked[k].z);
+            }
+            for (int k = staked.Count - 2; k >= 1; k--)
+            {
+                float reach = steep * Vector3.Distance(Flat(staked[k]), Flat(staked[k + 1]));
+                staked[k] = new Vector3(staked[k].x, Mathf.Clamp(staked[k].y, staked[k + 1].y - reach, staked[k + 1].y + reach), staked[k].z);
+            }
+        }
+
+        // out with whatever was staked, and in with this
+        stakes.RemoveRange(fixedStakes, stakes.Count - fixedStakes);
+        links.Clear();
+        int last = 0;
+        for (int k = 1; k + 1 < staked.Count; k++)
+        {
+            stakes.Add(staked[k]);
+            links.Add(new Vector3Int(last, stakes.Count - 1, 0));
+            last = stakes.Count - 1;
+        }
+        links.Add(new Vector3Int(last, 1, 0));
+        Net.ToClients(StakesMsg(255, -1), true);
+        StakesChanged(255, -1);
+
+        // every staked point on its line, and the road gravelled and packed
+        changed.Clear();
+        for (int i = 0; i < h.Length; i++)
+        {
+            if (zone[i] == 0) continue;
+            h[i] = target[i];
+            if (zone[i] == 1) { gravel[i] = (byte)FullGravel; packed[i] = 100; }
+            health[i] = 100;
+            changed.Add(i);
+            if (changed.Count >= 5000) { Broadcast(); changed.Clear(); }
+        }
+        if (changed.Count > 0) Broadcast();
+        Game.I.lorries.Clear();     // the count of trucks starts again with the road
+
+        // what was staked, against the rules for ropes
+        float steepest = 0, sharpest = 0, shortest = float.MaxValue, longest = 0;
+        for (int k = 0; k < segs.Length; k++)
+        {
+            steepest = Mathf.Max(steepest, Mathf.Atan2(Mathf.Abs(segs[k].yB - segs[k].yA), segs[k].len) * Mathf.Rad2Deg);
+            shortest = Mathf.Min(shortest, segs[k].len);
+            longest = Mathf.Max(longest, segs[k].len);
+            if (k > 0) sharpest = Mathf.Max(sharpest, Vector3.Angle(segs[k - 1].d, segs[k].d));
+        }
+        bool rocky = false;
+        foreach (var seg in segs) rocky |= RockNear(seg.a, seg.a + seg.d * seg.len, Reach);
+        return segs.Length + " ropes, " + Mathf.RoundToInt(roadLength) + " m: the steepest " + steepest.ToString("0.0") + " degrees, the sharpest bend " + sharpest.ToString("0") + " degrees, ropes "
+            + shortest.ToString("0.0") + " to " + longest.ToString("0.0") + " m" + (rocky ? ", AND IT TOUCHES A ROCK" : "") + (joined ? "" : ", AND THE TOWNS ARE NOT JOINED");
+    }
+
     // every machine: the ground points from the heights a metre apart, by whole-number sums
     void Expand()
     {
@@ -823,7 +940,9 @@ public class Plot : MonoBehaviour
     public Vector3 SpawnAt(int slot)
     {
         if (!Ready || stakes.Count == 0) return new Vector3(0, 5f, 0);
-        Vector3 at = stakes[0] + new Vector3(-2f - slot * 1.3f, 0, -6f);    // the stake and its label are ahead and a little to the right, clear of the readout
+        // The stake and its label are ahead and to the right, clear of the readout. And clear of the road: a blob
+        // standing where trucks from the other town leave it stops every one of them, and they blow up at its feet.
+        Vector3 at = stakes[0] + new Vector3(-5.5f - slot * 1.3f, 0, -6f);
         return new Vector3(at.x, HeightAt(at.x, at.z) + 0.2f, at.z);
     }
 
