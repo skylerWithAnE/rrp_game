@@ -102,6 +102,20 @@ public class Tuning : ScriptableObject
     [Tooltip("How much faster a truck drives on road that is paved and rolled.")]
     [Range(1, 3)] public float pavedSpeed = 1.5f;
 
+    [Header("Painting by hand (the Painting ground only)")]
+    [Tooltip("How wide the band is round where each line should be (m). Paint in the band counts; paint outside it counts against.")]
+    [Range(0.1f, 1.5f)] public float paintBand = 0.4f;
+    [Tooltip("How wide a stripe the roller brush leaves (m).")]
+    [Range(0.05f, 0.6f)] public float rollerWidth = 0.15f;
+    [Tooltip("1: the line down the middle should be broken, 3 m on and 3 m off. 0: solid.")]
+    [Range(0, 1)] public float centreBroken = 1f;
+    [Tooltip("How wide a stripe each nozzle of the paint truck leaves (m).")]
+    [Range(0.05f, 0.6f)] public float sprayWidth = 0.15f;
+    [Tooltip("How wide the tar spray scatters (m).")]
+    [Range(0.2f, 3)] public float tarWidth = 0.9f;
+    [Tooltip("How wide a line the grinder takes off (m).")]
+    [Range(0.05f, 0.5f)] public float grinderWidth = 0.1f;
+
     [Header("Driving (the Driving test ground only)")]
     [Tooltip("Top speed of the pick-up (m/s).")]
     [Range(3, 30)] public float pickupSpeed = 14f;

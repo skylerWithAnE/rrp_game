@@ -109,7 +109,7 @@ public class Lorries : MonoBehaviour
             l.launch = -1;
             l.wait = Wait + (l.back ? 1.5f : 0);
             // the example roads always have trucks on the way
-            l.wanted = l.plot >= 3 && !Plot.Steady(l.plot) && l.plot != Plot.Paving && l.plot != Plot.DriveRoad && l.rig == null;
+            l.wanted = l.plot >= 3 && !Plot.Steady(l.plot) && l.plot != Plot.Paving && l.plot != Plot.DriveRoad && l.plot != Plot.PaintMarked && l.plot != Plot.PaintPlain && l.rig == null;
             l.once = false;
         }
         for (int i = 0; i < steadyWait.Length; i++) steadyWait[i] = 2f + i % 2 * 1.5f;

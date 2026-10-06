@@ -39,6 +39,8 @@ public class Hud : MonoBehaviour
             if (kb.digit7Key.wasPressedThisFrame) Plot.Tool = Plot.Dev;
             if (kb.digit8Key.wasPressedThisFrame) Plot.Tool = Plot.Brush;
             if (kb.digit9Key.wasPressedThisFrame) Plot.Tool = Plot.DropTool;
+            if (kb.tKey.wasPressedThisFrame) Plot.Tool = Plot.TarSpray;
+            if (kb.gKey.wasPressedThisFrame) Plot.Tool = Plot.Grinder;
         }
         if (!inGame) { Playing = false; ShowPanel = false; }
         Cursor.lockState = Playing ? CursorLockMode.Locked : CursorLockMode.None;
@@ -252,8 +254,17 @@ public class Hud : MonoBehaviour
         if (near != null && near.IsLand) text.Append("<size=12>road staked from town A: ").Append(Mathf.RoundToInt(near.roadLength)).Append(" m   towns joined: ").Append(near.joined ? "<b>YES</b>" : "no").Append("</size>\n");
         if (near != null && near.IsQuarry) text.Append("<size=12>gravel on the heap: ").Append(near.stock).Append(" clicks' worth").Append((near.carrying & 1 << g.localSlot) != 0 ? "   <b>shovel loaded</b>" : "").Append("</size>\n");
         if (near != null && near.Wears) text.Append("<size=12>wear: ruts and holes in ").Append((near.rutShare * 100f).ToString("0.0")).Append(" % of the road, the deepest ").Append(Mathf.RoundToInt(near.deepest * 100f)).Append(" cm</size>\n");
+        if (near != null && near.lines != null)
+        {
+            // The judging of paint drawn by hand. It is shown here and nowhere else: the player is not meant to see it.
+            Vector3 spot = Lines.AimFrame >= Time.frameCount - 2 ? Lines.Aim : g.local.transform.position;
+            text.Append("<size=12>paint, ").Append(near.lines.marked ? "marked" : "unmarked").Append(" strip: <b>").Append(Mathf.RoundToInt(near.lines.total)).Append("</b> of 100");
+            if (near.lines.SquareScore(spot.x, spot.z, out float score, out float line, out float stray))
+                text.Append("\nthis square: <b>").Append(Mathf.RoundToInt(score)).Append("</b>   line ").Append(Mathf.RoundToInt(line)).Append(" %   astray ").Append(Mathf.RoundToInt(stray)).Append(" %");
+            text.Append("</size>\n");
+        }
         if (near != null) g.lorries.Readout(text, near.id);
-        text.Append("holding: <b>").Append(Plot.Tool == Plot.Stakes ? "1 stakes" : Plot.Tool == Plot.Grade ? "2 grade" : Plot.Tool == Plot.Zone ? "4 zoning" : Plot.Tool == Plot.Dev ? "7 DEV: finish a section" : Plot.Tool == Plot.Pave ? "5 asphalt" : Plot.Tool == Plot.Paint ? "6 paint lines" : Plot.Tool == Plot.Brush ? "8 paint brush" : Plot.Tool == Plot.DropTool ? "9 drop-off survey" : "3 gravel").Append("</b>   sprint ").Append(Player.Sprinting ? "ON" : "off").Append(Player.Flying ? "   <b>FLYING</b>" : "").Append('\n');
+        text.Append("holding: <b>").Append(Plot.Tool == Plot.Stakes ? "1 stakes" : Plot.Tool == Plot.Grade ? "2 grade" : Plot.Tool == Plot.Zone ? "4 zoning" : Plot.Tool == Plot.Dev ? "7 DEV: finish a section" : Plot.Tool == Plot.Pave ? "5 asphalt" : Plot.Tool == Plot.Paint ? "6 paint lines" : Plot.Tool == Plot.Brush ? "8 paint brush" : Plot.Tool == Plot.DropTool ? "9 drop-off survey" : Plot.Tool == Plot.TarSpray ? "T tar spray" : Plot.Tool == Plot.Grinder ? "G grinder" : "3 gravel").Append("</b>   sprint ").Append(Player.Sprinting ? "ON" : "off").Append(Player.Flying ? "   <b>FLYING</b>" : "").Append('\n');
         if (g.phase == Phase.Job) text.Append("towns joined by asphalt: ").Append(g.road.asphaltLinked ? "YES" : "no").Append("   by paint: ").Append(g.road.paintedLinked ? "YES" : "no").Append('\n');
         if (g.phase == Phase.Job) text.Append("truck: ").Append(g.truck.alive ? "driving" : "none").Append('\n');
 
@@ -276,10 +287,10 @@ public class Hud : MonoBehaviour
             text.Append("from host ").Append(Kb(host.receivedRate)).Append("  to host ").Append(Kb(host.sentRate));
             text.Append("  rtt ").Append(g.utp.GetCurrentRtt(NetworkManager.ServerClientId)).Append(" ms\n");
         }
-        text.Append("<size=11>F1 tuning   F3 readout   Tab mouse\nWASD walk   Shift sprint on/off   Space hop   1 to 6 and 8 tools\nE drives a vehicle   right click sends a waiting truck\ndev: 7 finishes a section   V flies (Space up, Ctrl down)\nstakes: left click places or chooses, wheel moves\nthe chosen rope, X removes, right click lets go</size>");
+        text.Append("<size=11>F1 tuning   F3 readout   Tab mouse\nWASD walk   Shift sprint on/off   Space hop   1 to 6, 8, 9 tools   T tar   G grinder\nE drives a vehicle   right click sends a waiting truck\ndev: 7 finishes a section   V flies (Space up, Ctrl down)\nstakes: left click places or chooses, wheel moves\nthe chosen rope, X removes, right click lets go</size>");
 
-        GUI.Box(new Rect(8, 8, 360, 312), GUIContent.none, box);
-        GUI.Label(new Rect(16, 12, 350, 307), text.ToString(), label);
+        GUI.Box(new Rect(8, 8, 360, 356), GUIContent.none, box);
+        GUI.Label(new Rect(16, 12, 350, 351), text.ToString(), label);
     }
 
     // What each thing in the yard is and how big, written over it.

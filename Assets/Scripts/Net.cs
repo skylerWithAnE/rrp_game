@@ -22,6 +22,8 @@ public enum Op : byte
     Cars,                           // host -> clients: every driven vehicle
     Swing,                          // client -> host: I swung my shovel, this way
     Drop,                           // client -> host: put the gravel drop-off here, roped to this stake
+    Paint,                          // both ways: strokes of paint, tar or the grinder on a strip painted by hand. See Lines
+    PaintState,                     // host -> a client that has just joined: all of a strip's paint
 }
 
 // A byte buffer with the few field types the game sends.

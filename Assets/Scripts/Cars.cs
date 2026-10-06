@@ -35,6 +35,8 @@ public class Cars : MonoBehaviour
         public Vector3 netPos;
         public Quaternion netRot = Quaternion.identity;
         public float flipped, lastYaw;
+        public Vector3 lastWhite, lastYellow;   // host: where the paint truck's two nozzles last were
+        public bool sprayed;
     }
 
     public Car[] cars = new Car[0];
@@ -59,19 +61,30 @@ public class Cars : MonoBehaviour
         Mine = -1;
     }
 
-    // Every machine builds the same three vehicles in the same places, beside where players start.
-    public void Build()
+    // where the paint truck's two nozzles are, in its own terms: the white one out to its right,
+    // over the edge line when the truck is in the middle of its lane, and the yellow one out to
+    // its left, over the centre line
+    static readonly Vector3 WhiteNozzle = new Vector3(1.375f, 0, -2.5f), YellowNozzle = new Vector3(-1.75f, 0, -2.5f);
+    bool painting;      // the Painting ground: one paint truck, which sprays where it actually is
+
+    // Every machine builds the same vehicles in the same places, beside where players start:
+    // the four of the Driving ground, or, on the Painting ground, a paint truck alone.
+    public void Build(bool paintOnly)
     {
         Clear();
+        painting = paintOnly;
         var t = Game.I.tuning;
         heapMaterial = Mats.Make(new Color(0.69f, 0.69f, 0.67f), true);
-        cars = new Car[4];
-        for (int kind = 0; kind < cars.Length; kind++)
+        cars = new Car[paintOnly ? 1 : 4];
+        for (int i = 0; i < cars.Length; i++)
         {
-            var car = cars[kind] = new Car { kind = kind };
+            int kind = paintOnly ? Painter : i;
+            var car = cars[i] = new Car { kind = kind };
             car.size = kind == Pickup || kind == Painter ? new Vector3(2.0f, 1.9f, 5.4f) : kind == Roller ? new Vector3(2.4f, 3.0f, 4.6f) : new Vector3(2.6f, 3.3f, 6.2f);
             car.seat = kind == Pickup || kind == Painter ? new Vector3(-0.45f, 0.15f, 0.5f) : kind == Roller ? new Vector3(0, 1.25f, -0.2f) : new Vector3(0, 1.5f, -0.6f);
             car.home = new Vector3(13f + kind * 6f, 0.5f, 8f);
+            // on the Painting ground it stands on the near end of the marked strip, in its right-hand lane
+            if (paintOnly) car.home = new Vector3(-t.laneWidth - 5f - (t.laneWidth + t.shoulderWidth) - 12f + t.laneWidth * 0.5f, 2f, 5f);
             car.body = new GameObject(Names[kind]);
             car.body.transform.SetParent(transform, false);
             car.body.transform.position = car.netPos = car.home;
@@ -88,6 +101,7 @@ public class Cars : MonoBehaviour
             float track = car.size.x * 0.5f - 0.25f, axle = car.size.z * 0.33f, top = Travel - 0.3f;
             car.wheels = new[] { new Vector3(-track, top, axle), new Vector3(track, top, axle), new Vector3(-track, top, -axle), new Vector3(track, top, -axle) };
         }
+        if (paintOnly) return;
         // the gravel pile: no collider, so the loader can drive into it
         pile = new Vector3(34f, 0, 24f);
         for (int n = 0; n < 7; n++)
@@ -114,6 +128,13 @@ public class Cars : MonoBehaviour
             Box(root, paint, w, 0.75f, l * 0.34f, new Vector3(0, 1.45f, l * 0.08f));        // the cab
             Box(root, glass, w + 0.02f, 0.4f, l * 0.3f, new Vector3(0, 1.52f, l * 0.08f));
             Box(root, tyre, w * 0.9f, 0.05f, l * 0.3f, new Vector3(0, 1.12f, -l * 0.3f));   // the bed's floor
+            if (car.kind == Painter && painting)
+            {
+                // a boom across its tail with a nozzle at each end: white on the right, yellow on the left
+                Box(root, tyre, WhiteNozzle.x - YellowNozzle.x, 0.08f, 0.08f, new Vector3((WhiteNozzle.x + YellowNozzle.x) * 0.5f, 0.6f, WhiteNozzle.z));
+                Box(root, Mats.Make(new Color(0.93f, 0.93f, 0.9f)), 0.16f, 0.4f, 0.16f, new Vector3(WhiteNozzle.x, 0.4f, WhiteNozzle.z));
+                Box(root, Mats.Make(new Color(0.93f, 0.78f, 0.15f)), 0.16f, 0.4f, 0.16f, new Vector3(YellowNozzle.x, 0.4f, YellowNozzle.z));
+            }
         }
         else
         {
@@ -178,7 +199,7 @@ public class Cars : MonoBehaviour
                 }
                 if (near >= 0)
                 {
-                    Plot.Hint("E: drive " + Names[near]);
+                    Plot.Hint("E: drive " + Names[cars[near].kind]);
                     if (kb.eKey.wasPressedThisFrame) Ask(near, 1);
                 }
             }
@@ -195,6 +216,13 @@ public class Cars : MonoBehaviour
                     if (mouse != null && mouse.leftButton.wasPressedThisFrame && car.load > 0) Ask(Mine, 2);
                 }
                 else if (car.kind == Roller) keys += "   it packs gravel and rolls asphalt under it";
+                else if (car.kind == Painter && painting)
+                {
+                    // it sprays where it is: a nozzle on each side, each on its own button
+                    keys += "   left click: white nozzle (right side) " + ((car.load & 1) != 0 ? "ON" : "off") + "   right click: yellow nozzle (left side) " + ((car.load & 2) != 0 ? "ON" : "off");
+                    if (mouse != null && mouse.leftButton.wasPressedThisFrame) Ask(Mine, 3);
+                    if (mouse != null && mouse.rightButton.wasPressedThisFrame) Ask(Mine, 4);
+                }
                 else if (car.kind == Painter)
                 {
                     keys += "   left click: paint " + (car.load > 0 ? "ON, it paints the rolled asphalt under it" : "off");
@@ -241,7 +269,7 @@ public class Cars : MonoBehaviour
         sendTimer += Time.unscaledDeltaTime;
         if (sendTimer < 0.05f) return;
         sendTimer = 0;
-        if (Net.IsHost) SendAll();
+        if (Net.IsHost) { if (painting) Spray(g); SendAll(); }
         else if (Mine >= 0)
         {
             var m = Msg.New(Op.CarPose, 32);
@@ -250,6 +278,29 @@ public class Cars : MonoBehaviour
             m.Rot(cars[Mine].body.transform.rotation);
             m.U8((byte)Mathf.RoundToInt(cars[Mine].bucket * 255f));
             Net.ToHost(m, false);
+        }
+    }
+
+    // host, on the Painting ground: each nozzle that is on leaves a stripe from where it last was to where it is now
+    void Spray(Game g)
+    {
+        foreach (var car in cars)
+        {
+            if (car.kind != Painter) continue;
+            var tr = car.body.transform;
+            Vector3 white = tr.TransformPoint(WhiteNozzle), yellow = tr.TransformPoint(YellowNozzle);
+            Lines lines = null;
+            foreach (var plot in g.plots)
+                if (plot.Ready && plot.lines != null && plot.Covers(tr.position.x, tr.position.z)) lines = plot.lines;
+            if (lines != null && car.sprayed)
+            {
+                if ((car.load & 1) != 0 && (white - car.lastWhite).sqrMagnitude < 9f) lines.Stroke(Lines.White, car.lastWhite, white, g.tuning.sprayWidth);
+                if ((car.load & 2) != 0 && (yellow - car.lastYellow).sqrMagnitude < 9f) lines.Stroke(Lines.Yellow, car.lastYellow, yellow, g.tuning.sprayWidth);
+                lines.Flush();
+            }
+            car.lastWhite = white;
+            car.lastYellow = yellow;
+            car.sprayed = lines != null;
         }
     }
 
@@ -277,7 +328,8 @@ public class Cars : MonoBehaviour
         }
         else if (car.driver != slot) return;
         else if (what == 0) car.driver = -1;
-        else if (what == 3 && car.kind == Painter) car.load = car.load > 0 ? 0 : 1;      // its sprayers, on and off
+        else if (what == 3 && car.kind == Painter) car.load ^= 1;      // its sprayers, on and off
+        else if (what == 4 && car.kind == Painter && painting) car.load ^= 2;     // on the Painting ground the yellow nozzle has a button of its own
         else if (what == 2 && car.kind == Loader && car.load > 0)
         {
             // gravel tipped on a road that is on its line is laid there; anywhere else it is a heap
@@ -312,7 +364,7 @@ public class Cars : MonoBehaviour
             foreach (var plot in g.plots)
             {
                 if (!plot.Ready || !plot.Covers(tr.position.x, tr.position.z)) continue;
-                if (car.kind == Painter) { plot.PaintUnder(under); continue; }
+                if (car.kind == Painter) { if (plot.lines == null) plot.PaintUnder(under); continue; }
                 plot.Pack(under);
                 plot.Roll(under);
             }

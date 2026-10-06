@@ -359,7 +359,7 @@ public class Game : MonoBehaviour
         lorries.Clear();
         foreach (var plot in plots) plot.Clear();
         if (Plot.LandMap(map)) yard.Clear(); else yard.Refresh();
-        if (map == Plot.DrivingMap) cars.Build(); else cars.Clear();
+        if (map == Plot.DrivingMap) cars.Build(false); else if (map == Plot.PaintMap) cars.Build(true); else cars.Clear();
         if (Net.IsHost)
             foreach (var plot in plots)
                 if (plot.ShownOn(map)) plot.Generate();
@@ -430,6 +430,11 @@ public class Game : MonoBehaviour
                 float x = m.F32(), z = m.F32();
                 int from = m.U8(), to = m.U8();
                 if (plot < plots.Length) plots[plot].HostStake(slot, x, z, from == 255 ? -1 : from, to == 255 ? -1 : to);
+            }
+            else if (op == Op.Paint)
+            {
+                int plot = m.U8();
+                if (plot < plots.Length && plots[plot].lines != null) plots[plot].lines.OnStrokes(m, true);
             }
             else if (op == Op.Drop)
             {
@@ -526,6 +531,8 @@ public class Game : MonoBehaviour
                 break;
             case Op.PlotEdit: plots[m.U8()].OnEdit(m); break;
             case Op.PlotStakes: plots[m.U8()].OnStakes(m); break;
+            case Op.Paint: { var strip = plots[m.U8()]; if (strip.lines != null) strip.lines.OnStrokes(m, false); break; }
+            case Op.PaintState: { var strip = plots[m.U8()]; if (strip.lines != null) strip.lines.OnState(m); break; }
             case Op.Lorry: lorries.OnState(m); break;
             case Op.Cars: cars.OnState(m); break;
             case Op.CubeSpawn: cubes.OnSpawn(m); break;

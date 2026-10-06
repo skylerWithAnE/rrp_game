@@ -18,6 +18,8 @@ using UnityEngine;
 //   -rrpDrive <n>       on the Driving test ground: get into vehicle n and drive it in a circle
 //   -rrpDrop            on the Quarry ground: put the gravel drop-off down beside the service road,
 //                       then load the gravel truck a shovel a second
+//   -rrpPaint           on the Painting ground: draw a white stripe up the unmarked strip's right
+//                       edge and a yellow one beside it, a piece five times a second, then tar a bit
 //   -rrpWork <percent>  on a map, after -rrpStakes: click wherever there is work, at the cap, until
 //                       the road is graded and gravelled, with that share of clicks on the hot
 //                       spot; prints RRPWORK lines with the time each took
@@ -33,6 +35,7 @@ public class AutoTest : MonoBehaviour
     int clicksLeft, clicksTotal, stakesLeft;
     int mapWanted = -1;
     bool dropWanted;
+    int paintLeft;
     int driveWanted = -1;
     int workHot = -1, workPhase, workClicks;
     float workStart;
@@ -76,6 +79,7 @@ public class AutoTest : MonoBehaviour
             else if (args[i] == "-rrpDrive" && i + 1 < args.Length) int.TryParse(args[++i], out driveWanted);
             else if (args[i] == "-rrpWork" && i + 1 < args.Length) int.TryParse(args[++i], out workHot);
             else if (args[i] == "-rrpDrop") dropWanted = true;
+            else if (args[i] == "-rrpPaint") paintLeft = 60;
         }
         if (host) Game.I.Host(false);
     }
@@ -116,6 +120,17 @@ public class AutoTest : MonoBehaviour
             var quarry = g.plots[Plot.Quarry];
             if (quarry.drop < 0) quarry.RequestDrop(quarry.stakes[1].x, quarry.stakes[1].z - 13f, 1);
             else quarry.RequestShovel((quarry.carrying & 1 << g.localSlot) != 0 ? Plot.FlingIn : Plot.Scoop);
+        }
+        if (paintLeft > 0 && g.phase == Phase.Lobby && g.map == Plot.PaintMap && g.plots[Plot.PaintPlain].Ready && g.plots[Plot.PaintPlain].lines != null && g.local != null && !g.respawn && stakeTimer > 0.2f)
+        {
+            stakeTimer = 0;
+            paintLeft--;
+            var strip = g.plots[Plot.PaintPlain];
+            float z = strip.stakes[0].z + 2f + (60 - paintLeft) * 0.5f, x = strip.stakes[0].x + strip.LaneWidth - 0.375f;
+            strip.lines.Stroke(Lines.White, new Vector3(x, 0, z - 0.5f), new Vector3(x + 0.05f, 0, z), g.tuning.rollerWidth);
+            strip.lines.Stroke(Lines.Yellow, new Vector3(x - 1.5f, 0, z - 0.5f), new Vector3(x - 1.4f, 0, z), g.tuning.rollerWidth);
+            if (paintLeft < 10) strip.lines.Stroke(Lines.Tar, new Vector3(x - 1.5f, 0, z - 20f), new Vector3(x - 1.5f, 0, z - 20f), 0.6f);
+            strip.lines.Flush();
         }
         if (Plot.LandMap(g.map))
         {
