@@ -50,5 +50,5 @@ changed the design instead: dumping is automated, and players level what is dump
 
 - Nothing wrecked on Short, so nothing there showed the truck as the judge of the road. Bare
   graded ground passes every truck on the flat; gravel only matters on a slope. See the concerns
-  in the reply of that day, and the slope figures in `DESIGN.md`.
+  in the reply of that day, and "What a truck can climb" in `DESIGN.md`.
 - The Middle, Long and Climb maps are still unplayed.

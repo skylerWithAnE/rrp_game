@@ -2,8 +2,8 @@
 
 **Status, 2026-10-05, end of the unattended push: built.** Everything under "What this push
 builds" exists and was checked on two instances. What was built, and every choice Claude made, is
-in `DESIGN.md` under "The maps"; how the ground was solved is in `TECH_PLAN.md` under "The map's
-ground"; what to run and what was not checked is in `MORNING.md`.
+in `DESIGN.md`; how the ground was solved is in `TECH_PLAN.md` under "The map's ground". The
+report written that morning is in git history (`docs/MORNING.md`, last in commit `abf2516`).
 
 **2026-10-05, after the user's first playtest.** The user played the Short map and said it "went
 great"; notes are in `PLAYTEST.md`. The Middle, Long and Climb maps are unplayed. The user then
@@ -17,8 +17,7 @@ asked for three things, all built the same day and described in `DESIGN.md`:
 **2026-10-05, later.** The user asked for the Stations map to be cut into focused test grounds,
 a system for junctions on a test ground of its own, a quarry where players load gravel into a
 truck that drives a service road to a drop, and zoning tools that give road sections roles. All
-are built, checked on two instances, and described in `DESIGN.md` under "Test grounds,
-junctions, roles and the quarry". None has been played.
+are built, checked on two instances, and described in `DESIGN.md`. None had been played then.
 
 **2026-10-05, after the user tried the test grounds.** Building junctions was accepted. The user
 asked for: trucks keeping their lanes at junctions; a dev tool and flying; the quarry as a dug
@@ -29,8 +28,12 @@ in `NEXT_PROTOTYPE.md`.
 
 **2026-10-05, later still.** The user asked for a test ground for driving (pick-up, roller,
 front loader, and then a paint truck), a second hand tool for painting, and a dump truck that
-tips as a real one does. All built and checked on two instances; see "Driving" and "Paving and
-painting" in `DESIGN.md`. The user also gave more items for `NEXT_PROTOTYPE.md`.
+tips as a real one does. All built and checked on two instances; see `DESIGN.md`. The user also
+gave more items for `NEXT_PROTOTYPE.md`.
+
+**2026-10-05, last.** After trying the dump truck the user made dumping automatic and asked for
+a shovel in the player's hands. Both built. `DESIGN.md` was then rewritten as the game stands,
+at the user's word, and its table "What has been played" is the measure of where things are.
 
 The next step is the user playing: the Driving ground, the reworked Quarry, the Paving ground,
 the Middle map and the Switchback map.

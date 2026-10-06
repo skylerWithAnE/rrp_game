@@ -18,16 +18,18 @@ being left for the prototype after this one. There is no end, score or clock, by
 
 ## Start here
 
-0. `docs/MORNING.md` is the report from the unattended push: what to run, what was added, what
-   was checked and what was not. `docs/PLAYTEST.md` is what was seen when the user played.
-1. `docs/PLAN.md` is the plan for the prototype: what the user decided, what to build, where the
-   risk is, and how to work when the user is not there to play each step.
-2. `docs/DESIGN.md` is the design: the user's decisions, sizes in metres, and each station as
-   built. It keeps the user's decisions apart from Claude's proposals.
+1. `docs/DESIGN.md` is the game as it stands: what the user decided, in their words and dated,
+   how each thing was built, what has been played and what has not, and what is open. Start here.
+2. `docs/PLAN.md` is the plan for the unattended push that built the maps, and a log of what was
+   asked for and built since. `docs/PLAYTEST.md` is what was seen when the user played.
+   `docs/NEXT_PROTOTYPE.md` is what is being left for the prototype after this one.
 3. `docs/TECH_PLAN.md` describes the code as it stands.
 4. `docs/NOTES.md` is what was learned building the stations: how the user works, and the
    technical traps. Read it before the first build of a session.
 5. `docs/SETUP.md` is tooling and how to run two instances.
+
+**When a document goes stale, rewrite it in place** (user, 2026-10-05: "I don't think we need to
+use archive in general"). The old version is in git; say which commit in the new one's header.
 
 **Do not read `docs/archive/` unless the user asks you to.** It holds superseded documents: the
 first prototype's design, technical plan and post-mortem, and earlier planning full of ideas that
