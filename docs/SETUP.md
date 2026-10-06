@@ -79,8 +79,8 @@ count as different players. **This path has never connected**, so expect to fix 
   `RRPWORK` line with the time each took.
 - **Controls**: WASD, mouse, Shift toggles sprint, Space hops, Tab frees the mouse, F1 tuning
   (host), F3 readout. Keys 1 to 6 are the stake, grade, gravel, zoning, asphalt and paint tools,
-  and 8 is the paint brush. Right click a waiting truck or roller to send it; left click the
-  dump truck to raise its bed. E gets into and out of a vehicle; W S A D drive it. The host picks the test ground or map with
+  and 8 is the paint brush. Right click a waiting truck or roller to send it (the dump
+  truck sends itself). E gets into and out of a vehicle; W S A D drive it. The host picks the test ground or map with
   the buttons at the top of the screen.
 - **Dev controls**: 7 is the dev tool (one click does a whole section's next stage). V toggles
   flying, with Space up and Ctrl down.

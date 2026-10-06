@@ -25,7 +25,7 @@ technical plan is in `archive/TECH_PLAN_badscale.md`.
 | `Player.cs`, `Blob.cs` | The blob: walk, sprint toggle, hop; pose sync; procedural animation |
 | `CameraRig.cs` | First-person camera at eye height, horizontal field of view |
 | `Yard.cs` | Station 1: flat ground, the parked truck, the road strip, three painted hairpins. Also the truck's shape |
-| `Plot.cs` | A piece of ground with its stakes, sections and tools. Eight small ones are the stations; a ninth is the land of a map, with its towns |
+| `Plot.cs` | A piece of ground with its stakes, sections and tools. Twenty-one small ones are shared out among the test grounds; one more is the land of a map, with its towns |
 | `Lorries.cs` | The trucks that drive themselves, on the test grounds' roads and on a map's, and the ones that wait to be sent |
 | `Cars.cs` | The vehicles players drive |
 | `Shovel.cs` | The shovel in the local player's view, and its motion |
@@ -61,8 +61,8 @@ are never entered. `Truck.Boom` and `Sfx` are still used for the trucks' explosi
 
 ## The plot
 
-`Plot` is one rectangle of ground with its own stakes. There are twenty, made by `Generate`
-from their index (the list is at the top of `Plot.cs`): nineteen small ones shared out among
+`Plot` is one rectangle of ground with its own stakes. There are twenty-two, made by `Generate`
+from their index (the list is at the top of `Plot.cs`): twenty-one small ones shared out among
 the test grounds, and one for a map's land.
 
 - **Ground:** a height per point, points 0.25 m apart, plus a byte of gravel (millimetres), a
