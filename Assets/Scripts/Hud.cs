@@ -38,6 +38,7 @@ public class Hud : MonoBehaviour
             if (kb.digit6Key.wasPressedThisFrame) Plot.Tool = Plot.Paint;
             if (kb.digit7Key.wasPressedThisFrame) Plot.Tool = Plot.Dev;
             if (kb.digit8Key.wasPressedThisFrame) Plot.Tool = Plot.Brush;
+            if (kb.digit9Key.wasPressedThisFrame) Plot.Tool = Plot.DropTool;
         }
         if (!inGame) { Playing = false; ShowPanel = false; }
         Cursor.lockState = Playing ? CursorLockMode.Locked : CursorLockMode.None;
@@ -252,7 +253,7 @@ public class Hud : MonoBehaviour
         if (near != null && near.IsQuarry) text.Append("<size=12>gravel on the heap: ").Append(near.stock).Append(" clicks' worth").Append((near.carrying & 1 << g.localSlot) != 0 ? "   <b>shovel loaded</b>" : "").Append("</size>\n");
         if (near != null && near.Wears) text.Append("<size=12>wear: ruts and holes in ").Append((near.rutShare * 100f).ToString("0.0")).Append(" % of the road, the deepest ").Append(Mathf.RoundToInt(near.deepest * 100f)).Append(" cm</size>\n");
         if (near != null) g.lorries.Readout(text, near.id);
-        text.Append("holding: <b>").Append(Plot.Tool == Plot.Stakes ? "1 stakes" : Plot.Tool == Plot.Grade ? "2 grade" : Plot.Tool == Plot.Zone ? "4 zoning" : Plot.Tool == Plot.Dev ? "7 DEV: finish a section" : Plot.Tool == Plot.Pave ? "5 asphalt" : Plot.Tool == Plot.Paint ? "6 paint lines" : Plot.Tool == Plot.Brush ? "8 paint brush" : "3 gravel").Append("</b>   sprint ").Append(Player.Sprinting ? "ON" : "off").Append(Player.Flying ? "   <b>FLYING</b>" : "").Append('\n');
+        text.Append("holding: <b>").Append(Plot.Tool == Plot.Stakes ? "1 stakes" : Plot.Tool == Plot.Grade ? "2 grade" : Plot.Tool == Plot.Zone ? "4 zoning" : Plot.Tool == Plot.Dev ? "7 DEV: finish a section" : Plot.Tool == Plot.Pave ? "5 asphalt" : Plot.Tool == Plot.Paint ? "6 paint lines" : Plot.Tool == Plot.Brush ? "8 paint brush" : Plot.Tool == Plot.DropTool ? "9 drop-off survey" : "3 gravel").Append("</b>   sprint ").Append(Player.Sprinting ? "ON" : "off").Append(Player.Flying ? "   <b>FLYING</b>" : "").Append('\n');
         if (g.phase == Phase.Job) text.Append("towns joined by asphalt: ").Append(g.road.asphaltLinked ? "YES" : "no").Append("   by paint: ").Append(g.road.paintedLinked ? "YES" : "no").Append('\n');
         if (g.phase == Phase.Job) text.Append("truck: ").Append(g.truck.alive ? "driving" : "none").Append('\n');
 

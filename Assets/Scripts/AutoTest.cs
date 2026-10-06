@@ -16,6 +16,8 @@ using UnityEngine;
 //                       stake a road out from the first town to the second
 //   -rrpMap <n>         host: choose map n (0 is the stations)
 //   -rrpDrive <n>       on the Driving test ground: get into vehicle n and drive it in a circle
+//   -rrpDrop            on the Quarry ground: put the gravel drop-off down beside the service road,
+//                       then load the gravel truck a shovel a second
 //   -rrpWork <percent>  on a map, after -rrpStakes: click wherever there is work, at the cap, until
 //                       the road is graded and gravelled, with that share of clicks on the hot
 //                       spot; prints RRPWORK lines with the time each took
@@ -30,6 +32,7 @@ public class AutoTest : MonoBehaviour
     public static bool Bot, Log;
     int clicksLeft, clicksTotal, stakesLeft;
     int mapWanted = -1;
+    bool dropWanted;
     int driveWanted = -1;
     int workHot = -1, workPhase, workClicks;
     float workStart;
@@ -72,6 +75,7 @@ public class AutoTest : MonoBehaviour
             else if (args[i] == "-rrpMap" && i + 1 < args.Length) int.TryParse(args[++i], out mapWanted);
             else if (args[i] == "-rrpDrive" && i + 1 < args.Length) int.TryParse(args[++i], out driveWanted);
             else if (args[i] == "-rrpWork" && i + 1 < args.Length) int.TryParse(args[++i], out workHot);
+            else if (args[i] == "-rrpDrop") dropWanted = true;
         }
         if (host) Game.I.Host(false);
     }
@@ -105,6 +109,13 @@ public class AutoTest : MonoBehaviour
             Cars.TestThrottle = 1f;
             Cars.TestSteer = 0.35f;
             if (Cars.Mine < 0 && stakeTimer > 2f) { stakeTimer = 0; g.cars.Ask(driveWanted, 1); }
+        }
+        if (dropWanted && g.phase == Phase.Lobby && g.map == Plot.QuarryMap && g.plots[Plot.Quarry].Ready && g.local != null && !g.respawn && stakeTimer > 1f)
+        {
+            stakeTimer = 0;
+            var quarry = g.plots[Plot.Quarry];
+            if (quarry.drop < 0) quarry.RequestDrop(quarry.stakes[1].x, quarry.stakes[1].z - 13f, 1);
+            else quarry.RequestShovel((quarry.carrying & 1 << g.localSlot) != 0 ? Plot.FlingIn : Plot.Scoop);
         }
         if (Plot.LandMap(g.map))
         {

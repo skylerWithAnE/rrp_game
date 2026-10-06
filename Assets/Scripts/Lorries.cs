@@ -53,6 +53,8 @@ public class Lorries : MonoBehaviour
         public Transform bedPart;           // a dump truck's bed, which tips
         public float bedAngle;
         public bool tipping;                // host: asphalt came out of it this quarter second
+        public bool reverse;                // host: it is following its way backwards, tail first
+        public float hold;                  // host: seconds it stands still before it goes on
         public bool Alive => body != null;
     }
 
@@ -71,6 +73,7 @@ public class Lorries : MonoBehaviour
         public int load;                // what is on it
         public bool bed;                // a dump truck's bed is up: it tips as it drives
         public float wait;              // host: seconds until a new one stands at home, when there is none
+        public int leg;                 // the gravel truck's round: 0 standing, 1 driving out, 2 backing into the drop-off, 3 driving home
         internal Lorry l;
     }
     public const int GravelTruck = 0, DumpTruck = 1, Roller = 2;
@@ -136,6 +139,14 @@ public class Lorries : MonoBehaviour
         var r = rigs[rig];
         var plot = Game.I.plots[r.plot];
         if (r.l == null || !r.l.Alive) return "The next truck is on its way.\n(If none comes, no road joins the depots.)";
+        if (r.kind == GravelTruck)
+        {
+            // it runs its own round
+            string aboard = "Gravel truck: " + r.load + " of " + Mathf.RoundToInt(Game.I.tuning.haulLoad) + " shovels aboard.\n";
+            if (r.at == 0) return aboard + (plot.drop < 0 ? "It has nowhere to go: there is no drop-off yet." : "It sets off for the drop-off when it is full.");
+            if (r.at == 1) return aboard + (r.load > 0 ? "Unload it: press 3, click it, and say where the heap goes." : "Empty. It is going home.");
+            return aboard + (r.leg == 2 ? "Backing into the drop-off." : "On its way to " + plot.DepotName(r.to) + ".");
+        }
         string what = r.kind == GravelTruck ? "Gravel truck: " + r.load + " of " + Mathf.RoundToInt(Game.I.tuning.haulLoad) + " shovels aboard."
             : r.kind == DumpTruck ? "Dump truck. It works by itself:\nit tips asphalt wherever there is packed gravel without any."
             : "Roller: it levels and rolls asphalt as it drives.";
@@ -156,6 +167,7 @@ public class Lorries : MonoBehaviour
     {
         if (rig < 0 || rig >= rigs.Length) return false;
         var r = rigs[rig];
+        if (r.kind == GravelTruck) return SendHaul(rig);
         if (byPlayer && r.kind == DumpTruck) return false;     // the dump truck is nobody's to send
         if (StandingAt(rig) < 0 || depot == r.at || !Game.I.plots[r.plot].DepotRoute(r.l.path, r.at, depot)) return false;
         var path = r.l.path;
@@ -171,6 +183,64 @@ public class Lorries : MonoBehaviour
         r.to = depot;
         r.at = -1;
         return true;
+    }
+
+    // host: the gravel truck sets off on the next leg of its round. From the quarry it goes
+    // to the drop-off: it is put at the start of its way, facing out of the pit, because there
+    // is nowhere down there to turn. From the drop-off it drives home from where it stands.
+    bool SendHaul(int rig)
+    {
+        var r = rigs[rig];
+        int at = StandingAt(rig);
+        var plot = Game.I.plots[r.plot];
+        if (at == 0)
+        {
+            if (r.load <= 0 || !plot.HaulOut(r.l.path)) return false;
+            var path = r.l.path;
+            Vector3 start = path[1], ahead = path[5] - path[1];
+            start.y = plot.HeightAt(start.x, start.z) + 0.3f;
+            ahead.y = 0;
+            r.l.rb.position = start;
+            r.l.rb.rotation = Quaternion.LookRotation(ahead);
+            r.l.body.transform.SetPositionAndRotation(start, Quaternion.LookRotation(ahead));
+            r.l.rb.linearVelocity = r.l.rb.angularVelocity = Vector3.zero;
+            r.leg = 1;
+            r.to = 1;
+        }
+        else if (at == 1)
+        {
+            if (!plot.HaulHome(r.l.path)) return false;
+            r.leg = 3;
+            r.to = 0;
+        }
+        else return false;
+        r.l.index = r.l.reached = 0;
+        r.l.stuck = r.l.flipped = 0;
+        r.l.reverse = false;
+        r.at = -1;
+        return true;
+    }
+
+    // host: the gravel truck has come to the end of the way it was following
+    void HaulArrived(Lorry l)
+    {
+        var r = l.rig;
+        var plot = Game.I.plots[r.plot];
+        if (r.leg == 1 && plot.HaulIn(l.path))
+        {
+            // past the junction: stop, and back in
+            l.reverse = true;
+            l.index = l.reached = l.path.Count - 1;
+            l.hold = 1.5f;
+            l.stuck = 0;
+            r.leg = 2;
+            return;
+        }
+        Note(l, true);
+        l.reverse = false;
+        r.at = r.leg == 3 ? 0 : 1;
+        r.leg = 0;
+        r.wait = 3f;
     }
 
     // host: a truck each way along this road
@@ -262,7 +332,8 @@ public class Lorries : MonoBehaviour
         float top = Travel - 0.25f;     // at rest the springs are squashed a little under a quarter
         l.wheels = new[] { new Vector3(-track, top, front), new Vector3(track, top, front), new Vector3(-track, top, rear), new Vector3(track, top, rear) };
         l.index = l.reached = 0;
-        l.stuck = l.flipped = l.off = l.spin = 0;
+        l.stuck = l.flipped = l.off = l.spin = l.hold = 0;
+        l.reverse = false;
         l.seed = Random.value * 100f;
         l.launch = -1;
     }
@@ -274,7 +345,8 @@ public class Lorries : MonoBehaviour
         l.launch = -1;
         l.wait = Wait;
         if (l.once) l.wanted = l.once = false;
-        if (l.rig != null) { l.rig.at = l.rig.to = -1; l.rig.load = 0; l.rig.wait = Wait; }
+        // a gravel truck that is wrecked is lost with its load, and it is a while before another comes
+        if (l.rig != null) { l.rig.at = l.rig.to = -1; l.rig.load = 0; l.rig.leg = 0; l.rig.wait = l.rig.kind == GravelTruck ? Game.I.tuning.haulRespawn : Wait; }
     }
 
     void Update()
@@ -332,6 +404,21 @@ public class Lorries : MonoBehaviour
             if (rig.load == 0) { rig.bed = false; if (rig.at != rig.home) Send(r, rig.home, false); }
             else if (g.plots[rig.plot].NeedsAsphalt()) { rig.bed = true; Send(r, rig.at == 0 ? 1 : 0, false); }
             else rig.bed = false;
+        }
+
+        // The gravel truck runs its own round too: off to the drop-off a moment after it is
+        // full, and home a moment after it is empty.
+        for (int r = 0; r < rigs.Length; r++)
+        {
+            var rig = rigs[r];
+            int at = rig.kind == GravelTruck ? StandingAt(r) : -1;
+            if (at < 0) continue;
+            bool go = at == 0 ? rig.load >= Mathf.RoundToInt(g.tuning.haulLoad) : rig.load == 0;
+            if (!go) { rig.wait = 2.5f; continue; }
+            rig.wait -= Time.deltaTime;
+            if (rig.wait > 0) continue;
+            rig.wait = 4f;
+            SendHaul(r);
         }
 
         // a truck that waits to be sent: a new one stands at its home depot whenever there is none
@@ -394,6 +481,7 @@ public class Lorries : MonoBehaviour
             snapshot.U8((byte)(rig.to + 1));
             snapshot.U8((byte)rig.load);
             snapshot.U8((byte)(rig.bed ? 1 : 0));
+            snapshot.U8((byte)rig.leg);
         }
         var quarry = g.plots[Plot.Quarry];
         snapshot.U16((ushort)Mathf.Clamp(quarry.stock, 0, 65535));
@@ -451,6 +539,7 @@ public class Lorries : MonoBehaviour
             rig.to = m.U8() - 1;
             rig.load = m.U8();
             rig.bed = m.U8() != 0;
+            rig.leg = m.U8();
         }
         var quarry = Game.I.plots[Plot.Quarry];
         quarry.stock = m.U16();
@@ -519,6 +608,14 @@ public class Lorries : MonoBehaviour
                 l.stuck = 0;
                 continue;
             }
+            if (l.hold > 0)
+            {
+                // stopped for a moment, before it backs up
+                l.hold -= Time.fixedDeltaTime;
+                rb.AddForce(-Flat(rb.linearVelocity) * 6f * mass);
+                l.stuck = 0;
+                continue;
+            }
 
             // four times a second, a truck on the wear road damages the square it is on
             l.wear += Time.fixedDeltaTime;
@@ -548,15 +645,16 @@ public class Lorries : MonoBehaviour
             var path = l.path;
             // where it is on its way: the closest point a little ahead of where it last was
             float best = float.MaxValue;
-            for (int k = 0, j = l.index; k < 14 && j < path.Count; k++, j++)
+            for (int k = 0, j = l.index; k < 14 && j < path.Count && j >= 0; k++, j += l.reverse ? -1 : 1)
             {
                 float distance = Flat(path[j] - position).sqrMagnitude;
                 if (distance < best) { best = distance; l.index = j; }
             }
             l.off = Mathf.Max(l.off, Mathf.Sqrt(best));
-            if (l.index >= path.Count - 2)
+            if (l.reverse ? l.index <= 1 : l.index >= path.Count - 2)
             {
                 // it made it
+                if (l.rig != null && l.rig.kind == GravelTruck) { HaulArrived(l); continue; }
                 Note(l, true);
                 if (l.rig != null)
                 {
@@ -581,6 +679,17 @@ public class Lorries : MonoBehaviour
             {
                 // steer at a point just ahead; slow for bends and for poor going
                 Vector3 forward = Flat(tr.forward);
+                if (l.reverse)
+                {
+                    // backing up: its tail is steered at a point a little way back along its way
+                    Vector3 behind = path[Mathf.Max(l.index - 5, 0)];
+                    float swing = Vector3.SignedAngle(-forward, Flat(behind - position), Vector3.up);
+                    rb.AddTorque(Vector3.up * (Mathf.Clamp(swing * 0.06f, -1.5f, 1.5f) - rb.angularVelocity.y) * 6f, ForceMode.Acceleration);
+                    float back = -t.haulBackSpeed * Mathf.Lerp(1f, 0.5f, Mathf.Clamp01(Mathf.Abs(swing) / 40f));
+                    float rolling = Vector3.Dot(rb.linearVelocity, tr.forward);
+                    rb.AddForce(tr.forward * Mathf.Clamp((back - rolling) * 4f, -t.lorryPower * bite * g.plots[l.plot].Going(position.x, position.z), t.lorryPower * bite) * mass);
+                    goto spun;
+                }
                 Vector3 near = path[Mathf.Min(l.index + 5, path.Count - 1)], far = path[Mathf.Min(l.index + 12, path.Count - 1)];
                 float angle = Vector3.SignedAngle(forward, Flat(near - position), Vector3.up);
                 float bend = Mathf.Max(Mathf.Abs(angle), Vector3.Angle(forward, Flat(far - position)));
@@ -620,7 +729,7 @@ public class Lorries : MonoBehaviour
             // stuck, on its side or fallen off the world: it bounces away and blows up
             // Stuck is standing still, or getting no further along the road: a truck that
             // creeps up a slope and slides back is as stuck as one against a hump.
-            bool further = l.index > l.reached;
+            bool further = l.reverse ? l.index < l.reached : l.index > l.reached;
             if (further) l.reached = l.index;
             l.stuck = Flat(rb.linearVelocity).magnitude < 0.3f || !further ? l.stuck + Time.fixedDeltaTime : 0;
             l.flipped = up.y < 0.45f ? l.flipped + Time.fixedDeltaTime : 0;

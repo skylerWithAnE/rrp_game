@@ -73,8 +73,16 @@ public class Tuning : ScriptableObject
     [Header("Quarry (the Quarry test ground only)")]
     [Tooltip("Shovels of gravel the truck carries.")]
     [Range(2, 100)] public float haulLoad = 12f;
-    [Tooltip("How many clicks of laying one shovel is worth once it is on the heap. 3 lays one square to full depth.")]
-    [Range(1, 30)] public float shovelWorth = 8f;
+    [Tooltip("How many clicks of laying one shovel is worth once it is on the heap. 3 lays one square to full depth, so 30 covers ten squares.")]
+    [Range(1, 60)] public float shovelWorth = 30f;
+    [Tooltip("How far past the stake the drop-off branches from the gravel truck drives before it backs in (m).")]
+    [Range(6, 20)] public float haulPass = 12f;
+    [Tooltip("How fast the gravel truck backs in (m/s).")]
+    [Range(0.5f, 5)] public float haulBackSpeed = 2f;
+    [Tooltip("Seconds after the gravel truck is wrecked before an empty one stands at the quarry.")]
+    [Range(1, 120)] public float haulRespawn = 20f;
+    [Tooltip("[Claude] 1: trucks wear the roads of the Quarry ground, as they do on the Wear ground. 0: they do not.")]
+    [Range(0, 1)] public float quarryWear = 0f;
     [Tooltip("How far a loaded shovel can be flung, into the truck or onto the heap (m).")]
     [Range(3, 30)] public float flingReach = 16f;
     [Tooltip("1: gravel laid at the quarry comes off the heap at the drop, and none can be laid when it is empty. 0: gravel is free, as everywhere else.")]

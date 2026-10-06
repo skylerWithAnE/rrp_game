@@ -431,6 +431,13 @@ public class Game : MonoBehaviour
                 int from = m.U8(), to = m.U8();
                 if (plot < plots.Length) plots[plot].HostStake(slot, x, z, from == 255 ? -1 : from, to == 255 ? -1 : to);
             }
+            else if (op == Op.Drop)
+            {
+                int plot = m.U8();
+                float x = m.F32(), z = m.F32();
+                int from = m.U8();
+                if (plot < plots.Length) plots[plot].HostDrop(slot, x, z, from);
+            }
             else if (op == Op.Zone)
             {
                 int plot = m.U8(), link = m.U8(), role = m.U8();

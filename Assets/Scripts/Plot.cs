@@ -105,6 +105,8 @@ public class Plot : MonoBehaviour
     public const int Pave = 5, Paint = 6;       // spreading asphalt, and painting lines: sent with a click like the first two
     public const int Dev = 7;                   // the dev tool: it finishes a section's next stage in one click
     public const int Brush = 8, BrushYellow = 9;    // the paint brush: paint wherever it points, white or yellow
+    public const int TarSpray = 10, Grinder = 11;   // the two ways to take hand-drawn paint off: see Lines
+    public const int DropTool = 12;                 // the survey tool that places the gravel drop-off, at the quarry
     public static int Tool = Stakes;            // what the local player is holding
 
     public int id;
@@ -126,7 +128,7 @@ public class Plot : MonoBehaviour
     public int selected = -1;               // the local player's stake: the next one is roped to it
 
     // trucks damage this road: the first wear road, the two of the Wear ground, and a map while its switch is on
-    public bool Wears => id == 5 || id == WearDirt || id == WearGravel || (IsLand && Game.I.tuning.mapWear >= 0.5f);
+    public bool Wears => id == 5 || id == WearDirt || id == WearGravel || (IsLand && Game.I.tuning.mapWear >= 0.5f) || (IsQuarry && Game.I.tuning.quarryWear >= 0.5f);
     public bool TrucksPack => IsLand || id == SpinOut;      // trucks pack the gravel they drive over
     public bool IsLand => id == Land;
     public float rutShare, deepest;         // how much of the road's ground has been cut below its line, 0 to 1, and the deepest cut (m)
@@ -164,6 +166,7 @@ public class Plot : MonoBehaviour
     public Vector3 heapAt;
     bool placing;                           // the local player is choosing where
     public readonly List<int> depots = new List<int>();     // stakes where a truck stands until it is sent on
+    public int drop = -1;                   // the quarry: the stake that is the gravel drop-off, which a player puts down with the survey tool
     const float PitDepth = 8f, PitRim = 30f, PitFloor = 14f;    // the quarry's pit: how deep, and its radius at the top and at the floor
     Vector3 PitCentre => origin + new Vector3(110f, 0, 55f);
     bool canLay, laid;                      // host, during a click: may gravel go down, and did any
@@ -201,7 +204,7 @@ public class Plot : MonoBehaviour
     Transform stakeRoot;
     readonly Dictionary<int, int> stakeByCollider = new Dictionary<int, int>();
     LineRenderer cursor, preview, hotRing;
-    Material wood, red, white, blue;
+    Material wood, red, white, blue, orange;
     float nextClick;                                                    // local rate cap
     readonly float[] hostNextClick = new float[Session.MaxPlayers];     // host: rate cap per player
     readonly Msg edit = new Msg(8192);
@@ -257,6 +260,7 @@ public class Plot : MonoBehaviour
         stock = carrying = 0;
         heapPlaced = placing = false;
         depots.Clear();
+        drop = -1;
         quarryRoot = pile = null;
         fixedStakes = 0;
         joined = false;
@@ -1033,6 +1037,7 @@ public class Plot : MonoBehaviour
         blue = Mats.Make(new Color(0.20f, 0.45f, 0.95f));
         red = Mats.Make(new Color(0.90f, 0.15f, 0.12f));
         white = Mats.Make(Color.white);
+        orange = Mats.Make(new Color(0.95f, 0.5f, 0.1f));
         stakeRoot = new GameObject("Stakes").transform;
         stakeRoot.SetParent(transform, false);
         cursor = Line("Cursor", true, 0.05f);
@@ -1067,12 +1072,12 @@ public class Plot : MonoBehaviour
             case 14: text = "A fork: two branches 60 degrees apart, the closest allowed."; at = stakes[0] + Vector3.up * 2.2f; break;
             case Quarry:
                 {
-                    text = "The quarry. Press 3. Click the rock to load your shovel,\nthen click the truck to fling it in. Right click the truck to send it.";
+                    text = "The quarry. Press 3. Click the rock to load your shovel,\nthen click the truck to fling it in. It sets off for the drop-off when it is full.";
                     at = new Vector3(PitCentre.x, stakes[0].y + 7f, PitCentre.z);
-                    labels.Add(new Yard.Label());       // the heap, and the truck: written each frame
+                    labels.Add(new Yard.Label());       // the drop-off, the heap, and the truck: written each frame
+                    labels.Add(new Yard.Label());
                     labels.Add(new Yard.Label());
                     depots.Add(0);
-                    depots.Add(1);
                     quarryRoot = new GameObject("Quarry").transform;
                     quarryRoot.SetParent(transform, false);
                     var stone = Mats.Make(new Color(0.36f, 0.35f, 0.38f), true);
@@ -1413,8 +1418,10 @@ public class Plot : MonoBehaviour
             Vector3 s = stakes[i];
             // the string is tied 0.8 m below the top, at the height the ground is to reach
             // a town's stake is twice as thick
-            float thick = i < fixedStakes ? 0.16f : 0.08f;
-            var post = Mats.Part(stakeRoot, Mats.Cube, i == selected ? white : wood, s + Vector3.down * 0.6f, new Vector3(thick, 2.8f, thick));
+            float thick = i < fixedStakes || i == drop ? 0.16f : 0.08f;
+            var post = Mats.Part(stakeRoot, Mats.Cube, i == selected ? white : i == drop ? orange : wood, s + Vector3.down * 0.6f, new Vector3(thick, 2.8f, thick));
+            // the drop-off's stake carries a board, to find it by
+            if (i == drop) Mats.Part(stakeRoot, Mats.Cube, orange, s + Vector3.up * 1.1f, new Vector3(1.2f, 0.7f, 0.06f));
             var grab = post.gameObject.AddComponent<BoxCollider>();
             grab.isTrigger = true;                      // walked through, but the crosshair finds it
             grab.size = new Vector3(0.4f / thick, 1f, 0.4f / thick);    // 0.4 m across
@@ -1555,19 +1562,171 @@ public class Plot : MonoBehaviour
             }
             stakes[stake] = s;
         }
-        else
-        {
-            stakes.RemoveAt(stake);
-            for (int k = links.Count - 1; k >= 0; k--)
-            {
-                var l = links[k];
-                if (l.x == stake || l.y == stake) { links.RemoveAt(k); continue; }
-                links[k] = new Vector3Int(l.x > stake ? l.x - 1 : l.x, l.y > stake ? l.y - 1 : l.y, l.z);
-            }
-        }
+        else PullOut(stake);
         Net.ToClients(StakesMsg(255, -1), true);
         StakesChanged(255, -1);
         return true;
+    }
+
+    // host: a stake comes out, with every rope tied to it, and the stakes after it are renumbered
+    void PullOut(int stake)
+    {
+        stakes.RemoveAt(stake);
+        for (int k = links.Count - 1; k >= 0; k--)
+        {
+            var l = links[k];
+            if (l.x == stake || l.y == stake) { links.RemoveAt(k); continue; }
+            links[k] = new Vector3Int(l.x > stake ? l.x - 1 : l.x, l.y > stake ? l.y - 1 : l.y, l.z);
+        }
+        if (drop == stake) drop = -1;
+        else if (drop > stake) drop--;
+    }
+
+    // ---- the gravel drop-off, and the gravel truck's round
+    //
+    // The drop-off is a stake a player puts down with the survey tool, on a short spur roped
+    // to a stake that is already in the middle of a road. The gravel truck drives from the
+    // quarry to that stake by any road, on past it, and backs into the spur; it stands there
+    // until it has been unloaded, and drives home.
+
+    // May the drop-off go at x, z, roped to stake `from`?
+    bool DropAllowed(float x, float z, int from)
+    {
+        if (!IsQuarry) return No("the drop-off tool works on the Quarry ground");
+        if (Game.I.lorries.StandingAt(Lorries.GravelTruck) != 0) return No("the gravel truck is out: wait until it is back at the quarry");
+        if (from < 0 || from >= stakes.Count) return No("first left click a stake in the middle of a road");
+        if (LinksAt(from) < 2) return No("start from a stake in the middle of a road: the truck drives on past it and backs in");
+        return CanAdd(x, z, from);
+    }
+
+    // host: the drop-off goes in at x, z, on a service road roped to stake `from`. There is one
+    // drop-off: the old one's stake comes out, unless something else is tied to it.
+    public bool HostDrop(int slot, float x, float z, int from)
+    {
+        if (!Ready || !DropAllowed(x, z, from)) return false;
+        if (drop >= 0)
+        {
+            int old = drop;
+            drop = -1;
+            if (old >= fixedStakes && old != from && LinksAt(old) <= 1) { PullOut(old); if (from > old) from--; }
+        }
+        stakes.Add(new Vector3(x, HeightAt(x, z), z));
+        drop = stakes.Count - 1;
+        links.Add(new Vector3Int(from, drop, 1));
+        Net.ToClients(StakesMsg(slot, drop), true);
+        StakesChanged(slot, drop);
+        return true;
+    }
+
+    public void RequestDrop(float x, float z, int from)
+    {
+        if (Net.IsHost) { HostDrop(Game.I.localSlot, x, z, from); return; }
+        var m = Msg.New(Op.Drop, 16);
+        m.U8((byte)id);
+        m.F32(x);
+        m.F32(z);
+        m.U8((byte)(from < 0 ? 255 : from));
+        Net.ToHost(m, true);
+    }
+
+    // The survey tool for the drop-off. Left click a stake in the middle of a road to start
+    // from it, then left click the ground beside the road: the drop-off goes there.
+    void DropSurvey(Tuning tuning, Mouse mouse, Transform eye)
+    {
+        if (!IsQuarry) return;
+        if (selected >= 0 && mouse.rightButton.wasPressedThisFrame) { Choose(-1); return; }
+        if (Physics.Raycast(eye.position, eye.forward, out var first, tuning.clickReach, ~0, QueryTriggerInteraction.Collide)
+            && first.collider.transform.parent == stakeRoot && stakeByCollider.TryGetValue(first.collider.GetInstanceID(), out int found))
+        {
+            Say(LinksAt(found) >= 2 ? "left click: the drop-off will branch from this stake" : "this stake is at the end of a road: pick one in the middle, so the truck can drive past and back in", LinksAt(found) < 2);
+            if (mouse.leftButton.wasPressedThisFrame && LinksAt(found) >= 2) Choose(found);
+            return;
+        }
+        if (!Physics.Raycast(eye.position, eye.forward, out var hit, tuning.clickReach, ~0, QueryTriggerInteraction.Ignore) || hit.collider.transform.parent != transform) return;
+        if (selected < 0) { Say("the drop-off survey: first left click a stake in the middle of a road", false); return; }
+        Vector3 aim = hit.point;
+        bool allowed = DropAllowed(aim.x, aim.z, selected);
+        var end = new Vector3(aim.x, HeightAt(aim.x, aim.z), aim.z);
+        Preview(stakes[selected], end, allowed);
+        if (allowed) Say("left click puts the gravel drop-off here. The truck will back in from the road", false);
+        if (allowed && mouse.leftButton.wasPressedThisFrame) RequestDrop(aim.x, aim.z, selected);
+    }
+
+    int SpurOf(int stake)
+    {
+        for (int k = 0; k < links.Count; k++) if (links[k].x == stake || links[k].y == stake) return k;
+        return -1;
+    }
+
+    // The gravel truck's way to the drop-off, worked out in `chain`: from the quarry to the
+    // stake the spur branches from (the junction), and on along whichever other road leaves it
+    // most nearly straight ahead. Gives the junction, and the spur as driven from the drop-off.
+    bool HaulChain(out int junction, out int fromDrop)
+    {
+        junction = fromDrop = -1;
+        if (!Ready || !IsQuarry || drop < 0 || drop >= stakes.Count || depots.Count == 0) return false;
+        int spur = SpurOf(drop);
+        if (spur < 0) return false;
+        junction = links[spur].x == drop ? links[spur].y : links[spur].x;
+        fromDrop = links[spur].x == drop ? spur : ~spur;
+        if (!PathBetween(depots[0], junction)) return false;
+        int last = chain[chain.Count - 1], came = last < 0 ? ~last : last;
+        Vector3 arriving = last < 0 ? -segs[came].d : segs[came].d;
+        int on = 0;
+        float best = -2f;
+        for (int k = 0; k < links.Count; k++)
+        {
+            if (k == spur || k == came || (links[k].x != junction && links[k].y != junction)) continue;
+            float ahead = Vector3.Dot(links[k].x == junction ? segs[k].d : -segs[k].d, arriving);
+            if (ahead <= best) continue;
+            best = ahead;
+            on = links[k].x == junction ? k : ~k;
+        }
+        if (best < -1.5f) return false;     // no road on past the junction
+        chain.Add(on);
+        return true;
+    }
+
+    // drop the end of a way that runs on further than the truck needs to go past the junction
+    void HaulTrim(List<Vector3> path, int junction)
+    {
+        Vector3 at = Flat(stakes[junction]);
+        float pass = Game.I.tuning.haulPass;
+        while (path.Count > 8 && Vector3.Distance(Flat(path[path.Count - 1]), at) > pass) path.RemoveAt(path.Count - 1);
+    }
+
+    // the way out: from the quarry to a little past the junction
+    public bool HaulOut(List<Vector3> path)
+    {
+        path.Clear();
+        if (!HaulChain(out int junction, out _)) return false;
+        Lane(path, false, 0, 0);
+        HaulTrim(path, junction);
+        return path.Count > 6;
+    }
+
+    // The way in: the points a truck leaving the drop-off for that same stretch of road would
+    // drive, which the gravel truck follows backwards, tail first, from their end to their start.
+    public bool HaulIn(List<Vector3> path)
+    {
+        path.Clear();
+        if (!HaulChain(out int junction, out int fromDrop)) return false;
+        int on = chain[chain.Count - 1];
+        chain.Clear();
+        chain.Add(fromDrop);
+        chain.Add(on);
+        Lane(path, false, 0, 0);
+        HaulTrim(path, junction);
+        return path.Count > 6;
+    }
+
+    // the way home: from the drop-off to the quarry, by any road
+    public bool HaulHome(List<Vector3> path)
+    {
+        path.Clear();
+        if (!Ready || !IsQuarry || drop < 0 || drop >= stakes.Count || !PathBetween(drop, depots[0])) return false;
+        Lane(path, false, 0, 4f);
+        return path.Count > 6;
     }
 
     public void RequestStakeEdit(int stake, int steps)
@@ -1590,6 +1749,7 @@ public class Plot : MonoBehaviour
         foreach (var s in stakes) m.V3(s);
         m.U8((byte)links.Count);
         foreach (var l in links) { m.U8((byte)l.x); m.U8((byte)l.y); m.U8((byte)l.z); }
+        m.U8((byte)(drop < 0 ? 255 : drop));
         return m;
     }
 
@@ -1604,6 +1764,8 @@ public class Plot : MonoBehaviour
         for (int i = 0; i < n; i++) stakes.Add(m.V3());
         n = m.U8();
         for (int i = 0; i < n; i++) { int a = m.U8(), b = m.U8(), role = m.U8(); links.Add(new Vector3Int(a, b, role)); }
+        drop = m.U8();
+        if (drop == 255) drop = -1;
         if (Ready) StakesChanged(slot, made == 255 ? -1 : made);
         else if (h != null && expected <= 0) Build();
     }
@@ -2182,7 +2344,9 @@ public class Plot : MonoBehaviour
             }
         }
         if (!PathBetween(start, end, true)) return false;
-        Lane(path, back, IsLand ? 9f : 14f, IsLand ? 9f : 14f);     // a town's pad is smaller than the yard
+        // a town's pad is smaller than the yard, and at the quarry a road may end near the edge of the high ground
+        float beyond = IsLand ? 9f : IsQuarry ? 4f : 14f;
+        Lane(path, back, beyond, beyond);
         return path.Count > 8;
     }
 
@@ -2217,6 +2381,20 @@ public class Plot : MonoBehaviour
         at = Vector3.zero;
         facing = Quaternion.identity;
         var path = new List<Vector3>();
+        if (IsQuarry)
+        {
+            // at the loading bay, facing the way out of the pit
+            int bay = depots.Count > 0 ? SpurOf(depots[0]) : -1;
+            if (bay < 0) return false;
+            chain.Clear();
+            chain.Add(links[bay].x == depots[0] ? bay : ~bay);
+            Lane(path, false, 0, 0);
+            if (path.Count < 6) return false;
+            facing = Quaternion.LookRotation(Flat(path[5] - path[1]));
+            at = path[1];
+            at.y = HeightAt(at.x, at.z) + 0.3f;
+            return true;
+        }
         if (!DepotRoute(path, (depot + 1) % Mathf.Max(1, depots.Count), depot)) return false;
         facing = Quaternion.LookRotation(Flat(path[path.Count - 1] - path[path.Count - 5]));
         at = path[path.Count - 3] + facing * Vector3.right * aside;
@@ -2224,7 +2402,7 @@ public class Plot : MonoBehaviour
         return true;
     }
 
-    public string DepotName(int depot) { return IsQuarry ? (depot == 0 ? "the quarry" : "the drop") : depot == 0 ? "the yard" : "the far end"; }
+    public string DepotName(int depot) { return IsQuarry ? (depot == 0 ? "the quarry" : "the drop-off") : depot == 0 ? "the yard" : "the far end"; }
 
     // The points of a truck's way along the sections in `chain`: a run-up, the right-hand lane
     // of each section, and a run-off; or, with `back`, the same road the other way in the other lane.
@@ -2444,7 +2622,18 @@ public class Plot : MonoBehaviour
             Say("Dump truck: it brings asphalt by itself. Level what it leaves with the asphalt tool (5) or the roller", false);
             return true;
         }
-        if (at < 0) { Say("on its way to " + DepotName(g.lorries.rigs[rig].to), false); return true; }
+        if (at < 0) { Say(g.lorries.rigs[rig].leg == 2 ? "backing into the drop-off" : "on its way to " + DepotName(g.lorries.rigs[rig].to), false); return true; }
+        if (g.lorries.rigs[rig].kind == Lorries.GravelTruck)
+        {
+            // it runs its own round: off when it is full, home when it is empty. A right click sends it early.
+            int aboard = g.lorries.rigs[rig].load;
+            bool can = at == 1 || (drop >= 0 && aboard > 0);
+            rigLine = at == 1 ? "it goes home when it is empty; right click sends it now"
+                : drop < 0 ? "there is no drop-off yet: press 9 and put one down beside a road"
+                : aboard == 0 ? "it sets off for the drop-off when it is full" : "it sets off when it is full; right click sends it now";
+            if (can && mouse.rightButton.wasPressedThisFrame) RequestShovel(SendRig, rig, at == 0 ? 1 : 0);
+            return false;
+        }
         int to = (at + 1) % Mathf.Max(1, depots.Count);
         rigLine = g.lorries.RigName(rig) + ": right click sends it to " + DepotName(to);
         if (mouse.rightButton.wasPressedThisFrame) RequestShovel(SendRig, rig, to);
@@ -2541,6 +2730,9 @@ public class Plot : MonoBehaviour
         }
         labels[1] = new Yard.Label { at = pile.position + Vector3.up * (size * 0.6f + 1.4f), text = !heapPlaced ? "" : "The heap: " + stock + " clicks' worth of gravel." + (stock == 0 ? "\nNone can be laid here until some is unloaded." : "") };
         labels[2] = new Yard.Label { at = g.lorries.RigAt(Lorries.GravelTruck) + Vector3.up * 4f, text = g.lorries.RigSays(Lorries.GravelTruck) };
+        labels[0] = drop >= 0 && drop < stakes.Count
+            ? new Yard.Label { at = stakes[drop] + Vector3.up * 2.6f, text = "Gravel drop-off. The truck backs in here\nand waits to be unloaded." }
+            : new Yard.Label { at = (stakes.Count > 2 ? stakes[2] : stakes[0]) + Vector3.up * 3f, text = "No gravel drop-off yet. Press 9, left click a stake in the\nmiddle of a road, then left click the ground beside the road." };
     }
 
     // host: a truck is on this road, its wheels touching the ground at these spots. It does a
@@ -2735,7 +2927,7 @@ public class Plot : MonoBehaviour
         // A truck that waits to be sent comes before whatever tool is in hand: the crosshair on
         // it says what a click would do, a right click sends it, and no tool acts through it.
         // (At the quarry with the gravel tool, the shovel has more to say: see QuarryTool.)
-        if (depots.Count > 1 && !(IsQuarry && Tool == Gravel) && Physics.Raycast(eye.position, eye.forward, out var truck, tuning.flingReach, ~0, QueryTriggerInteraction.Ignore))
+        if ((depots.Count > 1 || IsQuarry) && !(IsQuarry && Tool == Gravel) && Physics.Raycast(eye.position, eye.forward, out var truck, tuning.flingReach, ~0, QueryTriggerInteraction.Ignore))
         {
             rigLine = "";
             if (RigTool(g, tuning, mouse, truck)) return;
@@ -2750,6 +2942,11 @@ public class Plot : MonoBehaviour
         if (Tool == Zone)
         {
             ZoneTool(tuning, mouse, eye);
+            return;
+        }
+        if (Tool == DropTool)
+        {
+            DropSurvey(tuning, mouse, eye);
             return;
         }
         if (Tool == Dev)
