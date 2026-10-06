@@ -11,6 +11,7 @@ public class Hud : MonoBehaviour
     public static bool Playing;      // the mouse drives the camera and the shovel
     public static bool ShowReadout = true;
     public static bool ShowPanel;
+    public static bool ShowGuide = true;    // the box that says what this ground is for and which keys work it; H hides it
 
     string joinText = "127.0.0.1";
     string roadSays = "";       // what the last "stake and finish" staked
@@ -28,6 +29,7 @@ public class Hud : MonoBehaviour
         {
             if (kb.f1Key.wasPressedThisFrame) { ShowPanel = !ShowPanel; if (ShowPanel) Playing = false; }
             if (kb.f3Key.wasPressedThisFrame) ShowReadout = !ShowReadout;
+            if (kb.hKey.wasPressedThisFrame) ShowGuide = !ShowGuide;
             if (kb.escapeKey.wasPressedThisFrame || kb.tabKey.wasPressedThisFrame) Playing = !Playing;
             if (kb.enterKey.wasPressedThisFrame && g.won) g.BackToLobby();
             // one tool in the hands at a time (in a vehicle the number keys change seats instead: see below)
@@ -71,6 +73,7 @@ public class Hud : MonoBehaviour
             Labels(g);
             if (ShowPanel) Panel(g, panel);
             if (ShowReadout) Readout(g);
+            if (ShowGuide) Guide(g, height);
             if (g.phase == Phase.Lobby) Lobby(g, width);
             if (Playing) GUI.Label(new Rect(width / 2 - 5, height / 2 - 11, 20, 20), "+", label);
             // under the crosshair: why the red rope cannot be made, or what a click here would do
@@ -195,7 +198,7 @@ public class Hud : MonoBehaviour
 
     void Lobby(Game g, float width)
     {
-        GUILayout.BeginArea(new Rect(width / 2 - 260, 10, 560, Net.IsHost ? 210 : 60), box);
+        GUILayout.BeginArea(new Rect(width / 2 - 260, 10, 560, Net.IsHost ? 216 : 60), box);
         GUILayout.Label("<b>" + Plot.MapNames[g.map] + "</b>   " + g.PlayerCount + " of " + Session.MaxPlayers + " players", label);
         if (Net.IsHost)
         {
@@ -237,7 +240,7 @@ public class Hud : MonoBehaviour
                 if (GUILayout.Button(wears ? "Wear on maps: ON" : "Wear on maps: off", GUILayout.Width(140))) { g.tuning.mapWear = wears ? 0 : 1; g.TuningChanged(); }
             }
             // [Claude] fast forward, for watching a road wear out
-            GUILayout.Label("Speed", label, GUILayout.Width(40));
+            GUILayout.Label("Speed", label, GUILayout.Width(52));
             foreach (int pace in new[] { 1, 4, 10 })
             {
                 GUI.enabled = Mathf.Abs(g.tuning.fastForward - pace) > 0.01f;
@@ -308,31 +311,108 @@ public class Hud : MonoBehaviour
             text.Append("from host ").Append(Kb(host.receivedRate)).Append("  to host ").Append(Kb(host.sentRate));
             text.Append("  rtt ").Append(g.utp.GetCurrentRtt(NetworkManager.ServerClientId)).Append(" ms\n");
         }
-        text.Append("<size=11>F1 tuning   F3 readout   Tab mouse\nWASD walk   Shift sprint on/off   Space hop   1 to 6, 8, 9 tools   T tar   G grinder\nE gets into a vehicle, C its camera   right click sends a waiting truck\ndev: 7 finishes a section   V flies (Space up, Ctrl down)\nstakes: left click places or chooses, wheel moves\nthe chosen rope, X removes, right click lets go</size>");
+        text.Append("<size=11>WASD walk   Shift sprint on/off   Space hop   H the guide\n1 stakes  2 grade  3 gravel  4 zoning  5 asphalt  6 paint\n8 brush  9 drop-off  T tar  G grinder\nE vehicle, C its camera   right click sends a waiting truck</size>");
 
         // as tall as what it says
         var wrapped = new GUIStyle(label) { wordWrap = true };
         float tall = wrapped.CalcHeight(new GUIContent(text.ToString()), 350);
-        GUI.Box(new Rect(8, 8, 360, tall + 10), GUIContent.none, box);
+        readoutRect = new Rect(8, 8, 360, tall + 10);
+        GUI.Box(readoutRect, GUIContent.none, box);
         GUI.Label(new Rect(16, 12, 350, tall + 4), text.ToString(), wrapped);
     }
 
-    // What each thing in the yard is and how big, written over it.
+    // What this ground is for and how to work it, in a box at the bottom left. This is where
+    // the instructions are; the signs out in the world only name things.
+    static string GuideFor(Game g)
+    {
+        string host = Net.IsHost ? "" : " (the host's)";
+        switch (g.map)
+        {
+            case Plot.YardMap: return "<b>Scale yard</b>\nSizes against the 1.6 m blob: the truck, a strip of road, and three hairpins. Nothing here can be changed.";
+            case Plot.BuildingMap: return "<b>Building roads</b>\nFour pieces of ground, one for each tool.\n<b>1 Stakes</b>: left click the ground to put a stake down, roped to the last. Wheel moves the chosen rope, X pulls the stake out, right click lets go.\n<b>2 Grade</b>: hold left click on staked ground to bring it to the rope.\n<b>3 Gravel</b>: hold left click on graded road to lay gravel; keep going to pack it.\nA click on the yellow ring counts double.";
+            case Plot.TrucksMap: return "<b>Trucks</b>\nWhat a truck can and cannot drive. Nothing to do but watch.\nOn your right, a finished road. On your left, a bad one; beyond it the first wear road, and then four ramps: 14 and 20 degrees, bare, loose and packed.\nBehind you: the tightest turn, rough and finished.\nTry the Gravity buttons above" + host + ".";
+            case Plot.JunctionsMap: return "<b>Junctions</b>\nA T, a crossroads and a fork, finished, with trucks on them. And a field with a road across it, to build one:\n<b>1 Stakes</b>: click a stake in the middle of the road, then the ground to one side. A branch must leave 60 degrees or more from the other ropes.";
+            case Plot.QuarryMap: return "<b>Quarry and gravel delivery</b>\n1. <b>1 Stakes</b>: carry the bare road on from its end by two stakes.\n2. <b>9 Drop-off</b>: left click the stake that was the end, then the ground beside the road.\n3. Down in the pit, <b>3</b>: click the rock, then the truck. At 12 shovels it leaves by itself; right click sends it sooner.\n4. It backs into the drop-off. <b>3</b>: click it and say where the heap goes, then click the truck and click the heap.\n5. Empty, it drives home. Gravel laid here comes off the heap.\n<b>4</b> zoning: left click a section to make it a service road or open it.";
+            case Plot.PavingMap: return "<b>Paving and painting</b>\nThe dump truck tips asphalt down each lane by itself.\n<b>5 Asphalt</b>: hold left click to spread what it left. Or right click the roller to send it over.\n<b>6 Paint</b>: hold left click on rolled asphalt to paint a square's lines.\n<b>8 Brush</b>: left click white, right click yellow.\nBeside it is the same road finished, with trucks.";
+            case Plot.DrivingMap: return "<b>Driving</b>\nFour vehicles, to your right, and a road in four states ahead.\n<b>E</b> beside a vehicle gets in, <b>E</b> again gets out.\n<b>W S</b> drive, <b>A D</b> steer. <b>C</b> switches the camera between behind the vehicle and the seat.\nThe pick-up seats four: <b>1 to 4</b> change seat.\nThe roller packs gravel and rolls asphalt. The loader: <b>R F</b> bucket, fill at the gravel pile, left click tips. The paint truck: left click paints.";
+            case Plot.WearMap: return "<b>Wear</b>\nFour roads on high ground, a truck from each end every few seconds: dirt, gravel, and each again with a paved way in. Paved road does not wear.\nThe signs over each road count its trucks.\n<b>Speed</b> above" + host + " runs it faster. <b>V</b> flies.\n<b>2</b> and <b>3</b> mend a road.\nSliders (F1, under Wear): wearByLanding, wearDirt, wearGravel, wearCut, wearDeepest.";
+            case Plot.SpinMap: return "<b>Spin-out</b>\nLoose gravel makes trucks slide and spin. They pack it as they drive, and it gets safer.\n<b>Road 1</b>, to your left: packed, then loose gravel and a bend.\n<b>Road 2</b>, to your right: 40 m paved, 40 m of loose gravel, then the bend, so trucks arrive at speed.\n\"Loosen the gravel again\" above" + host + " starts both over.\nSliders (F1): looseGrip, looseFishtail, spinAngle, truckPacking.";
+            case Plot.PaintMap: return "<b>Painting lines by hand</b>\nA white line inside each edge, a yellow one down the middle. The near strip marks where; the far one does not.\n<b>8 Roller brush</b>: hold left click and drag for white, right click for yellow.\n<b>T Tar spray</b>: hold left click to cover paint. Wide.\n<b>G Grinder</b>: hold left click to take paint off. Narrow.\n<b>Paint truck</b>: E gets in. One drives; whoever is in the bed has the nozzles on the mouse buttons. A driver alone has both.";
+            default: return "<b>" + Plot.MapNames[g.map] + "</b>\nJoin town A (red) to town B (blue) with a road.\n<b>1 Stakes</b>: click town A's stake, then the ground toward B's pole, and rope the last stake to B's.\n<b>2 Grade</b>: hold left click on staked ground.\n<b>3 Gravel</b>: hold left click on graded road; trucks pack it.\nTrucks set off as soon as the towns are joined.\nOr \"Stake and finish this road\" above" + host + " builds it, to watch. \"Wear on maps\" is beside it.";
+        }
+    }
+
+    void Guide(Game g, float height)
+    {
+        var style = new GUIStyle(label) { wordWrap = true, fontSize = 13 };
+        string says = GuideFor(g) + "\n<size=11>H hides this.   F1 sliders, F3 readout, Tab frees the mouse.   7 finishes a section, V flies.</size>";
+        float tall = style.CalcHeight(new GUIContent(says), 400);
+        guideRect = new Rect(8, height - tall - 22, 416, tall + 14);
+        GUI.Box(guideRect, GUIContent.none, box);
+        GUI.Label(new Rect(16, height - tall - 16, 400, tall + 4), says, style);
+    }
+
+    // Signs: what each thing is, written over it. The nearest are drawn first and a sign that
+    // would lie over one already drawn is left out, so they never pile up; a sign more than 30 m
+    // away shows only its first line. Each has a dark board behind it.
+    Rect readoutRect, guideRect;
+    readonly System.Collections.Generic.List<Rect> drawn = new System.Collections.Generic.List<Rect>();
+    readonly System.Collections.Generic.List<Vector4> signs = new System.Collections.Generic.List<Vector4>();
+    readonly System.Collections.Generic.List<string> signText = new System.Collections.Generic.List<string>();
     void Labels(Game g)
     {
+        if (Event.current.type != EventType.Repaint) return;
         var cam = g.cam.GetComponent<Camera>();
-        var style = new GUIStyle(label) { alignment = TextAnchor.MiddleCenter, wordWrap = true };
-        var all = new System.Collections.Generic.List<Yard.Label>(g.yard.labels);
-        foreach (var plot in g.plots) all.AddRange(plot.labels);
-        foreach (var l in all)
+        var style = new GUIStyle(label) { alignment = TextAnchor.MiddleCenter, wordWrap = true, fontSize = 13 };
+        signs.Clear();
+        signText.Clear();
+        foreach (var l in g.yard.labels) Sign(cam, l.at, l.text);
+        foreach (var plot in g.plots)
+            foreach (var l in plot.labels) Sign(cam, l.at, l.text);
+        for (int i = 0; i < g.cars.cars.Length; i++)
+            if (i != Cars.Mine) Sign(cam, g.cars.cars[i].body.transform.position + Vector3.up * (g.cars.cars[i].size.y + 1f), g.cars.Sign(i));
+        // nearest first
+        var order = new int[signs.Count];
+        for (int i = 0; i < order.Length; i++) order[i] = i;
+        System.Array.Sort(order, (a, b) => signs[a].z.CompareTo(signs[b].z));
+        // no sign goes over the host's bar, the readout or the guide
+        drawn.Clear();
+        if (g.phase == Phase.Lobby) drawn.Add(new Rect(Screen.width / scale / 2 - 260, 10, 560, Net.IsHost ? 216 : 60));
+        if (ShowReadout) drawn.Add(readoutRect);
+        if (ShowGuide) drawn.Add(guideRect);
+        foreach (int i in order)
         {
-            Vector3 s = cam.WorldToScreenPoint(l.at);
-            if (s.z < 0.5f || s.z > 60f) continue;
-            // as tall as the sign's text needs: a fixed box cut off everything after the fourth line
-            if (string.IsNullOrEmpty(l.text)) continue;
-            float tall = style.CalcHeight(new GUIContent(l.text), 520);
-            GUI.Label(new Rect(s.x / scale - 260, (Screen.height - s.y) / scale - tall * 0.5f, 520, tall), l.text, style);
+            string text = signText[i];
+            // a sign whose text starts with ! is read in full from any distance: the counts of trucks
+            bool always = text.StartsWith("!");
+            if (always) text = text.Substring(1);
+            int line = text.IndexOf('\n');
+            // the first line is the sign's name
+            string says = line < 0 ? "<b>" + text + "</b>" : signs[i].z > 30f && !always ? "<b>" + text.Substring(0, line) + "</b>" : "<b>" + text.Substring(0, line) + "</b>" + text.Substring(line);
+            var content = new GUIContent(says);
+            float wide = Mathf.Min(460f, style.CalcSize(content).x + 4f), tall = style.CalcHeight(content, wide);
+            var rect = new Rect(signs[i].x / scale - wide * 0.5f - 8f, (Screen.height - signs[i].y) / scale - tall * 0.5f - 5f, wide + 16f, tall + 10f);
+            // a sign for something near the edge of the view is kept whole, on the screen
+            rect.x = Mathf.Clamp(rect.x, 4f, Mathf.Max(4f, Screen.width / scale - rect.width - 4f));
+            rect.y = Mathf.Clamp(rect.y, 4f, Mathf.Max(4f, Screen.height / scale - rect.height - 4f));
+            bool covered = false;
+            foreach (var other in drawn) covered |= other.Overlaps(rect);
+            if (covered) continue;
+            drawn.Add(rect);
+            GUI.color = new Color(0, 0, 0, 0.55f);
+            GUI.DrawTexture(rect, Texture2D.whiteTexture);
+            GUI.color = Color.white;
+            GUI.Label(new Rect(rect.x + 8f, rect.y + 5f, wide, tall), says, style);
         }
+    }
+
+    void Sign(Camera cam, Vector3 at, string text)
+    {
+        if (string.IsNullOrEmpty(text)) return;
+        Vector3 s = cam.WorldToScreenPoint(at);
+        if (s.z < 0.5f || s.z > 70f) return;
+        signs.Add(new Vector4(s.x, s.y, s.z, 0));
+        signText.Add(text);
     }
 
     static string Kb(float bytesPerSecond) { return (bytesPerSecond / 1024f).ToString("0.0") + " kB/s"; }

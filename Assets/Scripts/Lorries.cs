@@ -138,18 +138,18 @@ public class Lorries : MonoBehaviour
     {
         var r = rigs[rig];
         var plot = Game.I.plots[r.plot];
-        if (r.l == null || !r.l.Alive) return "The next truck is on its way.\n(If none comes, no road joins the depots.)";
+        if (r.l == null || !r.l.Alive) return RigName(rig) + "\nThe next one is on its way.\n(If none comes, no road joins its two ends.)";
         if (r.kind == GravelTruck)
         {
             // it runs its own round
-            string aboard = "Gravel truck: " + r.load + " of " + Mathf.RoundToInt(Game.I.tuning.haulLoad) + " shovels aboard.\n";
+            string aboard = "Gravel truck\n" + r.load + " of " + Mathf.RoundToInt(Game.I.tuning.haulLoad) + " shovels aboard.\n";
             if (r.at == 0) return aboard + (plot.drop < 0 ? "It has nowhere to go: there is no drop-off yet." : "It sets off for the drop-off when it is full.");
             if (r.at == 1) return aboard + (r.load > 0 ? "Unload it: press 3, click it, and say where the heap goes." : "Empty. It is going home.");
             return aboard + (r.leg == 2 ? "Backing into the drop-off." : "On its way to " + plot.DepotName(r.to) + ".");
         }
         string what = r.kind == GravelTruck ? "Gravel truck: " + r.load + " of " + Mathf.RoundToInt(Game.I.tuning.haulLoad) + " shovels aboard."
-            : r.kind == DumpTruck ? "Dump truck. It works by itself:\nit tips asphalt wherever there is packed gravel without any."
-            : "Roller: it levels and rolls asphalt as it drives.";
+            : r.kind == DumpTruck ? "Dump truck\nIt works by itself: it tips asphalt\nwherever packed gravel has none."
+            : "Roller\nIt levels and rolls asphalt as it drives.";
         if (r.kind == DumpTruck) return what;
         return r.at < 0 ? what + "\nOn its way to " + plot.DepotName(r.to) + "." : what + "\nStanding at " + plot.DepotName(r.at) + ". Right click it to send it on.";
     }

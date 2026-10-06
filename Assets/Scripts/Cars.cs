@@ -20,6 +20,18 @@ public class Cars : MonoBehaviour
 {
     public const int Pickup = 0, Roller = 1, Loader = 2, Painter = 3;
     static readonly string[] Names = { "the pick-up", "the roller", "the loader", "the paint truck" };
+    // what the sign over a vehicle says, while the local player is not in it
+    public string Sign(int index)
+    {
+        var car = cars[index];
+        int aboard = (car.driver >= 0 ? 1 : 0);
+        foreach (int rider in car.riders) if (rider >= 0) aboard++;
+        string who = aboard == 0 ? "" : "\n" + aboard + " aboard" + (car.driver < 0 ? ", nobody driving" : "");
+        if (car.kind == Pickup) return "Pick-up\nSeats four. E gets in, 1 to 4 change seat." + who;
+        if (car.kind == Roller) return "Roller\nPacks gravel and rolls asphalt under it." + who;
+        if (car.kind == Loader) return "Front loader\nR F its bucket. Fill it at the gravel pile,\nleft click tips it." + who;
+        return painting ? "Paint truck\nA driver, and one or two in the bed\nwho work the nozzles with the mouse." + who : "Paint truck\nLeft click: it paints the lines\nof the rolled lane it drives." + who;
+    }
     const float Travel = 0.9f;      // length of a wheel's ray
     const float Spring = 12f, Damper = 1.4f, Grip = 5f;
 

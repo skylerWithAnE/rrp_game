@@ -208,25 +208,39 @@ it is built and checked on two instances; none of it has been played.
   driver has no nozzles; a driver alone has both, as before.
 - **"Another spin out scene where the trucks enter the road on a more level surface, and get
   more time to speed up. Enter on less of a ramp, drive 3 finished paved road tiles, then enter
-  loose gravel. Add a bend after two segments of loose gravel."** A second road on the Spin-out
-  ground, to the right of where you start: 0.45 m above the yard, not 1.2; three paved
-  sections; two of loose gravel; a 90 degree bend; two more of loose gravel; and three paved
-  again [Claude: the far half, so that trucks from the other end meet the same thing]. Trucks
-  reach the gravel at 9 m/s, not 6. By script at the Moon: 95 spins and 16 wrecks in the first
-  35 trucks, against 45 and 8 on the first road beside it.
+  loose gravel. Add a bend after two segments of loose gravel."** And then, after the first
+  attempt was looked for in the wrong place and was the wrong length: **"a tile is a grid
+  square, a segment is a full 20m segment of road"**, and **"40m of paved road into 40m of
+  loose gravel, then the bend."** Road 2 on the Spin-out ground, to the right of where you
+  start: 0.45 m above the yard, not 1.2; 40 m paved; 40 m of loose gravel; a 90 degree bend;
+  and the same again in reverse [Claude: the far half, so that trucks from the other end meet
+  the same thing]. Trucks reach the gravel at 9 m/s, not 6. By script at the Moon: 69 spins
+  and 18 wrecks in the first 37 trucks. The first road is still there, as Road 1.
+- **The words**: a **tile** is a grid square, about 2 m. A **segment** is 20 m of road between
+  two stakes, which these pages have been calling a section.
 - **"Let's move the wear scene on to a much larger height of the height map ... on top of some
   terrain that's 10m above sea level. And include a test for dirt, gravel, dirt with a paved
   road leading into it, and gravel with a paved on ramp, too."** The Wear ground is now one piece
   of high ground 10 m above the yard (`wearHeight`) with four roads on it, from the left: dirt,
   gravel, dirt with two paved sections leading into each end, gravel with the same. The stretch
   that wears is 100 m on all four. You start on top, between the dirt and the gravel.
-  `wearDeepest` is still 0.8 m but its slider now goes to 8 [Claude: left where it was; the
-  roads were 1.2 m up before, so a hole could never have gone deeper than that].
+  **"I really wanted to see the trucks digging deeper into the ground in the wear test. The
+  higher elevation heightmap was to let me see if they could dig in further."** So
+  `wearDeepest` is 9 m now, not 0.8, and its slider goes to 20: a hole can go nearly the
+  height of the ground. Not measured at that depth.
 - **"Let's add a counter for the trucks passing through roads in the wear scene."** Each road
   has signs over it, at both ends of the stretch that wears and its middle: trucks so far, how
   many got through, how many were wrecked, and how much of it is rutted and how deep.
 - **"After about 4 lines, text cuts off."** A sign is now as tall as its text needs, and so are
   the line under the crosshair and the F3 readout.
+- **"Spend some more time cleaning up signage and instructions in all of the demo scenes."**
+  The instructions for each ground are now in a **guide box at the bottom left** (H hides it):
+  what the ground is for, what is where, and which keys work it. Signs out in the world only
+  name things, in a line or three, on a dark board. The nearest sign wins: one that would lie
+  over another, or over the host's bar, the readout or the guide, is left out, and a sign more
+  than 30 m off shows only its name. The counts over the wear roads are read in full from any
+  distance. Each vehicle has a sign. Every sign's text was rewritten; "Station 2" and the like
+  are gone. A road's sign stands 10 m in from its first stake, where it can be seen from the end.
 - **"Glad to see the speed multiplier in the panel."**
 - **"No review on quarry/dump truck right now."**
 - **"Are we implementing that in a way that affects the engine appropriately or are we taking
@@ -530,6 +544,7 @@ box body from Claude's memory. U-Haul does not publish them. Its turning circle 
 | C | In a vehicle: the camera behind it, or the view from the seat |
 | 7, V | Dev: finish a section's next stage in one click; fly |
 | F1, F3, Tab | Sliders (host), readout, free the mouse |
+| H | The guide: what this ground is for and how to work it |
 
 **First person. Several tools, each with one job. Throwing cubes is out** (user, 2026-10-04).
 

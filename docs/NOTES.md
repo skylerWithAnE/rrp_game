@@ -83,6 +83,11 @@ slow way.
 - JSON arguments with a space in them do not survive PowerShell. Put them in a file and pass
   `@file`.
 - Screenshots taken through the MCP camera tool land in `Assets/Screenshots`. Delete them after.
+- **To see what the player sees, signs and all**, in play mode:
+  `ScreenCapture.CaptureScreenshot(path)`. Rendering the camera to a texture leaves out
+  everything drawn with IMGUI, which is every sign, the readout and the guide.
+- **The user's words for sizes**: a tile is a grid square (about 2 m); a segment is 20 m of road
+  between two stakes. When a request gives a length in either, say it back in metres first.
 - **Mouse clicks can be scripted**, which is how a control is checked and not just its rule: set
   `Hud.Playing = true`, point the camera (`Game.I.cam.yaw`, `pitch`), then
   `InputSystem.QueueStateEvent(Mouse.current, new MouseState().WithButton(MouseButton.Left, true))`,

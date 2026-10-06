@@ -67,7 +67,7 @@ public class Plot : MonoBehaviour
     // each about one thing: the sizes, building a road, what trucks can drive, and junctions.
     public static readonly string[] MapNames = { "Scale yard", "Short, 60 m", "Middle, a hill in the way", "Long, 300 m", "Climb, 16 m up", "Switchback, rocks",
         "Building roads", "Trucks: road types and turns", "Junctions", "Quarry and service roads", "Paving and painting", "Driving",
-        "Wear: a dirt road and a gravel road under traffic", "Spin-out: loose gravel round a bend", "Painting lines by hand" };
+        "Wear: four roads under traffic", "Spin-out: loose gravel round a bend", "Painting lines by hand" };
     public static readonly string[] MapButtons = { "Yard", "Short", "Middle", "Long", "Climb", "Switchback", "Building", "Trucks", "Junctions", "Quarry", "Paving", "Driving", "Wear", "Spin-out", "Painting" };
     public const int YardMap = 0, BuildingMap = 6, TrucksMap = 7, JunctionsMap = 8, QuarryMap = 9, PavingMap = 10, DrivingMap = 11, WearMap = 12, SpinMap = 13, PaintMap = 14;
     public const int FirstNewMap = 12;      // the grounds from here on were built for the slices of 2026-10-06, and have a row of buttons to themselves
@@ -688,7 +688,7 @@ public class Plot : MonoBehaviour
         if (labels.Count < 4) return;
         int road = WearRoad(id), a = road >= 2 ? 2 : 0;
         g.lorries.Count(id, out int sent, out int arrived, out int wrecked);
-        string says = "<b>" + (road == 0 ? "DIRT" : road == 1 ? "GRAVEL" : road == 2 ? "DIRT, paved way in" : "GRAVEL, paved way in") + "</b>\n<b>" + sent + "</b> trucks so far\n"
+        string says = "!" + (road == 0 ? "Dirt" : road == 1 ? "Gravel" : road == 2 ? "Dirt, paved way in" : "Gravel, paved way in") + "\n<b>" + sent + "</b> trucks so far\n"
             + arrived + " through, " + wrecked + " wrecked\nruts in " + Mathf.RoundToInt(rutShare * 100f) + " %, deepest " + Mathf.RoundToInt(deepest * 100f) + " cm";
         for (int n = 0; n < 3; n++) labels[n] = new Yard.Label { at = stakes[a] + new Vector3(0, 3.4f, 2f + n * 48f), text = says };
     }
@@ -1289,39 +1289,40 @@ public class Plot : MonoBehaviour
         BuildStakes();
 
         string text;
-        Vector3 at = stakes.Count > 0 ? stakes[0] + Vector3.up * 1.6f : Vector3.zero;
+        // a road's sign stands over it, 10 m in from its first stake, where it can be seen from the road's end
+        Vector3 at = stakes.Count > 1 ? stakes[0] + Flat(stakes[1] - stakes[0]).normalized * 10f + Vector3.up * 2.6f : stakes.Count > 0 ? stakes[0] + Vector3.up * 1.6f : Vector3.zero;
         switch (id)
         {
-            case 0: text = "Station 2: a level section, a climb and a fall\n2 then hold left click on the ground to bring it to the string"; break;
+            case 0: text = "Ground to click to a line\nA level section, a climb and a fall.\n2, then hold left click on the ground."; break;
             case 1:
-                text = "Station 3: 1 then left click the ground to put a stake down; the next is roped to it\nleft click a stake to choose it; the wheel moves its rope, X pulls it out, right click lets go";
+                text = "A hillside to stake\n1, then left click the ground: each stake is roped to the last.\nThe wheel moves the chosen rope, X pulls the stake out, right click lets go.";
                 at = new Vector3(origin.x + SizeX * 0.5f, HeightAt(origin.x + SizeX * 0.5f, origin.z + Margin) + 2f, origin.z + Margin);
                 break;
-            case 2: text = "Station 4: a section that is already level\n3 then hold left click to lay gravel, and keep going to pack it"; at = stakes[1] + Vector3.up * 1.6f; break;
-            case 3: text = "Station 5: a finished road. Trucks drive it both ways."; break;
-            case 4: text = "Station 5: a bad road. Trucks try it both ways."; break;
-            case 5: text = "Wear: a finished road that the trucks wear out"; break;
-            case SpinOut: text = "ROAD 1: loose gravel round a bend, packed at each end.\nTrucks slide on it, and pack it as they go (truckPacking on F1).\nThe host's button above makes it loose again."; at = stakes[1] + Vector3.up * 2.2f; break;
-            case PaintMarked: text = "Rolled asphalt, with the place for each line marked.\n8: the roller brush. Hold left click and drag for white, right click for yellow.\nT: tar spray, to cover paint. G: the grinder, to take it off.\nE by the paint truck drives it: left click its white nozzle, right click its yellow."; at = stakes[0] + new Vector3(0, 2.4f, 6f); break;
-            case PaintPlain: text = "The same strip with nothing marked.\nA white line inside each edge, and a yellow one down the middle."; at = stakes[0] + new Vector3(0, 2.4f, 6f); break;
+            case 2: text = "A level section to gravel\n3, then hold left click to lay gravel. Keep going to pack it."; at = stakes[1] + Vector3.up * 1.6f; break;
+            case 3: text = "A finished road\nTrucks drive it both ways."; break;
+            case 4: text = "A bad road\nRough ground. Trucks try it both ways."; break;
+            case 5: text = "The first wear road\nPacked gravel, worn by trucks under the first rule."; break;
+            case SpinOut: text = "Road 1: loose gravel round a bend\nPacked at each end. Trucks come onto the gravel slowly."; at = stakes[1] + Vector3.up * 2.2f; break;
+            case PaintMarked: text = "The marked strip\nA dotted line shows where each line goes."; at = stakes[0] + new Vector3(0, 2.4f, 6f); break;
+            case PaintPlain: text = "The unmarked strip\nWhite inside each edge, yellow down the middle."; at = stakes[0] + new Vector3(0, 2.4f, 6f); break;
             case WearDirt: case WearGravel: case WearDirtPaved: case WearGravelPaved:
                 // the count of trucks, written each frame: over each end of the stretch that wears, and its middle
                 for (int n = 0; n < 3; n++) labels.Add(new Yard.Label());
-                text = id == WearDirt ? "Grade it (2) to mend it." : id == WearGravel ? "Grade (2) and gravel (3) mend it." : "Trucks come onto it at speed,\noff two sections of paved road.";
+                text = "";     // the count of trucks is its sign
                 at = stakes[0] + new Vector3(0, 1.2f, -3f);
                 break;
-            case SpinOut2: text = "ROAD 2: 40 m of paved road, then 40 m of loose gravel, then the bend.\nTrucks reach the gravel at speed. They pack it as they go.\nThe host's button above makes it loose again."; at = stakes[0] + new Vector3(0, 2.6f, 8f); break;
-            case 6: text = "Hairpin: stakes set round the tightest turn allowed\nlevel it and gravel it; trucks try it as it is"; break;
-            case 8: text = "A 14 degree climb, bare ground on its line.\nToo steep for a truck without gravel."; break;
-            case 9: text = "The same 14 degree climb under loose gravel."; break;
-            case 10: text = "A 20 degree climb under loose gravel.\nToo steep until the gravel is packed."; break;
-            case 11: text = "The same 20 degree climb, packed."; break;
-            case 12: text = "A junction: three ropes at one stake.\nTrucks drive from any end to any other."; at = stakes[0] + Vector3.up * 2.2f; break;
-            case 13: text = "A crossroads: four ropes at one stake."; at = stakes[0] + Vector3.up * 2.2f; break;
-            case 14: text = "A fork: two branches 60 degrees apart, the closest allowed."; at = stakes[0] + Vector3.up * 2.2f; break;
+            case SpinOut2: text = "Road 2: paved, then loose gravel\n40 m paved, 40 m of loose gravel, then the bend.\nTrucks reach the gravel at speed."; at = stakes[0] + new Vector3(0, 2.6f, 8f); break;
+            case 6: text = "The tightest turn, to finish\nStaked on rough ground. Grade (2) and gravel (3) it.\nTrucks try it as it is."; break;
+            case 8: text = "14 degrees, bare ground\nToo steep without gravel, on Earth."; break;
+            case 9: text = "14 degrees, loose gravel"; break;
+            case 10: text = "20 degrees, loose gravel\nToo steep until it is packed."; break;
+            case 11: text = "20 degrees, packed gravel"; break;
+            case 12: text = "A T junction\nThree ropes at one stake.\nTrucks drive from any end to any other."; at = stakes[0] + Vector3.up * 2.2f; break;
+            case 13: text = "A crossroads\nFour ropes at one stake."; at = stakes[0] + Vector3.up * 2.2f; break;
+            case 14: text = "A fork\nTwo branches 60 degrees apart, the closest allowed."; at = stakes[0] + Vector3.up * 2.2f; break;
             case Quarry:
                 {
-                    text = "The quarry. Press 3. Click the rock to load your shovel,\nthen click the truck to fling it in. It sets off for the drop-off when it is full.";
+                    text = "The quarry's rock\n3, then click the rock to load your shovel\nand click the truck to fling it in.";
                     at = new Vector3(PitCentre.x, stakes[0].y + 7f, PitCentre.z);
                     labels.Add(new Yard.Label());       // the drop-off, the heap, and the truck: written each frame
                     labels.Add(new Yard.Label());
@@ -1344,22 +1345,22 @@ public class Plot : MonoBehaviour
                     break;
                 }
             case Paving:
-                text = "A road to pave. The dump truck comes by itself and tips asphalt down each lane.\nLevel it: press 5 and hold left click with the shovel, or right click the roller to send it over.\nThe roller also rolls it. Then press 6 and hold left click to paint the lines.";
+                text = "A road to pave\nPacked gravel. The dump truck tips asphalt down each lane by itself.";
                 at = stakes[1] + Vector3.up * 3f;
                 depots.Add(0);
                 depots.Add(3);
                 labels.Add(new Yard.Label());       // the dump truck and the roller: written each frame
                 labels.Add(new Yard.Label());
                 break;
-            case Paved: text = "The same road paved, rolled and painted.\nTrucks drive faster on it."; break;
-            case DriveRoad: text = "A road in four states, from this end: bare, loose gravel, spread asphalt, rolled asphalt.\nThe roller packs gravel and rolls asphalt. The loader's gravel can be tipped on the bare part.\nThe paint truck, the paint tool (6) and the brush (8) paint rolled asphalt."; break;
-            case DriveField: text = "Rough ground to drive over."; at = new Vector3(origin.x + 6f, 3f, origin.z + 8f); break;
-            case 15: text = "A junction to build. Press 1, click the middle stake,\nthen click the ground to one side for a branch.\nA stake here takes up to four ropes."; at = stakes[1] + Vector3.up * 2.2f; break;
+            case Paved: text = "The same road, finished\nPaved, rolled and painted. Trucks drive faster on it."; break;
+            case DriveRoad: text = "A road in four states\nFrom this end: bare, loose gravel,\nspread asphalt, rolled asphalt."; break;
+            case DriveField: text = "Rough ground\nTo drive over."; at = new Vector3(origin.x + 6f, 3f, origin.z + 8f); break;
+            case 15: text = "A junction to build\n1, click the middle stake,\nthen the ground to one side of the road."; at = stakes[1] + Vector3.up * 2.2f; break;
             case Land:
                 {
-                    text = "Town A. Press 1, click this stake, then click the ground\ntoward the pole at town B to put stakes down.\nRope the last one to town B's stake and trucks set off.";
+                    text = "Town A\n1, click this stake, then the ground toward town B's pole.\nRope the last stake to town B's.";
                     at = stakes[0] + Vector3.up * 2.2f;
-                    labels.Add(new Yard.Label { at = stakes[1] + Vector3.up * 2.2f, text = "Town B. Rope the road to this stake." });
+                    labels.Add(new Yard.Label { at = stakes[1] + Vector3.up * 2.2f, text = "Town B\nRope the road to this stake." });
                     var towns = new GameObject("Towns").transform;
                     towns.SetParent(transform, false);
                     Town(towns, stakes[0], -1f, new Color(0.85f, 0.35f, 0.3f));
@@ -1371,7 +1372,7 @@ public class Plot : MonoBehaviour
                     Game.I.respawn = true;      // everyone starts again at the first town
                     break;
                 }
-            default: text = "Hairpin: the same turn, finished"; break;
+            default: text = "The tightest turn, finished"; break;
         }
         labels.Add(new Yard.Label { at = at, text = text });
         if (id == PaintMarked || id == PaintPlain)
@@ -2984,11 +2985,11 @@ public class Plot : MonoBehaviour
             pile.position = new Vector3(heapAt.x, HeightAt(heapAt.x, heapAt.z) + size * 0.2f, heapAt.z);
             pile.localScale = new Vector3(size * 2f, size * 1.2f, size * 2f);
         }
-        labels[1] = new Yard.Label { at = pile.position + Vector3.up * (size * 0.6f + 1.4f), text = !heapPlaced ? "" : "The heap: " + stock + " clicks' worth of gravel." + (stock == 0 ? "\nNone can be laid here until some is unloaded." : "") };
+        labels[1] = new Yard.Label { at = pile.position + Vector3.up * (size * 0.6f + 1.4f), text = !heapPlaced ? "" : "The heap\n" + stock + " clicks' worth of gravel, " + stock / 3 + " squares." + (stock == 0 ? "\nNone can be laid here until some is unloaded." : "") };
         labels[2] = new Yard.Label { at = g.lorries.RigAt(Lorries.GravelTruck) + Vector3.up * 4f, text = g.lorries.RigSays(Lorries.GravelTruck) };
         labels[0] = drop >= 0 && drop < stakes.Count
-            ? new Yard.Label { at = stakes[drop] + Vector3.up * 2.6f, text = "Gravel drop-off. The truck backs in here\nand waits to be unloaded." }
-            : new Yard.Label { at = (stakes.Count > 2 ? stakes[2] : stakes[0]) + Vector3.up * 3f, text = "No gravel drop-off yet. Press 9, left click a stake in the\nmiddle of a road, then left click the ground beside the road." };
+            ? new Yard.Label { at = stakes[drop] + Vector3.up * 2.6f, text = "Gravel drop-off\nThe truck backs in here and waits to be unloaded." }
+            : new Yard.Label { at = (stakes.Count > 2 ? stakes[2] : stakes[0]) + Vector3.up * 3f, text = "No gravel drop-off yet\n9, left click a stake in the middle of a road,\nthen the ground beside the road." };
     }
 
     // host: a truck is on this road, its wheels touching the ground at these spots. It does a
