@@ -1,8 +1,9 @@
 # Plan
 
-Rewritten 2026-10-05, at the end of the design session that followed the build of the maps and
-test grounds. The plan this replaces, which set that session's agenda, is in git history (commit
-`2f3f9b9`). What the session decided is in `DESIGN.md` under "What the design session decided".
+Rewritten 2026-10-06, at the end of the overnight build of the six slices. The plan this
+replaces, which set that build, is in git history (commit `71fcc8b`). What the build made is in
+`DESIGN.md` under "What the build of 2026-10-06 made of it", and how it went is in
+`SESSION_2026-10-06.md`.
 
 ## Where the project is going
 
@@ -13,60 +14,50 @@ money from travellers comes later.**
 
 ## Where it stands
 
-- Everything asked for before the design session is built and passes a two-instance check. The
-  user has played every mechanic in its isolated setting, and the Short and Middle maps. The
-  Long and Climb maps were too much work to build by hand.
-- Nothing decided in the design session is built.
+- **The six slices are built, each checked on two instances and committed.** Gravity, wear,
+  spin-out, gravel delivery, painting by hand, and a road at a button on every map.
+- **The user has not played them**, bar about five minutes of gravity and wear during the build.
+- Each slice exists to answer one question, and the questions are open. They are at the top of
+  `SESSION_2026-10-06.md` as a play list, and in `DESIGN.md` under "Open".
+- **The latitude given for that build is over** (user, 2026-10-05: it "ends with that build").
+  The older rule stands again: nothing that is not in `DESIGN.md` or here, without asking.
 
-## Next: an overnight build of six slices
+## Next
 
-**"Next build should focus again on small isolated slices"** (user, 2026-10-05). It is to run
-unattended, in a new chat, from a prompt the user will ask for. **Latitude: "Give it wide
-latitude. Same as before"** (user, 2026-10-05): solve problems creatively and add a system if it
-streamlines the play, without asking; write down each addition as Claude's, with the reason, and
-make it something that can be switched off.
+**The user plays the slices.** Nothing further is planned until then, by the standing rule: play
+before building more.
 
-The slices and their order are Claude's proposal. The user has seen the list and has not
-objected to it or confirmed it.
+What the user will be asked to decide, once they have played:
 
-| # | Slice | What is built | The one question |
-|---|---|---|---|
-| 1 | Gravity | A slider for gravity, for trucks, vehicles and blobs, everywhere. The climbs, the coast and the tightest turn measured again by script at Earth, Mars (0.38) and the Moon (0.16). Starts at Mars | How low is fun? |
-| 2 | Wear | A dirt road and a packed gravel road under steady traffic. Wear on bare ground. Damage scales up past the threshold. A slider between damage by time on a square and damage by how hard a truck lands. No wear on paved | Does a road fall apart at the pace the user described, and is it good to watch? |
-| 3 | Spin-out | A loose gravel stretch with a bend. Sideways grip that depends on the surface. Truck packing on its slider | Is loose gravel dangerous for long enough to matter? |
-| 4 | Gravel delivery | On the Quarry ground: a survey tool that places a drop-off; a truck that runs its own round, backs in, waits to be unloaded and goes home; a road for everyone that it shares with travellers; the truck destroyed on a bad road and replaced; one shovel covers ten tiles, on a slider | Is bringing gravel over a road you built a job worth doing? |
-| 5 | Hand painting | Its own scene: a strip with the lines marked and one without; a roller brush that leaves a stripe; the paint truck spraying where it is; tar spray and a grinder to remove paint; the judging on the F3 readout only | Is drawing a line by hand hard in a good way? |
-| 6 | Long and Climb finished | A button that stakes and finishes a map's road, so the user can watch trucks on it with gravity and wear running | Is a long road worth having? |
+| | The decision |
+|---|---|
+| Gravity | How low. Whether wheels should bite by the gravity and springs soften with it (Claude's two switches, both on). What to do about trucks leaving their lane in the tightest turn |
+| Wear | Whether the pace is right, by time or by landing, and whether a rut should wreck trucks |
+| Spin-out | Whether loose gravel is dangerous for long enough, and whether trucks taking 50 passes to pack gravel is right on a map |
+| Delivery | Whether the round is a job worth having; what should happen to travellers behind the truck; whether the drop-off as a spur from a road is the right shape; whether wear belongs on the Quarry ground |
+| Painting | Marked or unmarked; tar or grinder; whether the judging is fair; how the paint truck's nozzles should work |
+| Long roads | Whether a long road is worth having, which decides the size of the map |
+| Still open from before | Which test grounds are finished with; curved sections; the stuck rule; the hot-spot row |
 
-Why this order: every other slice behaves differently under low gravity, so it is first. Spin-out
-and the delivery truck's punishment both depend on wear, so it is second. Paint depends on
-nothing. The demos are last so that they show the rest.
+## Risks to say out loud
 
-The pace the user gave for wear, to check slice 2 against: dirt has a square destroyed by the
-fifth truck and is a rut by the fiftieth; gravel has several squares damaged by 50, several very
-deep holes by 250, and is unusable by 500.
-
-### Risks to say out loud
-
-- **Gravity cannot be played before the rest is built on it.** The build picks a starting value
-  unplayed. Every slice must work across the slider's whole range, not only at the start value.
-- **The tightest turn may not be driveable in low gravity.** If so, report it; do not quietly
-  widen the turn the user chose.
-- **The truck's physics may have no sideways grip to lose.** Slice 3 may need it added.
-- **Reversing is new.** No truck can back up or turn round today.
-- **Not in this build**: money, a large map, signage, hot asphalt, vehicle health, driver
+- **There is now a lot the user has not played**: six slices on top of each other's sliders.
+  Gravity changes every other slice. If the user's answer to "how low is fun" is far from Mars,
+  the pace of wear and the spin-out rates in `DESIGN.md` were measured at the wrong gravity.
+- **Three things changed that the user had played**, each for a slice and each with a way back:
+  loose gravel now spins trucks everywhere (the two gravel ramps on the Trucks ground, any map);
+  trucks pack gravel at 0.02 a time, not 0.25; and the quarry's truck is no longer sent to a
+  fixed drop but runs its round to a drop-off the player places.
+- **Not in any build yet**: money, a large map, signage, hot asphalt, vehicle health, driver
   recklessness, vehicles hitting players, repaving over paint, wear on paved road, theming.
-
-## After that
-
-The user plays the slices. Nothing further is planned until then.
 
 ## Standing rules for building
 
 - Build and confirm each mechanic on a station first. Verify on two instances. Commit when the
   user accepts a step, or when it passes two instances if the user is away. Never push.
 - A scripted check of a rule is not a check of the control: stand the player there and read what
-  the screen says. See `NOTES.md`.
+  the screen says. Mouse clicks can be scripted: see `NOTES.md`.
 - Play before building more.
-- Compiling stops the user's game. Check the editor's state before every compile.
+- Compiling stops the user's game. Check the editor's state before every compile, and do not
+  change a script while someone is in play mode, even in a build that is meant to be unattended.
 - What the user has played is what the user says, not what a note from a session guessed.

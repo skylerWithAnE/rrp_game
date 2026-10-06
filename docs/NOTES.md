@@ -1,8 +1,9 @@
 # Notes from building the stations and the maps
 
 Written by Claude on 2026-10-05, at the end of the session that built stations 1 to 5, and added
-to that night after the unattended session that built the maps. These are things the next
-session would otherwise learn again the slow way.
+to that night after the unattended session that built the maps, and again on 2026-10-06 after
+the build of the six slices. These are things the next session would otherwise learn again the
+slow way.
 
 ## How the user works
 
@@ -28,6 +29,13 @@ session would otherwise learn again the slow way.
   came with "update all docs", not "build". Write them down in the user's words, say what
   follows from each, and wait.
 
+- **"I am asleep" does not last the night.** On 2026-10-06 the user was in the editor, playing
+  the first slices, about two hours into an unattended build, without saying so. Before every
+  compile, ask the editor whether it is in play mode and whether anyone has moved the player. If
+  someone is playing, leave `Assets` alone until they stop: the editor recompiles a changed
+  script under a running game. Docs can be written meanwhile. And never leave a compile error on
+  disk for longer than it takes to fix it: the editor will not enter play mode with one.
+
 ## What went wrong, and the fix
 
 | Problem | What works |
@@ -52,6 +60,13 @@ session would otherwise learn again the slow way.
 | The user found the dump truck could not be sent, after Claude had checked that it could | The check called the host's function directly. The player's way in was behind the tool in hand: with stakes, zoning or the dev tool held, the truck was never looked at, and stakes is what a player starts with. A scripted check of a rule is not a check of the control. Stand the player there with each tool and read what the screen says (`Plot.Why`) |
 | The dump truck's bed tipped nose down | In Unity a positive turn about x takes the front down. Look at a screenshot of anything that swings before calling it done |
 | A new stake on the map needed its height before the gravel arrays existed | `HeightAt` reads gravel. While making ground, read the heights directly |
+| Ramps made to order for measuring were longer than the yard, and trucks from the far end fell off the world and were counted as wrecks | The yard is 700 m square, from z -310 to 390. A measuring road has to fit on it. A count that is all wrecks at "0 m" is the harness, not the truck |
+| A measuring batch ended before the slow trucks had finished | It waited for a number of trips on each road, and the trucks that fell off supplied them. Count arrivals and wrecks apart |
+| The first wear settings dug every road down to the yard inside 100 trucks | Damage that scales up and damage by landing feed each other. Holes need a deepest (`wearDeepest`), and the bottom has to be uneven or a worn-out road is a smooth trench |
+| Screenshots from the blob's eyes looked as if the eye were at knee height | The camera's field of view follows the Game view's shape, which is whatever the panel is. Set `cam.aspect` to 16:9 and the field of view again before rendering to the texture, and `ResetAspect` after |
+| A helper script was refused by the shell tool | It held `Remove-Item` beside a regex. Empty a file with `Set-Content`, and do not name a function `Compare`: it is an alias |
+| PowerShell wrote a byte-order mark into a script it patched | `Set-Content -Encoding utf8` does that in PowerShell 5. Write with `[IO.File]::WriteAllText` and a `UTF8Encoding($false)` |
+| Loose gravel spun trucks at Mars and never on Earth | Sideways grip was scaled by gravity twice over. Loose gravel's grip is now a share of Earth's on every planet |
 
 ## Driving Unity from Claude Code
 
@@ -68,6 +83,17 @@ session would otherwise learn again the slow way.
 - JSON arguments with a space in them do not survive PowerShell. Put them in a file and pass
   `@file`.
 - Screenshots taken through the MCP camera tool land in `Assets/Screenshots`. Delete them after.
+- **Mouse clicks can be scripted**, which is how a control is checked and not just its rule: set
+  `Hud.Playing = true`, point the camera (`Game.I.cam.yaw`, `pitch`), then
+  `InputSystem.QueueStateEvent(Mouse.current, new MouseState().WithButton(MouseButton.Left, true))`,
+  wait a fifth of a second, and queue an empty `MouseState` to let go. Read `Plot.Why` for what
+  the screen says under the crosshair.
+- **To watch hundreds of trucks**, set `tuning.fastForward` (1 to 10) and call `TuningChanged`.
+  `Time.timeScale` set by hand is overwritten every frame now.
+- `Lorries.log` records how every truck's trip ended (where, how far along, how far off its
+  lane). `AutoTest.WearLog`, set to a list, gets a line each time a wearing road's truck count
+  passes 5, 10, 25, 50, 100, 150, 250, 350, 500. `Plot.TestDegrees`, `TestSurface` and
+  `TestHeight` make the Trucks ground's four ramps to order.
 
 ## Numbers worth knowing
 
@@ -82,10 +108,12 @@ session would otherwise learn again the slow way.
 - A script clicking at the cap, half its clicks on the hot spot, built the Middle map's 153 m
   (straight over the hill, shoulders included) in 13 minutes with Claude's two systems off and 5
   with them on, and the Long map's 306 m in 11 with them on.
-- A truck climbs 25 degrees and more on packed gravel, 16 on loose gravel and 10 on bare ground
-  that is on its line; it wrecks at 18 on loose and 12 on bare. Downhill it does not care.
-- A truck gets up 20 m of any slope on the speed it arrives with. A ramp that is meant to stop
-  one has to be two sections long.
+- On Earth a truck climbs 27 degrees on packed gravel, 16 on loose gravel and 10 on bare ground
+  that is on its line; it wrecks at 30 on packed, 18 on loose and 12 on bare. Downhill it does
+  not care. At Mars and the Moon the figures are in `DESIGN.md`, under "Gravity".
+- On Earth a truck gets 10 m up a 20 degree slope it cannot climb, on the speed it arrives
+  with; at Mars 27 m and at the Moon 33. A ramp that is meant to stop one has to be two
+  sections long on Earth and six at Mars.
 - To time anything with trucks, `Time.timeScale = 4` works: the physics steps are the same
   length, there are just more of them a frame. Put it back to 1.
 - The maps: Short is 135,000 points, Middle at 150 m 337,000, Climb 459,000, Long 578,000. The

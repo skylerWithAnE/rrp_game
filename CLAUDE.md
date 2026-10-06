@@ -25,18 +25,24 @@ text is in `docs/DESIGN.md`. None of it is built.
 **The design session (2026-10-05)** narrowed the goals and planned the next build. It is set on
 another planet, in low gravity, "to make things more dramatic and harder for players to
 predict". Dirt and gravel wear out fast and paved road does not. "Just the shovel" is dropped,
-and money waits for the final prototype. The next build is six isolated slices, unattended:
-gravity, wear, spin-out on loose gravel, a gravel truck that runs its own round, painting by
-hand, and the Long and Climb maps finished at a button. `docs/PLAN.md` has the list.
+and money waits for the final prototype.
+
+**The six slices were built on 2026-10-06, unattended, and the user has not played them**:
+gravity on a slider (it starts at Mars), wear on dirt and gravel, loose gravel that spins trucks
+out, a gravel truck that runs its own round to a drop-off the player surveys, lines painted by
+hand and judged unseen, and a button that stakes and finishes the road on any map. Each exists
+to answer one question. `docs/SESSION_2026-10-06.md` opens with the play list and ends with
+every choice that was Claude's, for a yes or no.
 
 ## Start here
 
 1. `docs/DESIGN.md` is the game as it stands: what the user decided, in their words and dated,
    how each thing was built, what has been played and what has not, and what is open. Start here.
-2. `docs/PLAN.md` is where the project is going, where it stands, and the slices of the next
-   overnight build. `docs/NEXT_SESSION_PROMPT.md` is the prompt for that build, for the user to
-   paste.
-   `docs/SESSION_2026-10-05.md` is what the last session built and what went wrong in it.
+2. `docs/PLAN.md` is where the project is going and where it stands: the user plays the slices
+   next, and nothing further is planned until then.
+   `docs/SESSION_2026-10-06.md` is what the last build made, how it was checked and what went
+   wrong in it; `docs/SESSION_2026-10-05.md` is the session before.
+   `docs/NEXT_SESSION_PROMPT.md` is the prompt that build was run from. It is spent.
    `docs/PLAYTEST.md` is what was seen when the user played. `docs/NEXT_PROTOTYPE.md` is what is
    being left for the prototype after this one.
 3. `docs/TECH_PLAN.md` describes the code as it stands.
@@ -64,21 +70,23 @@ asking.
   a system if it would streamline the gameplay, without asking first. Write down each addition as
   Claude's, with the reason, and make it something that can be switched off. **That push is
   over.** The user called it "a big success".
-- **The next overnight build has the same latitude** (user, 2026-10-05: "Give it wide latitude.
-  Same as before"), under the same conditions. It covers the slices in `PLAN.md` and ends with
-  that build.
-- Outside those builds, the older rule stands: do not add features, systems or options that are not
-  in `DESIGN.md` or `PLAN.md`; if something seems missing, ask.
+- **The overnight build of 2026-10-06 had the same latitude** (user, 2026-10-05: "Give it wide
+  latitude. Same as before"), and it **ended with that build**.
+- **So the older rule stands now**: do not add features, systems or options that are not in
+  `DESIGN.md` or `PLAN.md`; if something seems missing, ask.
 - **Build and confirm each mechanic on a station first** (user, 2026-10-05: "Using stations to
   build, test and confirm each mechanic seems like it worked out really well").
-- No end, score or clock yet. Wear is off as built, and comes on for dirt and gravel in the next
-  overnight build (user, 2026-10-05); paved road does not wear. A second player has exactly the same controls as the
+- No end, score or clock yet. Dirt and gravel wear (on the Wear ground and on maps; a switch
+  turns it off on maps); paved road does not wear (user, 2026-10-05). A second player has exactly the same controls as the
   first. Do not spend long on the towns: the first prototype's were fine. (This is the prototype
   as built. The long-term goals bring money per traveller; do not build
   it until the user says so. "Scoring systems aren't important": score means what a
   traveller pays.)
 - **Play before building more** (learned 2026-10-05): do not stack new systems on ones the user
-  has not played.
+  has not played. As of 2026-10-06 six slices are waiting to be played.
+- **The user may be in the editor at any hour**, including during a build they called
+  unattended (2026-10-06). Check before every compile; do not change a script under a running
+  game. See `docs/NOTES.md`.
 - It is a prototype: fast, simple and weird beats correct and polished. The user is enjoying the
   trucks' explosions and jank (2026-10-05): do not smooth them out.
 - First person. Several tools, each with one job. Throwing cubes around is out.

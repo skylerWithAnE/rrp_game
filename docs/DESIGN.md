@@ -2,7 +2,9 @@
 
 Rewritten 2026-10-05 as the game stands, and amended the same day by a design session: "What
 the design session decided", "What has been played" and "Open" are new, and the version before
-them is commit `2f3f9b9`. The page the rewrite replaced had grown by addition through two
+them is commit `2f3f9b9`. Amended again on 2026-10-06 by the overnight build of the six slices:
+"What the build of 2026-10-06 made of it" is new, and the controls, the grounds and "Open" follow
+it; the version before is commit `71fcc8b`. The page the rewrite replaced had grown by addition through two
 days of building and is in git history (commit `abf2516`), as is the first prototype's design
 (`4348b8e`). How the code works is `TECH_PLAN.md`. What is being left for the prototype after
 this one is `NEXT_PROTOTYPE.md`.
@@ -20,8 +22,9 @@ Trucks drive whatever is there and wreck where it is bad. Gravel comes from a qu
 
 It is a prototype for demonstrating and playing with mechanics. **There is no end, no score and
 no clock; a second player has exactly the same controls as the first** (user,
-2026-10-05). That is the prototype as built. Where the user means to take it is next, and the next build
-turns wear on for dirt and gravel.
+2026-10-05). That is the prototype as built. Where the user means to take it is next. Since the
+build of 2026-10-06 it is set in low gravity, dirt and gravel wear out, and loose gravel spins
+trucks round: see "What the build of 2026-10-06 made of it".
 
 ## Where it is going
 
@@ -57,8 +60,8 @@ build. What it decided is the next section.
 ## What the design session decided
 
 2026-10-05. Every decision here is the user's, and words in quotation marks are theirs. Anything
-marked [Claude] is a proposal or a default the user has not confirmed. None of it is built. The
-build that tries it is in `PLAN.md`.
+marked [Claude] is a proposal or a default the user has not confirmed. It was built on
+2026-10-06, as the next section says; this section is left as it was decided.
 
 ### Changes to the goals
 
@@ -179,6 +182,222 @@ want it to be (edges and center) and deduce points for paint where we wouldn't e
 | Vehicles pass through players | Vehicles run into the player | "That will be its own system" |
 | Paint does nothing for traffic | Paint dampens driver recklessness | Later, with traveller AI |
 
+## What the build of 2026-10-06 made of it
+
+Built unattended, overnight, as six slices. **None of it has been played by the user yet, bar a
+few minutes of gravity on the Trucks ground during the build.** Every number here is Claude's and
+is a slider; every choice of Claude's is listed in `SESSION_2026-10-06.md` for a yes or no.
+
+### Gravity
+
+`planetGravity` on the F1 panel, and three buttons on the host's bar: Earth 1.00, Mars 0.38,
+Moon 0.16. It starts at Mars. It acts on trucks, driven vehicles and blobs, everywhere.
+
+Two switches of Claude's sit beside it, both on:
+
+| Switch | On (as built) | Off |
+|---|---|---|
+| `gripFollowsGravity` | Wheels push, brake and hold sideways in proportion to gravity, as tyres do. A truck climbs about the same slopes on any planet, picks up speed slowly, and slides wide in bends | Wheels bite as on Earth. At Mars a truck then climbs 25 degrees of bare ground and 30 most of the time |
+| `springsFollowGravity` | Springs are as soft as the gravity. A vehicle rides at the same height everywhere and bounces slowly | Earth's springs. It rides 15 cm higher at Mars and 20 at the Moon. It also climbs better: loose gravel to 20 degrees at Mars |
+
+Measured by script on the Trucks ground, both switches on, ten or more trucks to each figure,
+ramps 16 m high as before. "All" is every truck over the top; otherwise how many of how many.
+
+| Surface | Slope | Earth | Mars | Moon |
+|---|---|---|---|---|
+| Packed gravel | 27 | all | all | all |
+| | 28 | 4 of 10 | 7 of 11 | |
+| | 30 | none | 17 of 27 | 4 of 13 |
+| | 35 | none | none | |
+| Loose gravel | 15 | all | all | all |
+| | 16 | all | all | 11 of 13 |
+| | 18 | none | 4 of 19 | 4 of 17 |
+| | 20 | none | none | 3 of 18 |
+| Bare ground on its line | 10 | all | all | all |
+| | 12 | none | all | all |
+| | 14 | none | none | 8 of 13 |
+| | 15 | none | none | 12 of 17 |
+
+- Earth is as it was measured on 2026-10-05, which is the check that nothing played has changed.
+- **The 15 degree slope limit still does its job**: 15 degrees of loose gravel was climbed by
+  every truck at all three (80 trucks). What has changed is the other side of it. At the Moon
+  most trucks also get up 15 degrees of bare ground, on speed alone, if the climb is only 16 m.
+- **Why low gravity climbs more**: the wheels push less, but the hill pulls less too, and the
+  speed a truck arrives with carries it much further. On bare ground too steep to climb, the
+  best truck got this far up the slope before it stopped: at 20 degrees 10 m on Earth, 27 at
+  Mars, 33 at the Moon; at 30 degrees 5, 11 and 13. A ramp that is meant to stop a truck has to
+  be about three times as long at Mars as on Earth. On a ramp 36 m high the Moon's trucks failed
+  12 degrees of bare ground, having got 170 m up it.
+- **The tightest turn: every truck got round it, at every gravity** (over 80 trucks each), on
+  the finished hairpin. **But they do not stay in lane.** The furthest a truck strayed from its
+  lane's line was 0.8 m on Earth, 2.9 m at Mars and 7.0 m at the Moon. At Mars that is a truck
+  half off the outside edge of the road, on the shoulder. At the Moon it leaves the road and the
+  shoulder altogether and drives back on. Neither the turn nor the slope limit was changed.
+- The blob's hop is about 0.6 m on Earth, 1.6 m at Mars and 3.9 m at the Moon.
+- The stuck rule, the 9 m/s kick when a truck wrecks and the trucks' speed are as they were. A
+  wrecked truck is thrown 26 m up at the Moon.
+
+### Wear
+
+**New > Wear**: a dirt road (bare ground on its line) and a packed gravel road, 100 m each, side
+by side, with a truck setting off from each end every 4 seconds (`wearTruckEvery`). The F3
+readout counts the trucks that have set off down the road you are nearest, and says how much of
+it is rutted and how deep.
+
+The rule, for every road that wears but the first wear road on the Trucks ground, which keeps
+the rule it was played with:
+
+- Bare ground and gravel each take damage at their own rate (`wearDirt`, `wearGravel`). **Paved
+  road takes none.**
+- **`wearByLanding` is the slider between damage by time and damage by landing.** At 0 a truck
+  damages the square it is on, a random amount each quarter second, as before. At 1 each wheel
+  damages the square it comes down on, in proportion to how fast it came down, so a hole makes
+  the next one. It starts at 0.5. At 1 a road that is perfectly smooth never starts to wear.
+- **Once a square is below the threshold, damage to it is multiplied** (`wearScaleUp`, 1.5), and
+  the wheels cut deeper the further below it is.
+- A hole goes no deeper than `wearDeepest` (0.8 m) below the line. [Claude: without a limit the
+  first settings dug the road down to the yard, 1.2 m, inside 100 trucks. The bottom is uneven
+  in patches a metre across, or a road worn right out is a smooth trench that trucks like.]
+- Grading and gravel mend it, with the same clicks as building.
+- **Wear on a map is `mapWear`**, on. [Claude: `quarryWear` does the same for the Quarry ground
+  and is off, so that slice asks one question.]
+
+**The pace it came out at**, at Mars, counted in trucks that had set off (both lanes together):
+
+| Trucks | Dirt | Gravel |
+|---|---|---|
+| 5 | 1 % of the road cut, the deepest 8 cm | nothing |
+| 10 | 6 % cut, 22 cm | nothing |
+| 25 | 48 % cut, a quarter of it deeper than 15 cm | 0.3 % worn |
+| 50 | 74 % cut, half of it deeper than 15 cm, 80 cm at the deepest: a rut | 4 % of squares worn through and 2 % loose; no holes yet |
+| 100 | 96 % cut. 8 trucks wrecked | 28 % worn, 15 % loose, the first holes, 70 cm deep |
+| 250 | all of it | 55 % cut, 45 % deeper than 15 cm, 80 cm at the deepest. 16 wrecked so far |
+| 350 | | 84 % cut. 93 wrecked so far |
+| 500 | 22 wrecked in all | 95 % cut. 206 wrecked in all: three trucks in four since the 350th |
+
+The rows to 250 were measured again after loose gravel's spin-out went in and came out within a
+few trucks of these, with more wrecks on the dirt (39 by the 250th); the 350 and 500 rows were
+not. At Earth and at the Moon the pace is much the same. With the slider at "all by time" gravel
+goes faster (80 % of squares worn by the 100th truck); at "all by landing" both roads go slower
+and from their ends inward (dirt 59 % cut by the 100th).
+
+Against what the user asked for: dirt has a square's worth destroyed by the fifth truck and is a
+rut by the fiftieth. Gravel at 50 has damage to several squares but it is loose patches, not
+holes; it is full of holes with several very deep at 250; and it is unusable by 500. **Two things
+are off.** Gravel's damage at 50 is modest. And a dirt road worn right out is still driveable:
+only 22 of 500 trucks wrecked on it, because a rut is a road, a little lower.
+
+### Loose gravel
+
+**New > Spin-out**: a road with a 90 degree bend, under loose gravel but for a packed section at
+each end, with the same steady traffic. The host's bar has "Loosen the gravel again".
+
+- **The truck did have sideways grip, but it was the same on every surface** and never ran out.
+  Now a wheel on loose gravel holds sideways a tenth as well as on packed gravel on Earth
+  (`looseGrip`), whatever the gravity.
+- Loose gravel also throws the truck's tail about, more the faster it goes and the harder it
+  turns, and the wheel answers less (`looseFishtail`). **A truck more than 22 degrees sideways
+  to its own motion has spun out** (`spinAngle`): it goes round with its wheels locked and its
+  driver has it back 2.5 seconds later (`spinSeconds`), wherever it has ended up. The stuck
+  rule, other trucks and the edge of the road do the rest. The readout counts spins.
+- This is everywhere there is loose gravel, so it also changes the two gravel ramps on the
+  Trucks ground and any gravel laid on a map. `looseGrip` at 1 and `looseFishtail` at 0 put
+  it back.
+- **Trucks still pack what they drive over, at `truckPacking` 0.02, down from 0.25.** At 0.25 a
+  stretch was packed by its second or third truck. That slider is the same one the maps use, so
+  on a map trucks now take about 50 passes to pack a road, not four.
+
+Measured, 60 or more trucks at each:
+
+| | Spins | Wrecks | Safe again after |
+|---|---|---|---|
+| Earth | 27 | 2 | about 30 trucks |
+| Mars | 50 | 12 | about 50 |
+| Moon | 93 | 24 | still spinning at 65, with the gravel 92 % packed |
+| Mars, packing off | 219 in 72 trucks | 34 | never |
+
+### Gravel delivery
+
+On the **Quarry** ground.
+
+- **The drop-off is put down with the survey tool, key 9.** Left click a stake that is in the
+  middle of a road, then left click the ground beside the road. The drop-off is a stake with a
+  board on it, on a short spur roped to the stake you chose. The spur is a service road [Claude:
+  so that travellers do not drive into it; the zoning tool can open it]. There is one drop-off;
+  putting another down moves it. It cannot be put down while the truck is out.
+- **Why a stake in the middle of a road** [Claude]: the truck drives on past that stake and backs
+  into the spur, so there has to be road beyond it. As the ground starts, the only such stake
+  on the road for everyone is the junction itself, and the one free side of that is the slope.
+  So the first job is to stake some road: carry the bare road on from its end, and branch the
+  drop-off from the stake that used to be the end.
+- **The truck runs its own round.** It is loaded at the quarry as before. A moment after it is
+  full it sets off; a right click sends it sooner with whatever is aboard. It drives to the
+  junction by any road, 12 m past it (`haulPass`), stops, and backs into the spur at 2 m/s
+  (`haulBackSpeed`). It stands there while it is unloaded as before: place the heap, one click
+  off the truck, one fling onto the heap. A moment after it is empty it drives home; a right
+  click sends it sooner.
+- **Wrecked on the way, it is gone with its load**, and an empty one stands at the quarry 20
+  seconds later (`haulRespawn`).
+- **One shovel is worth 30 clicks of laying, which is ten squares** (`shovelWorth`, was 8).
+- Travellers drive the road for everyone as they did, between its ends, and so share it with the
+  truck once the drop-off is on a road they use. The stuck rule is untouched.
+- Still a cheat: at the quarry the truck is turned round on the spot before it sets off, because
+  there is nowhere in the pit to turn. At the drop-off it really does back in.
+
+### Painting by hand
+
+**New > Painting**: two strips of rolled asphalt, 60 m each. The near one has the place for each
+line marked with a faint dotted line; the far one has nothing. A paint truck stands on the near
+one. The square paint tool (6) and the Paving ground are as they were.
+
+- **Paint is kept in cells of 0.1 m**, a layer of its own over the asphalt, white, yellow or tar.
+- **The roller brush, key 8**: hold a button and drag, and it leaves a continuous stripe
+  `rollerWidth` wide (0.15 m), however fast it is dragged. Left is white, right is yellow.
+- **The paint truck sprays where it actually is.** It has a nozzle out on each side: white on
+  the right, over the edge line when the truck is in the middle of its lane, and yellow on the
+  left, over the centre line. Left click turns the white one on and off and right click the
+  yellow, so a broken centre line is made by clicking as you drive. [Claude: the two buttons,
+  and where the nozzles are.]
+- **The tar spray, key T**: blobs scattered over 0.9 m (`tarWidth`) round where it points. Tar
+  covers paint, shows as a black patch, and can be painted over.
+- **The grinder, key G**: a line 0.1 m wide (`grinderWidth`) that takes paint and tar off.
+- **The judging**, which the player does not see. A white line belongs 0.375 m inside each edge
+  and a yellow one down the middle, broken 3 m on and 3 m off (`centreBroken`; 0 is solid).
+  Round each is a band `paintBand` wide (0.4 m). A grid square earns for every 0.1 m of its
+  length that has paint of the right color somewhere across the band, and loses for paint
+  anywhere else, or of the wrong color, counted so that one stray stripe the length of the
+  square costs what its own line earns. A square scores from -100 to 100, and so does the strip.
+  [Claude: judging by length covered and not by area. Filling a 0.4 m band with a 0.15 m roller
+  is not what a line is.]
+- **The number is on the F3 readout and nowhere else**: the strip's, and the square's under the
+  paint tool or under your feet.
+- By script: a paint truck driven dead straight up its lane with both nozzles on scored 100 on
+  the squares it passed where the centre line is wanted. A stray yellow stripe in the middle of
+  a lane took its square to -70, and tar over it brought it back to 0.
+
+### The Long and Climb maps, finished at a button
+
+**On any map the host's bar has "Stake and finish this road".** It stakes a road from town to
+town where a crew would take it, about 15 m to a rope and within the rules for ropes, puts every
+staked point on its line, and gravels and packs the road. Trucks set off at once. Beside it are
+the switch for wear on maps and buttons for speed (x1, x4, x10) [Claude].
+
+| Map | The road | By script, at Mars |
+|---|---|---|
+| Short | 60 m, straight | no wrecks in 50 trucks, wear off |
+| Middle | 172 m, round the left of the hill; bends to 33 degrees | no wrecks in 50, wear off |
+| Long | 307 m, through the gap in the ridge; nearly level | wear on: no wrecks in the first 150 trucks; 58 by the 250th; 155 by the 350th |
+| Climb | 197 m, out to the gentle left side and back; 10 degrees at the steepest | wear off: no wrecks in 52. Wear on (an earlier route): holes of 30 cm by the 100th truck |
+| Switchback | 181 m, up both ramps; a bend of 36 degrees, which is the limit | no wrecks in 50, wear off |
+
+- With wear on, a finished gravel road on a map lasts about 150 trucks. At a truck from each
+  town every 12 seconds that is fifteen minutes.
+- [Claude] Players on a map now start 3.5 m further to the left of town A's stake. Where they
+  started was in the lane that trucks from town B leave the road by, and a blob standing there
+  stopped every one of them: they blew up at its feet. Trucks do not pass through a blob.
+- A road that comes into a town at an angle sends its trucks into the houses. The button's roads
+  come in straight; a player's may not.
+
 ## What has been played
 
 As the user told it in the design session of 2026-10-05: "I have played with each mechanic in
@@ -190,7 +409,7 @@ is not the same as commented on: where there are no words, none were given.
 | Stakes and rope, grading, gravel, the hot spot, mitred corners, self-driving trucks, wear | yes: accepted, "they look good" |
 | The Short map | yes: "The short playtest went great. The game is looking much more like what I envisioned." |
 | The Middle map | yes: "I have connected two towns in middle" |
-| The Long and Climb maps | no: "kinda too labor intensive for me, so, I would like to see demos of those completed" |
+| The Long and Climb maps | no: "kinda too labor intensive for me, so, I would like to see demos of those completed". A button finishes them now |
 | The Switchback map | not said |
 | Building junctions; trucks at junctions | yes: "looks good, and intuitive"; after the change, "I did observe lane-keeping being much more tight" |
 | Zoning | not by hand: "I haven't thought about zoning since establishing it" |
@@ -198,6 +417,7 @@ is not the same as commented on: where there are no words, none were given.
 | Paving | yes: "I have tested an asphalt dump truck that placed asphalt on the ground that I leveled with the 'asphalt' tool" |
 | Driving, the roller, the brush, the paint truck, the shovel in the hands | yes, in their isolated settings: "I'm happy with those mechanics and now I want to add more complications to them" |
 | The rope's slope limit; the dev tool; flying | not said |
+| The six slices of 2026-10-06 | not yet. The user was in the editor for about five minutes at 01:05 on 2026-10-06, during the build: the Trucks ground and then the Wear ground, with gravity at the Moon, flying. A screenshot of the two wear roads from above is in `docs/answers/image.png`. No words came with it |
 
 ## How the user wants it built
 
@@ -250,9 +470,11 @@ box body from Claude's memory. U-Haul does not publish them. Its turning circle 
 | 4 | Zoning: left click a section to change its role |
 | 5 | Asphalt: hold left click to spread what the dump truck left |
 | 6 | Paint lines: hold left click on rolled asphalt |
-| 8 | Paint brush: left click white, right click yellow, anywhere on rolled asphalt |
+| 8 | Paint brush: left click white, right click yellow, anywhere on rolled asphalt. On the Painting ground it is the roller brush: hold and drag for a stripe |
+| 9 | Drop-off survey, at the quarry: left click a stake in the middle of a road, then the ground beside it |
+| T, G | On the Painting ground: tar spray, and the grinder. Hold left click |
 | Right click on a waiting truck or roller | Send it to its other depot, with any tool in hand |
-| E | Get into or out of a vehicle. W S drive, A D steer |
+| E | Get into or out of a vehicle. W S drive, A D steer. In the Painting ground's paint truck, left click is the white nozzle and right click the yellow |
 | 7, V | Dev: finish a section's next stage in one click; fly |
 | F1, F3, Tab | Sliders (host), readout, free the mouse |
 
@@ -496,7 +718,9 @@ first proposal, on the Driving test ground only.
 
 ## Where it is played
 
-The host picks, from two rows of buttons at the top of the screen. Everyone starts again there.
+The host picks, from three rows of buttons at the top of the screen: Tests, New (the grounds
+built on 2026-10-06) and Maps. Under them are three buttons for gravity. Everyone starts again
+on the ground that is picked.
 
 ### Test grounds
 
@@ -513,6 +737,9 @@ few plots on it.
 | Quarry | The pit, the winding service road, the drop, the road that needs gravel | Loading and hauling gravel, sending trucks, service roads |
 | Paving | A packed gravel road, the dump truck and the roller; beside it the same road finished, with trucks | Paving and painting |
 | Driving | The four vehicles; a road whose sections are bare, loose gravel, spread asphalt and rolled asphalt; a gravel pile; a rough field | How driving feels, and what each vehicle does |
+| Wear (New) | A dirt road and a packed gravel road, 100 m each, with a truck from each end every 4 seconds | Whether a road falls apart at the right pace |
+| Spin-out (New) | A road with a 90 degree bend under loose gravel, packed at each end, with the same traffic | Whether loose gravel is dangerous for long enough |
+| Painting (New) | Two strips of rolled asphalt, one with the lines' places marked and one without; a paint truck | Whether drawing a line by hand is hard in a good way |
 
 ### Maps
 
@@ -583,16 +810,27 @@ decided": what the hazards of dirt and gravel are, what paving is for, how one v
 automated and driven (it is not: they are different vehicles), how a hand-drawn line is judged,
 whether trucks packing gravel is wanted, and where the first gravel comes from.
 
-To be answered by playing the next build:
+To be answered by playing the build of 2026-10-06, a question to a slice:
 
-- **How low the gravity should be**, for trucks and for the blob.
-- **Whether dirt and gravel fall apart at the pace the user described**, and whether damage by
-  landing is better than damage by time.
-- **Whether loose gravel is dangerous for long enough**, with trucks packing it.
-- **Whether a gravel truck that runs its own round is a job worth having**, what should happen
-  to travellers behind it, and whether losing it on a bad road is the right punishment.
-- **Whether the place for a painted line should be marked**, and tar spray against the grinder.
-- **Whether a long road is worth having**, from the finished Long and Climb maps.
+- **How low is fun?** Gravity, for trucks and for the blob.
+- **Does a road fall apart at that pace, and is it good to watch?** And is damage by landing
+  better than damage by time.
+- **Is loose gravel dangerous for long enough to matter?**
+- **Is bringing gravel over a road you built a job worth doing?** And what should happen to
+  travellers behind the truck, and is losing it on a bad road the right punishment.
+- **Is drawing a line by hand hard in a good way?** Marked or unmarked, tar or the grinder.
+- **Is a long road worth having?**
+
+What the build found, for the user to decide:
+
+- **Trucks get round the tightest turn in low gravity but not in their lane**: 2.9 m out at
+  Mars, 7 m at the Moon. Is that the fun, or should the turn, the speed or the grip change?
+- **The slope limit of 15 degrees holds, but at the Moon most trucks climb 15 degrees of bare
+  ground too.** A bare road was meant to fail from 12.
+- **A dirt road worn right out is still driveable.** Should ruts wreck trucks?
+- **Gravel's damage at 50 trucks is modest**: loose patches, no holes.
+- **Trucks now take about 50 passes to pack gravel**, not four, on maps as well.
+- Every choice of Claude's in `SESSION_2026-10-06.md`.
 
 Still for the user to answer:
 

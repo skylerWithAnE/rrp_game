@@ -70,7 +70,9 @@ count as different players. **This path has never connected**, so expect to fix 
   Clones in the editor read the same flags from `rrp_autotest.txt` in the system temp folder; delete
   that file when done or the clones will keep joining by themselves.
 - **The host's choices by number** (for `-rrpMap` and `Game.SetMap`): 0 Yard, 1 Short, 2 Middle,
-  3 Long, 4 Climb, 5 Switchback, 6 Building, 7 Trucks, 8 Junctions, 9 Quarry, 10 Paving, 11 Driving. `-rrpDrive 0` makes an
+  3 Long, 4 Climb, 5 Switchback, 6 Building, 7 Trucks, 8 Junctions, 9 Quarry, 10 Paving, 11 Driving,
+  12 Wear, 13 Spin-out, 14 Painting. `-rrpDrop` makes a client on the Quarry ground put the gravel
+  drop-off down and load the truck; `-rrpPaint` makes one on the Painting ground paint the unmarked strip. `-rrpDrive 0` makes an
   instance on the Driving ground get into vehicle 0 and drive it in a circle. The old station
   flags (`-rrpStakes`, `-rrpClicks` off a map) work on 6.
 - **Test flags on a map**: `-rrpMap 3` makes a host choose map 3. On a map `-rrpStakes` stakes a
@@ -79,7 +81,9 @@ count as different players. **This path has never connected**, so expect to fix 
   `RRPWORK` line with the time each took.
 - **Controls**: WASD, mouse, Shift toggles sprint, Space hops, Tab frees the mouse, F1 tuning
   (host), F3 readout. Keys 1 to 6 are the stake, grade, gravel, zoning, asphalt and paint tools,
-  and 8 is the paint brush. Right click a waiting truck or roller to send it (the dump
+  8 is the paint brush (the roller brush on the Painting ground), 9 the drop-off survey at the
+  quarry, and T and G the tar spray and the grinder. The host's bar also has gravity (Earth, Mars,
+  Moon), speed (x1, x4, x10) and, on a map, "Stake and finish this road" and the switch for wear. Right click a waiting truck or roller to send it (the dump
   truck sends itself). E gets into and out of a vehicle; W S A D drive it. The host picks the test ground or map with
   the buttons at the top of the screen.
 - **Dev controls**: 7 is the dev tool (one click does a whole section's next stage). V toggles

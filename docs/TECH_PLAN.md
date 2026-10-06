@@ -1,7 +1,8 @@
 # Technical description
 
 Written 2026-10-05, after the five stations, and brought up to date through that day as the maps
-and the test grounds were built. This says how the code works now. It says nothing about the
+and the test grounds were built, and on 2026-10-06 for the six slices (the version before that
+is commit `71fcc8b`). This says how the code works now. It says nothing about the
 long-term goals in `DESIGN.md`, none of which is built. The plan is `PLAN.md`. The first prototype's
 technical plan is in `archive/TECH_PLAN_badscale.md`.
 
@@ -26,7 +27,8 @@ technical plan is in `archive/TECH_PLAN_badscale.md`.
 | `Player.cs`, `Blob.cs` | The blob: walk, sprint toggle, hop; pose sync; procedural animation |
 | `CameraRig.cs` | First-person camera at eye height, horizontal field of view |
 | `Yard.cs` | Station 1: flat ground, the parked truck, the road strip, three painted hairpins. Also the truck's shape |
-| `Plot.cs` | A piece of ground with its stakes, sections and tools. Twenty-one small ones are shared out among the test grounds; one more is the land of a map, with its towns |
+| `Plot.cs` | A piece of ground with its stakes, sections and tools. Twenty-six small ones are shared out among the test grounds; one more is the land of a map, with its towns |
+| `Lines.cs` | Paint drawn by hand on the Painting ground's two strips: cells of 0.1 m, strokes, the tools that make them, and the judging |
 | `Lorries.cs` | The trucks that drive themselves, on the test grounds' roads and on a map's, and the ones that wait to be sent |
 | `Cars.cs` | The vehicles players drive |
 | `Shovel.cs` | The shovel in the local player's view, and its motion |
@@ -62,9 +64,10 @@ are never entered. `Truck.Boom` and `Sfx` are still used for the trucks' explosi
 
 ## The plot
 
-`Plot` is one rectangle of ground with its own stakes. There are twenty-two, made by `Generate`
-from their index (the list is at the top of `Plot.cs`): twenty-one small ones shared out among
-the test grounds, and one for a map's land.
+`Plot` is one rectangle of ground with its own stakes. There are twenty-seven, made by `Generate`
+from their index (the list is at the top of `Plot.cs`): twenty-six small ones shared out among
+the test grounds, and one for a map's land. The land is always the last (`Plot.Land`), so a new
+plot goes in before it and the land's number moves up.
 
 - **Ground:** a height per point, points 0.25 m apart, plus a byte of gravel (millimetres), a
   byte of packing (0 to 100) and a byte for what is on top (`top`: 0 nothing, under 100 asphalt
@@ -97,7 +100,19 @@ the test grounds, and one for a map's land.
   sent with the stakes. `HostZone` changes one. `PathBetween` can be told to leave service roads
   out, and is for every truck that is not the gravel truck.
 - **Wear** (`Wear`) is host only. Health is a byte per point and is not sent; ruts are ordinary
-  edits. Only the wear road has it.
+  edits. `Plot.Wears` says which roads have it: the first wear road (plot 5, which keeps its
+  old rule inside the same function), the Wear ground's two, a map while `mapWear` is on, and
+  the quarry while `quarryWear` is. Four times a second each truck calls it with where its
+  wheels are and how fast each has come down on the ground since the last call
+  (`Lorry.hit`, the wheel's closing speed along its ray). `Damage` takes health off a grid
+  square, by the rate of what the square is made of, more once it is under the threshold; `Cut`
+  lowers a disc under a wheel whose square is under the threshold: packing, then gravel, then
+  ground, and never deeper than `wearDeepest` below the line. Asphalt is skipped by both.
+- **Loose gravel** is `Plot.Loose(x, z)`: 0 to 1, from the packing and the depth of gravel
+  under a wheel.
+- **The drop-off** (the quarry) is a stake's number, `Plot.drop`, sent on the end of every
+  stakes message and renumbered when a stake comes out (`PullOut`). `HostDrop` puts it down
+  under the stake rules plus two of its own.
 
 ## The map's ground
 
@@ -144,6 +159,47 @@ and there is no route until they are joined; then a truck leaves each town every
 seconds. `Lane` turns the sections found into the points a truck steers at. A truck keeps the
 path it set off with, even if the stakes change under it.
 
+**Gravity** is one number, `tuning.planetGravity`. `Game.Update` sets `Physics.gravity` from it
+on every machine; the blob multiplies its own fall by it; and `Game.Bite` and `Game.Springs`
+turn it into how hard wheels push and hold and how stiff springs are, for trucks and driven
+vehicles alike, according to the two switches beside it. At 1 every one of those is exactly
+what it was.
+
+**Steady traffic.** `Plot.Steady` roads (a map, the Wear ground's two, the Spin-out road) have a
+truck set off down each lane every few seconds; `Plot.Traffic` says how many a road can hold.
+The snapshot starts with the map's number and carries only that map's trucks.
+
+**Spin-out** is in the truck's drive: per wheel, sideways grip falls with `Plot.Loose`; the
+steering torque weakens and a wandering torque is added in proportion to it; and past
+`spinAngle` between heading and motion the truck is in a spin (`Lorry.spin`) for `spinSeconds`,
+with no steering and its wheels locked.
+
+**The gravel truck's round** (`Rig.leg`: 0 standing, 1 out, 2 backing in, 3 home). `SendHaul`
+starts a leg, from `Lorries.Update` when the truck is full or empty, or from a right click.
+`Plot.HaulOut` is the way from the quarry to `haulPass` metres past the junction the drop-off's
+spur leaves; `Plot.HaulIn` is the way a truck leaving the drop-off for that same stretch would
+drive, and the truck follows it backwards (`Lorry.reverse`: the index runs down, and its tail
+is steered at a point behind); `Plot.HaulHome` is the way back. `HaulArrived` moves from one leg
+to the next. The stuck rule reads "no further" in whichever direction the truck is following.
+
+**Paint by hand** (`Lines`, one for each of the Painting ground's strips, made by `Plot.Build`).
+A byte per cell of 0.1 m. Everything that changes it is a stroke: tool, two ends and a radius,
+in whole millimetres from the plot's corner. `Lines.Apply` tests each cell's middle against the
+stroke with whole-number sums, so every machine gets the same cells. A player's machine makes
+strokes (`Hold`: the roller brush joins where it was to where it is; the tar spray scatters
+points; the grinder is a thin brush that writes "nothing") and sends them a few times a second
+(`Op.Paint`); the host applies them and passes them on to everyone; the host makes the paint
+truck's own strokes from where its nozzles were and are (`Cars.Spray`, 20 times a second). A
+joiner is sent the cells as runs (`Op.PaintState`), after the plot's stakes. `Wanted` works out
+from the sliders, per cell, which line's band it is in, its grid square and how far along it
+is; `Judge` turns that and the paint into each square's score, twice a second at most. The paint
+is drawn as quads with vertex colors, in meshes of 32 by 32 cells, rebuilt when they change.
+`Plot.Hash` takes the paint in, so the two-instance comparison covers it.
+
+**A road at a button** (`Plot.HostAutoRoad`, host only): a list of places per map, a smooth
+line through them, stakes at even steps, heights eased under the slope limit, then every staked
+point put on its line and sent as ordinary edits. It says what it staked against the rope rules.
+
 **Rigs** are trucks that wait to be sent: the quarry's gravel truck, and the paving ground's dump
 truck and roller. Each is one more lorry at the end of the list, with a `Rig` beside it: the
 depot it stands at, the one it is going to, and its load. A plot names some of its stakes as
@@ -180,6 +236,10 @@ points like any other edit.
 
 ## Verifying
 
+- What a truck climbs, the pace of wear and the spin-out rates in `DESIGN.md` were measured by
+  scripts driving the editor: `Plot.TestDegrees` and its neighbours make ramps to order,
+  `Lorries.log` records how each trip ended, `AutoTest.WearLog` records a wearing road's state
+  by truck count, and `tuning.fastForward` runs it all at ten times the speed.
 - `AutoTest` prints one `RRPSTATE` line a second with `-rrpLog`: player positions, the tuning, and
   for each plot a hash of its ground, gravel, packing and stakes, its level and gravel shares, its
   clicks and its stake count.
