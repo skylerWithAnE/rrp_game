@@ -361,12 +361,12 @@ public class Plot : MonoBehaviour
             case WearDirt: case WearGravel: case WearDirtPaved: case WearGravelPaved: WearGround(t); break;
             case SpinOut2:
                 {
-                    // Low ground, so trucks come onto it almost level. Three paved sections to
-                    // get up to speed on, two of loose gravel, a bend to the right of 90
-                    // degrees in three shorter ones, two more of loose gravel, and three paved
+                    // Low ground, so trucks come onto it almost level. Two paved sections (40 m)
+                    // to get up to speed on, two of loose gravel (40 m), a bend to the right of
+                    // 90 degrees in three shorter ones, two more of loose gravel, and two paved
                     // again, so that trucks from the other end meet the same thing.
                     Vector3 at = new Vector3(30f, 0.45f, -20f);     // just high enough that its shoulders stand clear of the yard
-                    float[] turn = { 0, 0, 0, 0, 0, 30f, 30f, 30f, 0, 0, 0, 0, 0 };
+                    float[] turn = { 0, 0, 0, 0, 30f, 30f, 30f, 0, 0, 0, 0 };
                     float heading = 0;
                     stakes.Add(at);
                     for (int k = 0; k < turn.Length; k++)
@@ -502,9 +502,9 @@ public class Plot : MonoBehaviour
         }
         if (id == SpinOut2)
         {
-            // the three sections at each end are packed, paved and rolled
+            // the two sections at each end are packed, paved and rolled
             for (int i = 0; i < h.Length; i++)
-                if (gravel[i] > 0 && Section(origin.x + i % w * Cell, origin.z + i / w * Cell, out int link, out _, out _) && (link < 3 || link >= links.Count - 3)) { packed[i] = 100; top[i] = Rolled; }
+                if (gravel[i] > 0 && Section(origin.x + i % w * Cell, origin.z + i / w * Cell, out int link, out _, out _) && (link < 2 || link >= links.Count - 2)) { packed[i] = 100; top[i] = Rolled; }
         }
         if (WearRoad(id) >= 0)
         {
@@ -1301,7 +1301,7 @@ public class Plot : MonoBehaviour
             case 3: text = "Station 5: a finished road. Trucks drive it both ways."; break;
             case 4: text = "Station 5: a bad road. Trucks try it both ways."; break;
             case 5: text = "Wear: a finished road that the trucks wear out"; break;
-            case SpinOut: text = "Loose gravel round a bend, packed at each end.\nTrucks slide on it, and pack it as they go (truckPacking on F1).\nThe host's button above makes it loose again."; at = stakes[1] + Vector3.up * 2.2f; break;
+            case SpinOut: text = "ROAD 1: loose gravel round a bend, packed at each end.\nTrucks slide on it, and pack it as they go (truckPacking on F1).\nThe host's button above makes it loose again."; at = stakes[1] + Vector3.up * 2.2f; break;
             case PaintMarked: text = "Rolled asphalt, with the place for each line marked.\n8: the roller brush. Hold left click and drag for white, right click for yellow.\nT: tar spray, to cover paint. G: the grinder, to take it off.\nE by the paint truck drives it: left click its white nozzle, right click its yellow."; at = stakes[0] + new Vector3(0, 2.4f, 6f); break;
             case PaintPlain: text = "The same strip with nothing marked.\nA white line inside each edge, and a yellow one down the middle."; at = stakes[0] + new Vector3(0, 2.4f, 6f); break;
             case WearDirt: case WearGravel: case WearDirtPaved: case WearGravelPaved:
@@ -1310,7 +1310,7 @@ public class Plot : MonoBehaviour
                 text = id == WearDirt ? "Grade it (2) to mend it." : id == WearGravel ? "Grade (2) and gravel (3) mend it." : "Trucks come onto it at speed,\noff two sections of paved road.";
                 at = stakes[0] + new Vector3(0, 1.2f, -3f);
                 break;
-            case SpinOut2: text = "Three paved sections, then loose gravel: two sections straight, a bend, two more.\nTrucks reach it at speed. They pack it as they go.\nThe host's button above makes it loose again."; at = stakes[0] + new Vector3(0, 2.6f, 8f); break;
+            case SpinOut2: text = "ROAD 2: 40 m of paved road, then 40 m of loose gravel, then the bend.\nTrucks reach the gravel at speed. They pack it as they go.\nThe host's button above makes it loose again."; at = stakes[0] + new Vector3(0, 2.6f, 8f); break;
             case 6: text = "Hairpin: stakes set round the tightest turn allowed\nlevel it and gravel it; trucks try it as it is"; break;
             case 8: text = "A 14 degree climb, bare ground on its line.\nToo steep for a truck without gravel."; break;
             case 9: text = "The same 14 degree climb under loose gravel."; break;

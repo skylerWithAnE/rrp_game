@@ -152,7 +152,7 @@ public class Tuning : ScriptableObject
     [Tooltip("Bare ground is cut this many times as deep as gravel each time.")]
     [Range(1, 10)] public float wearDirtCut = 6f;
     [Tooltip("The deepest a hole gets, below the road's line (m).")]
-    [Range(0.05f, 8f)] public float wearDeepest = 0.8f;
+    [Range(0.05f, 20f)] public float wearDeepest = 9f;
     [Tooltip("How high the Wear ground stands above the yard (m). Used when the ground is made again.")]
     [Range(2, 20)] public float wearHeight = 10f;
     [Tooltip("0: all damage comes from time spent on a square. 1: all of it comes from how hard each wheel lands. Between: a share of each.")]
