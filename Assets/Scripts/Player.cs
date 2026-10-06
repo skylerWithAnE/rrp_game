@@ -191,7 +191,7 @@ public class Player : MonoBehaviour
             verticalSpeed = -2f;
             if (c.jump) verticalSpeed = t.hopSpeed;
         }
-        verticalSpeed -= t.gravity * dt;
+        verticalSpeed -= t.gravity * t.planetGravity * dt;     // the blob is as light as the trucks are
         float speed = t.walkSpeed * (c.sprint ? t.sprintMultiplier : 1f);
         controller.Move((move * speed + Vector3.up * verticalSpeed) * dt);
         grounded = controller.isGrounded;

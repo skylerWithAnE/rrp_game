@@ -116,6 +116,28 @@ public class Tuning : ScriptableObject
     [Tooltip("The deepest a wheel cuts each time (m).")]
     [Range(0.01f, 0.3f)] public float rutDepth = 0.05f;
 
+    [Header("Wear (the Wear ground, and maps). damageThreshold above is shared")]
+    [Tooltip("The most damage a truck does to a square of bare ground each quarter second it is on it, out of 100.")]
+    [Range(0, 100)] public float wearDirt = 80f;
+    [Tooltip("The same for a square of gravel. Paved road takes none.")]
+    [Range(0, 100)] public float wearGravel = 3f;
+    [Tooltip("Once a square is below damageThreshold, damage to it is multiplied by this, and the wheels cut up to this many times as deep as it falls further.")]
+    [Range(1, 6)] public float wearScaleUp = 1.5f;
+    [Tooltip("How deep a wheel cuts each time into a square that is below the threshold (m), before the scaling up.")]
+    [Range(0.002f, 0.1f)] public float wearCut = 0.006f;
+    [Tooltip("Bare ground is cut this many times as deep as gravel each time.")]
+    [Range(1, 10)] public float wearDirtCut = 6f;
+    [Tooltip("The deepest a hole gets, below the road's line (m).")]
+    [Range(0.05f, 1.2f)] public float wearDeepest = 0.8f;
+    [Tooltip("0: all damage comes from time spent on a square. 1: all of it comes from how hard each wheel lands. Between: a share of each.")]
+    [Range(0, 1)] public float wearByLanding = 0.5f;
+    [Tooltip("A wheel coming down this fast (m/s) does a full quarter second's damage to the square it lands on; twice as fast does twice, and that is the most.")]
+    [Range(0.2f, 5)] public float wearLandSpeed = 2f;
+    [Tooltip("Seconds between trucks setting off from each end of the Wear ground's roads.")]
+    [Range(1, 30)] public float wearTruckEvery = 4f;
+    [Tooltip("1: trucks wear the road on a map. 0: they do not.")]
+    [Range(0, 1)] public float mapWear = 1f;
+
     [Header("Station 4: gravel")]
     [Tooltip("Full depth of gravel on the road (m).")]
     [Range(0.05f, 0.25f)] public float gravelDepth = 0.15f;
@@ -145,6 +167,16 @@ public class Tuning : ScriptableObject
     [Range(0, 1)] public float landRoughness = 0.35f;
     [Tooltip("Seconds between trucks setting off from each town, once the towns are joined.")]
     [Range(3, 60)] public float truckEvery = 12f;
+
+    [Header("Planet (everywhere)")]
+    [Tooltip("Gravity as a share of Earth's, for trucks, driven vehicles and blobs. 1 is Earth, 0.38 Mars, 0.16 the Moon.")]
+    [Range(0.16f, 1)] public float planetGravity = 0.38f;
+    [Tooltip("[Claude] 1: wheels push, brake and hold sideways in proportion to gravity, as tyres do, so a truck climbs about the same slopes on any planet. 0: wheels bite as hard as on Earth whatever the gravity, and low gravity makes every climb easy.")]
+    [Range(0, 1)] public float gripFollowsGravity = 1f;
+    [Tooltip("[Claude] 1: springs are as soft as the gravity, so a vehicle rides at the same height on any planet and bounces slowly. 0: Earth's springs everywhere: it rides high and is thrown about more.")]
+    [Range(0, 1)] public float springsFollowGravity = 1f;
+    [Tooltip("[Claude] Everything runs this many times as fast, for watching hundreds of trucks go by. 1 is normal. Players walk faster too.")]
+    [Range(1, 10)] public float fastForward = 1f;
 
     [Header("Claude's additions (maps only): 0 switches each off")]
     [Tooltip("Trucks pack the gravel they drive over: how much of the packing each truck does to the squares under its wheels, four times a second. 0.25 is one click's worth. 0: only clicks pack.")]

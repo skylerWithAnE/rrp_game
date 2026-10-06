@@ -334,6 +334,8 @@ public class Cars : MonoBehaviour
             var rb = car.rb;
             Vector3 up = tr.up;
             float mass = rb.mass;
+            // on a lighter planet the wheels bite less and the springs are softer, as the trucks' are
+            float bite = Game.Bite(t), springs = Game.Springs(t), damping = Mathf.Sqrt(springs);
             int grounded = 0;
             foreach (var wheel in car.wheels)
             {
@@ -341,9 +343,9 @@ public class Cars : MonoBehaviour
                 if (!Physics.Raycast(origin, -up, out var hit, Travel, ~0, QueryTriggerInteraction.Ignore) || hit.collider.gameObject == car.body) continue;
                 grounded++;
                 Vector3 v = rb.GetPointVelocity(origin);
-                float force = Spring * (1f - hit.distance / Travel) - Damper * Vector3.Dot(v, up);
+                float force = Spring * springs * (1f - hit.distance / Travel) - Damper * damping * Vector3.Dot(v, up);
                 if (force > 0) rb.AddForceAtPosition(up * force * mass, origin);
-                rb.AddForceAtPosition(-tr.right * Vector3.Dot(v, tr.right) * Grip * mass * 0.25f, origin);
+                rb.AddForceAtPosition(-tr.right * Vector3.Dot(v, tr.right) * Grip * bite * mass * 0.25f, origin);
             }
             bool driven = i == Mine;
             float go = driven ? throttle + TestThrottle : 0, turn = driven ? steer + TestSteer : 0;
@@ -351,7 +353,7 @@ public class Cars : MonoBehaviour
             {
                 float top = TopSpeed(car, t), speed = Vector3.Dot(rb.linearVelocity, tr.forward);
                 float wanted = go > 0 ? top : go < 0 ? -top * 0.4f : 0;
-                rb.AddForce(tr.forward * Mathf.Clamp((wanted - speed) * 4f, -t.drivePower, t.drivePower) * mass);
+                rb.AddForce(tr.forward * Mathf.Clamp((wanted - speed) * 4f, -t.drivePower * bite, t.drivePower * bite) * mass);
                 // it steers only as it rolls, and the other way in reverse
                 float rate = turn * t.driveTurn * Mathf.Clamp(speed / 3f, -1f, 1f);
                 rb.AddTorque(Vector3.up * (rate - rb.angularVelocity.y) * 6f, ForceMode.Acceleration);

@@ -11,6 +11,12 @@ public class Game : MonoBehaviour
 {
     public static Game I;
     public static bool JobsEnabled = false;
+    public const float EarthGravity = 9.81f;
+    // How hard wheels bite and how stiff springs are, as shares of what they are on Earth: see
+    // the two switches beside planetGravity in Tuning.
+    public static float Bite(Tuning t) { return t.gripFollowsGravity >= 0.5f ? t.planetGravity : 1f; }
+    public static float Springs(Tuning t) { return Mathf.Lerp(1f, t.planetGravity, t.springsFollowGravity); }
+    public static string PlanetName(float gravity) { return Mathf.Abs(gravity - 1f) < 0.005f ? "Earth" : Mathf.Abs(gravity - 0.38f) < 0.005f ? "Mars" : Mathf.Abs(gravity - 0.16f) < 0.005f ? "the Moon" : gravity.ToString("0.00") + " of Earth"; }
 
     public NetworkManager nm;
     public UnityTransport utp;
@@ -580,6 +586,12 @@ public class Game : MonoBehaviour
     {
         float dt = Time.unscaledDeltaTime;
         fps = Mathf.Lerp(fps, 1f / Mathf.Max(dt, 0.0001f), 0.05f);
+        // the planet's gravity, on every machine: a client works out the vehicle it drives
+        float fall = -EarthGravity * tuning.planetGravity;
+        if (Physics.gravity.y != fall) Physics.gravity = new Vector3(0, fall, 0);
+        // [Claude] fast forward, for watching a road wear out. The steps of the physics stay the same length.
+        float pace = phase == Phase.Lobby ? Mathf.Clamp(tuning.fastForward, 1f, 10f) : 1f;
+        if (Time.timeScale != pace) Time.timeScale = pace;
         if (!Net.Running) return;
         Net.Tick(dt);
         if (phase != Phase.Lobby && phase != Phase.Job) return;

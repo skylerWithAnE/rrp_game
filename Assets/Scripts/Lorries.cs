@@ -42,7 +42,10 @@ public class Lorries : MonoBehaviour
         public Vector3[] wheels;
         public readonly List<Vector3> path = new List<Vector3>();
         public int index, reached, trips, wrecks;
-        public float stuck, flipped, launch = -1, wait, wear;
+        public float stuck, flipped, launch = -1, wait, wear, off;
+        // host: how fast each wheel has come down on the ground since the road was last worn (m/s), and where
+        public readonly float[] hit = new float[4];
+        public readonly Vector3[] hitAt = new Vector3[4];
         public Vector3 netPos;
         public Quaternion netRot = Quaternion.identity;
         public Rig rig;                     // set if it is a truck that waits to be sent
@@ -54,7 +57,7 @@ public class Lorries : MonoBehaviour
 
     Lorry[] lorries;
     float sendTimer;
-    readonly float[] landWait = new float[2];   // host: seconds until the next truck sets off from each town
+    readonly float[] steadyWait = new float[Plot.Count * 2];    // host: seconds until the next truck sets off down each lane of a road with steady traffic
 
     readonly Msg snapshot = new Msg(1024);
     readonly List<Vector3> touching = new List<Vector3>();
@@ -83,11 +86,12 @@ public class Lorries : MonoBehaviour
     void Ensure()
     {
         if (lorries != null) return;
-        // two for each station's plot, then the map's
-        int stations = Plot.Land * 2;
-        lorries = new Lorry[stations + LandLorries + rigs.Length];
-        for (int i = 0; i < lorries.Length; i++) lorries[i] = new Lorry { plot = i < stations ? i / 2 : Plot.Land, back = i % 2 == 1 };
-        for (int r = 0; r < rigs.Length; r++) rigs[r].l = lorries[stations + LandLorries + r] = new Lorry { plot = rigs[r].plot, rig = rigs[r] };
+        // two for each station's plot (more where the traffic is steady), then the map's, then the rigs
+        var all = new List<Lorry>();
+        for (int plot = 0; plot <= Plot.Land; plot++)
+            for (int k = 0, n = plot == Plot.Land ? LandLorries : Plot.Traffic(plot); k < n; k++) all.Add(new Lorry { plot = plot, back = k % 2 == 1 });
+        for (int r = 0; r < rigs.Length; r++) all.Add(rigs[r].l = new Lorry { plot = rigs[r].plot, rig = rigs[r] });
+        lorries = all.ToArray();
     }
 
     public void Clear()
@@ -101,11 +105,10 @@ public class Lorries : MonoBehaviour
             l.launch = -1;
             l.wait = Wait + (l.back ? 1.5f : 0);
             // the example roads always have trucks on the way
-            l.wanted = l.plot >= 3 && l.plot != Plot.Land && l.plot != Plot.Paving && l.plot != Plot.DriveRoad && l.rig == null;
+            l.wanted = l.plot >= 3 && !Plot.Steady(l.plot) && l.plot != Plot.Paving && l.plot != Plot.DriveRoad && l.rig == null;
             l.once = false;
         }
-        landWait[0] = 2f;
-        landWait[1] = 3.5f;
+        for (int i = 0; i < steadyWait.Length; i++) steadyWait[i] = 2f + i % 2 * 1.5f;
         foreach (var rig in rigs) { rig.at = rig.to = -1; rig.load = 0; rig.wait = 1.5f; }
     }
 
@@ -188,15 +191,30 @@ public class Lorries : MonoBehaviour
         bool wanted = false;
         foreach (var l in lorries)
         {
-            if (l.plot != plot) continue;
+            if (l.plot != plot || l.rig != null) continue;
             if (l.Alive) alive++;
             trips += l.trips;
             wrecks += l.wrecks;
             wanted |= l.wanted;
         }
         if (!wanted && alive + trips + wrecks == 0) return;
-        text.Append("<size=12>trucks ").Append(Plot.Names[plot]).Append(": on the road ").Append(alive)
+        // every truck that has set off down this road since it was made, which is what wear is counted in
+        text.Append("<size=12>trucks ").Append(Plot.Names[plot]).Append(": <b>").Append(alive + trips + wrecks).Append(" so far</b>   on the road ").Append(alive)
             .Append("   arrived ").Append(trips).Append("   wrecked ").Append(wrecks).Append("</size>\n");
+    }
+
+    // how many trucks have set off down a plot's road, arrived, and been wrecked, since it was made
+    public void Count(int plot, out int sent, out int arrived, out int wrecked)
+    {
+        sent = arrived = wrecked = 0;
+        if (lorries == null) return;
+        foreach (var l in lorries)
+        {
+            if (l.plot != plot || l.rig != null) continue;
+            arrived += l.trips;
+            wrecked += l.wrecks;
+            sent += l.trips + l.wrecks + (l.Alive ? 1 : 0);
+        }
     }
 
     public string State()
@@ -242,7 +260,7 @@ public class Lorries : MonoBehaviour
         float top = Travel - 0.25f;     // at rest the springs are squashed a little under a quarter
         l.wheels = new[] { new Vector3(-track, top, front), new Vector3(track, top, front), new Vector3(-track, top, rear), new Vector3(track, top, rear) };
         l.index = l.reached = 0;
-        l.stuck = l.flipped = 0;
+        l.stuck = l.flipped = l.off = 0;
         l.launch = -1;
     }
 
@@ -327,29 +345,38 @@ public class Lorries : MonoBehaviour
             rig.wait = 4f;
         }
 
-        // the map: once the towns are joined, a truck from each every few seconds
-        var land = g.plots[Plot.Land];
-        for (int lane = 0; lane < 2; lane++)
+        // Steady traffic. The map: once the towns are joined, a truck from each every few
+        // seconds. The wear roads: the same, from each end, for as long as the ground is there.
+        for (int p = 0; p < g.plots.Length; p++)
         {
-            if (!land.Ready || !land.joined) { landWait[lane] = 2f + lane * 1.5f; continue; }
-            landWait[lane] -= Time.deltaTime;
-            if (landWait[lane] > 0) continue;
-            foreach (var l in lorries)
+            if (!Plot.Steady(p)) continue;
+            var road = g.plots[p];
+            for (int lane = 0; lane < 2; lane++)
             {
-                if (l.plot != Plot.Land || l.back != (lane == 1) || l.Alive) continue;
-                if (!land.Route(l.path, l.back) || !StartClear(l.path[0])) break;
-                SetOff(l);
-                landWait[lane] = g.tuning.truckEvery;
-                break;
+                int w = p * 2 + lane;
+                if (!road.Ready || (road.IsLand && !road.joined)) { steadyWait[w] = 2f + lane * 1.5f; continue; }
+                steadyWait[w] -= Time.deltaTime;
+                if (steadyWait[w] > 0) continue;
+                foreach (var l in lorries)
+                {
+                    if (l.plot != p || l.rig != null || l.back != (lane == 1) || l.Alive) continue;
+                    if (!road.Route(l.path, l.back) || !StartClear(l.path[0])) break;
+                    SetOff(l);
+                    steadyWait[w] = road.IsLand ? g.tuning.truckEvery : g.tuning.wearTruckEvery;
+                    break;
+                }
             }
         }
 
         sendTimer += Time.unscaledDeltaTime;
         if (sendTimer < 0.05f) return;
         sendTimer = 0;
+        // only the trucks of the ground that is chosen: the rest do not exist
         snapshot.Reset(Op.Lorry);
+        snapshot.U8((byte)g.map);
         foreach (var l in lorries)
         {
+            if (!g.plots[l.plot].ShownOn(g.map)) continue;
             snapshot.U8((byte)(l.Alive ? 1 : 0));
             snapshot.U16((ushort)l.trips);
             snapshot.U16((ushort)l.wrecks);
@@ -394,8 +421,10 @@ public class Lorries : MonoBehaviour
     public void OnState(Msg m)
     {
         Ensure();
+        if (m.U8() != Game.I.map) return;       // of a ground this machine has already left, or not yet reached
         foreach (var l in lorries)
         {
+            if (!Game.I.plots[l.plot].ShownOn(Game.I.map)) continue;
             bool alive = m.U8() != 0;
             l.trips = m.U16();
             l.wrecks = m.U16();
@@ -427,6 +456,18 @@ public class Lorries : MonoBehaviour
 
     static Vector3 Flat(Vector3 v) { v.y = 0; return v; }
 
+    // Test tooling, host: how each truck's trip ended, for the scripts that measure what a
+    // truck can drive. `reached` of `count` is how far along its way it got, in metres or so;
+    // `off` is the furthest it strayed from its lane.
+    public struct Trip { public int plot, reached, count; public bool arrived, flipped; public float off; public Vector3 at; }
+    public readonly List<Trip> log = new List<Trip>();
+    void Note(Lorry l, bool arrived)
+    {
+        if (log.Count > 20000) log.Clear();
+        log.Add(new Trip { plot = l.plot, reached = l.index, count = l.path.Count, arrived = arrived, flipped = l.flipped > 1.5f, off = l.off, at = l.body.transform.position });
+        l.off = 0;
+    }
+
     void FixedUpdate()
     {
         var g = Game.I;
@@ -439,21 +480,25 @@ public class Lorries : MonoBehaviour
             var rb = l.rb;
             Vector3 up = tr.up;
             float mass = rb.mass;
+            // on a lighter planet the wheels bite less and the springs are softer: see Tuning
+            float bite = Game.Bite(t), springs = Game.Springs(t), damping = Mathf.Sqrt(springs);
 
             // suspension and sideways grip at each wheel
             int grounded = 0;
             touching.Clear();
-            foreach (var wheel in l.wheels)
+            for (int k = 0; k < l.wheels.Length; k++)
             {
-                Vector3 origin = tr.TransformPoint(wheel);
+                Vector3 origin = tr.TransformPoint(l.wheels[k]);
                 if (!Physics.Raycast(origin, -up, out var hit, Travel, ~0, QueryTriggerInteraction.Ignore)) continue;
                 grounded++;
                 touching.Add(hit.point);
                 Vector3 v = rb.GetPointVelocity(origin);
+                float closing = -Vector3.Dot(v, up);
+                if (closing > l.hit[k]) { l.hit[k] = closing; l.hitAt[k] = hit.point; }
                 float squash = 1f - hit.distance / Travel;
-                float force = Spring * squash - Damper * Vector3.Dot(v, up);
+                float force = Spring * springs * squash - Damper * damping * Vector3.Dot(v, up);
                 if (force > 0) rb.AddForceAtPosition(up * force * mass, origin);
-                rb.AddForceAtPosition(-tr.right * Vector3.Dot(v, tr.right) * Grip * mass * 0.25f, origin);
+                rb.AddForceAtPosition(-tr.right * Vector3.Dot(v, tr.right) * Grip * bite * mass * 0.25f, origin);
             }
             if (l.launch >= 0) continue;
             if (l.rig != null && l.rig.at >= 0)
@@ -479,16 +524,13 @@ public class Lorries : MonoBehaviour
                     if (l.rig.load == 0) { l.rig.bed = false; l.tipping = false; }     // empty: the bed comes down by itself
                 }
             }
-            if (g.plots[l.plot].Wears && l.wear >= 0.25f && touching.Count > 0)
+            if (l.wear >= 0.25f && touching.Count > 0)
             {
                 l.wear = 0;
-                g.plots[l.plot].Wear(tr.position, touching);
-            }
-            // and on a map, a truck packs the gravel it drives over
-            if (g.plots[l.plot].IsLand && l.wear >= 0.25f && touching.Count > 0)
-            {
-                l.wear = 0;
-                g.plots[l.plot].Pack(touching);
+                // a truck packs the gravel it drives over, where trucks do, and wears the road, where roads wear
+                if (g.plots[l.plot].TrucksPack) g.plots[l.plot].Pack(touching);
+                if (g.plots[l.plot].Wears) g.plots[l.plot].Wear(tr.position, touching, l.hit, l.hitAt);
+                for (int k = 0; k < l.hit.Length; k++) l.hit[k] = 0;
             }
 
             Vector3 position = tr.position;
@@ -500,9 +542,11 @@ public class Lorries : MonoBehaviour
                 float distance = Flat(path[j] - position).sqrMagnitude;
                 if (distance < best) { best = distance; l.index = j; }
             }
+            l.off = Mathf.Max(l.off, Mathf.Sqrt(best));
             if (l.index >= path.Count - 2)
             {
                 // it made it
+                Note(l, true);
                 if (l.rig != null)
                 {
                     l.rig.at = l.rig.to;
@@ -537,8 +581,8 @@ public class Lorries : MonoBehaviour
                 else if (g.plots[l.plot].IsPaved(position.x, position.z)) wanted *= t.pavedSpeed;
                 float speed = Vector3.Dot(rb.linearVelocity, tr.forward);
                 // the wheels only bite as well as the surface lets them
-                float push = t.lorryPower * g.plots[l.plot].Going(position.x, position.z);
-                rb.AddForce(tr.forward * Mathf.Clamp((wanted - speed) * 4f, -t.lorryPower, push) * mass);
+                float push = t.lorryPower * bite * g.plots[l.plot].Going(position.x, position.z);
+                rb.AddForce(tr.forward * Mathf.Clamp((wanted - speed) * 4f, -t.lorryPower * bite, push) * mass);
             }
 
             // stuck, on its side or fallen off the world: it bounces away and blows up
@@ -550,6 +594,7 @@ public class Lorries : MonoBehaviour
             l.flipped = up.y < 0.45f ? l.flipped + Time.fixedDeltaTime : 0;
             if (l.stuck > t.lorryStuckSeconds || l.flipped > 1.5f || position.y < -5f)
             {
+                Note(l, false);
                 l.launch = 1.4f;
                 Vector3 away = Random.insideUnitSphere * 3f;
                 away.y = 9f;

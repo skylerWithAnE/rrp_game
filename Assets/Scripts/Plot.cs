@@ -34,7 +34,9 @@ using UnityEngine.InputSystem;
 //  18  paved            the same road paved and painted, with trucks on it
 //  19  driving road     a road in four states, for the vehicles players drive: bare, gravelled, spread asphalt, finished
 //  20  driving field    rough ground to drive over
-//  21  the map          one big piece of land with a town at each end: see "the map" below
+//  21  wear, dirt       a long bare road on its line, under steady traffic, that wears out
+//  22  wear, gravel     the same road gravelled and packed
+//  23  the map          one big piece of land with a town at each end: see "the map" below
 //
 // Each belongs to one of the host's choices (see MapOf) and exists only while that is chosen:
 // the test grounds for building, for trucks, for junctions and for the quarry, or the land of
@@ -50,21 +52,30 @@ public class Plot : MonoBehaviour
 {
     public const float Cell = 0.25f;        // distance between ground points
     public const int PresetSections = 3;    // station 2: level, climbing, falling
-    public const int Count = 22, Quarry = 16, Paving = 17, Paved = 18, DriveRoad = 19, DriveField = 20, Land = 21;
+    public const int Count = 24, Quarry = 16, Paving = 17, Paved = 18, DriveRoad = 19, DriveField = 20, WearDirt = 21, WearGravel = 22, Land = 23;
     public static readonly string[] Names = { "clicking", "hillside", "gravel", "good road", "bad road", "wear", "hairpin", "hairpin good",
-        "ramp bare", "ramp gravel", "steep gravel", "steep packed", "T", "crossroads", "Y", "junction", "quarry", "paving", "paved", "driving road", "driving field", "map" };
+        "ramp bare", "ramp gravel", "steep gravel", "steep packed", "T", "crossroads", "Y", "junction", "quarry", "paving", "paved", "driving road", "driving field",
+        "dirt road", "gravel road", "map" };
     // What the host can choose. 1 to 5 are land between two towns. The others are test grounds,
     // each about one thing: the sizes, building a road, what trucks can drive, and junctions.
     public static readonly string[] MapNames = { "Scale yard", "Short, 60 m", "Middle, a hill in the way", "Long, 300 m", "Climb, 16 m up", "Switchback, rocks",
-        "Building roads", "Trucks: road types and turns", "Junctions", "Quarry and service roads", "Paving and painting", "Driving" };
-    public static readonly string[] MapButtons = { "Yard", "Short", "Middle", "Long", "Climb", "Switchback", "Building", "Trucks", "Junctions", "Quarry", "Paving", "Driving" };
-    public const int YardMap = 0, BuildingMap = 6, TrucksMap = 7, JunctionsMap = 8, QuarryMap = 9, PavingMap = 10, DrivingMap = 11;
+        "Building roads", "Trucks: road types and turns", "Junctions", "Quarry and service roads", "Paving and painting", "Driving",
+        "Wear: a dirt road and a gravel road under traffic" };
+    public static readonly string[] MapButtons = { "Yard", "Short", "Middle", "Long", "Climb", "Switchback", "Building", "Trucks", "Junctions", "Quarry", "Paving", "Driving", "Wear" };
+    public const int YardMap = 0, BuildingMap = 6, TrucksMap = 7, JunctionsMap = 8, QuarryMap = 9, PavingMap = 10, DrivingMap = 11, WearMap = 12;
+    public const int FirstNewMap = 12;      // the grounds from here on were built for the slices of 2026-10-06, and have a row of buttons to themselves
     public static bool LandMap(int map) { return map >= 1 && map <= 5; }
+
+    // roads with steady traffic: a truck sets off down each lane every few seconds
+    public static bool Steady(int id) { return id == Land || id == WearDirt || id == WearGravel; }
+    // how many trucks a plot's road can have on it at once, both lanes together
+    public static int Traffic(int id) { return id == WearDirt || id == WearGravel ? 12 : 2; }
 
     // which of the host's choices a plot belongs to
     public static int MapOf(int id)
     {
         if (id == Land) return -1;
+        if (id == WearDirt || id == WearGravel) return WearMap;
         if (id <= 2 || id == 6) return BuildingMap;     // clicking, the hillside, gravel, and the hairpin to level
         if (id == Quarry) return QuarryMap;
         if (id == Paving || id == Paved) return PavingMap;
@@ -112,8 +123,11 @@ public class Plot : MonoBehaviour
     public readonly List<Vector3Int> links = new List<Vector3Int>();    // two stakes, and the rope's role: 0 a road for everyone, 1 a service road
     public int selected = -1;               // the local player's stake: the next one is roped to it
 
-    public bool Wears => id == 5;           // trucks damage this road
+    // trucks damage this road: the first wear road, the two of the Wear ground, and a map while its switch is on
+    public bool Wears => id == 5 || id == WearDirt || id == WearGravel || (IsLand && Game.I.tuning.mapWear >= 0.5f);
+    public bool TrucksPack => IsLand;       // trucks pack the gravel they drive over
     public bool IsLand => id == Land;
+    public float rutShare, deepest;         // how much of the road's ground has been cut below its line, 0 to 1, and the deepest cut (m)
     public int fixedStakes;                 // the map: the first stakes are the towns', and stay where they are
     public bool joined;                     // the map: ropes run all the way from one town's stake to the other's
     public float roadLength;                // the map: metres of rope in the chain that starts at the first town
@@ -131,7 +145,14 @@ public class Plot : MonoBehaviour
     static void Say(string what, bool bad) { Why = what; WhyBad = bad; WhyFrame = Time.frameCount; }
     public static void Hint(string what) { Say(what, false); }
     // how a plot's road starts: 2 gravelled and packed, 1 gravelled, 0 bare
-    int StartsAs => id == 3 || id == 5 || id == 7 || (id >= 11 && id <= 14) || id == Paving || id == Paved ? 2 : id == 9 || id == 10 ? 1 : 0;
+    int StartsAs => TestSurface != null && id >= 8 && id <= 11 ? TestSurface[id - 8]
+        : id == 3 || id == 5 || id == 7 || (id >= 11 && id <= 14) || id == Paving || id == Paved || id == WearGravel ? 2 : id == 9 || id == 10 ? 1 : 0;
+    // Test tooling: the four ramps of the Trucks ground (plots 8 to 11) made to order, for the
+    // scripts that measure what a truck climbs. Degrees and surface (0 bare, 1 loose gravel,
+    // 2 packed) for each, and how high they go. Null: the ramps as designed.
+    public static float[] TestDegrees;
+    public static int[] TestSurface;
+    public static float TestHeight = 16f;
     // a stake here takes more than two ropes. Only on the junction test ground until it has been played.
     bool Junctions => id >= 12 && id <= 16;
     public bool IsQuarry => id == Quarry;
@@ -291,11 +312,23 @@ public class Plot : MonoBehaviour
                     // The ramps carry the row on to the left: level, up for two sections, level,
                     // and down again, so a truck from either end has the same climb. One section
                     // is not enough: a truck gets up 20 m of anything on the speed it arrives with.
-                    float up = length * Mathf.Tan((id <= 9 ? 14f : 20f) * Mathf.Deg2Rad);
-                    Straight(first - 100f - (id - 8) * 25f, 0, length, BaseHeight, BaseHeight, BaseHeight + up, BaseHeight + up * 2f, BaseHeight + up * 2f, BaseHeight + up, BaseHeight, BaseHeight);
+                    float up = length * Mathf.Tan((TestDegrees != null ? TestDegrees[id - 8] : id <= 9 ? 14f : 20f) * Mathf.Deg2Rad);
+                    if (TestDegrees != null)
+                    {
+                        // made to order for a measuring script: as many sections up as it takes to reach the height asked for
+                        int n = Mathf.Max(1, Mathf.CeilToInt(TestHeight / up));
+                        var heights = new List<float> { BaseHeight };
+                        for (int k = 0; k <= n; k++) heights.Add(BaseHeight + up * k);
+                        for (int k = n; k >= 0; k--) heights.Add(BaseHeight + up * k);
+                        heights.Add(BaseHeight);
+                        Straight(first - 100f - (id - 8) * 25f, 0, length, heights.ToArray());
+                    }
+                    else Straight(first - 100f - (id - 8) * 25f, 0, length, BaseHeight, BaseHeight, BaseHeight + up, BaseHeight + up * 2f, BaseHeight + up * 2f, BaseHeight + up, BaseHeight, BaseHeight);
                     Lay(t, ox, oz, 0);
                     break;
                 }
+            // the wear roads: five sections each, side by side, on their lines
+            case WearDirt: case WearGravel: Straight(first - 8f - (id - WearDirt) * 26f, 0, length, BaseHeight, BaseHeight, BaseHeight, BaseHeight, BaseHeight, BaseHeight); Lay(t, ox, oz, 0); break;
             case Paving: Straight(first - 25f, 0, length, BaseHeight, BaseHeight, BaseHeight, BaseHeight); Lay(t, ox, oz, 0); break;
             case DriveRoad: Straight(first - 25f, 0, length, BaseHeight, BaseHeight, BaseHeight, BaseHeight, BaseHeight); Lay(t, ox, oz, 0); break;
             case DriveField: Field(new Vector3(46f, 0, -8f), 50f, 60f, t.roughHeight * 0.6f, ox, oz); break;
@@ -994,6 +1027,8 @@ public class Plot : MonoBehaviour
             case 3: text = "Station 5: a finished road. Trucks drive it both ways."; break;
             case 4: text = "Station 5: a bad road. Trucks try it both ways."; break;
             case 5: text = "Wear: a finished road that the trucks wear out"; break;
+            case WearDirt: text = "A dirt road: bare ground on its line, under steady traffic.\nThe readout (F3) counts the trucks. Grade it (2) to mend it."; at = stakes[0] + new Vector3(0, 2.2f, 4f); break;
+            case WearGravel: text = "A gravel road, packed, under the same traffic.\nGrade (2) and gravel (3) mend it."; at = stakes[0] + new Vector3(0, 2.2f, 4f); break;
             case 6: text = "Hairpin: stakes set round the tightest turn allowed\nlevel it and gravel it; trucks try it as it is"; break;
             case 8: text = "A 14 degree climb, bare ground on its line.\nToo steep for a truck without gravel."; break;
             case 9: text = "The same 14 degree climb under loose gravel."; break;
@@ -1150,11 +1185,14 @@ public class Plot : MonoBehaviour
 
     void Tally()
     {
-        int road = 0, roadLevel = 0, shoulder = 0, shoulderLevel = 0, gravelled = 0, done = 0, full = FullGravel;
+        int road = 0, roadLevel = 0, shoulder = 0, shoulderLevel = 0, gravelled = 0, done = 0, full = FullGravel, cut = 0;
+        deepest = 0;
         for (int i = 0; i < h.Length; i++)
         {
             if (zone[i] == 0) continue;
             bool level = Mathf.Abs(h[i] - target[i]) < Level;
+            // ground more than 2 cm under its line is a rut or a hole (or was never brought up to it)
+            if (zone[i] == 1 && target[i] - h[i] > 0.02f) { cut++; deepest = Mathf.Max(deepest, target[i] - h[i]); }
             if (zone[i] == 1 && gravel[i] >= full) { gravelled++; if (packed[i] >= 100) done++; }
             if (zone[i] == 1) { road++; if (level) roadLevel++; }
             else { shoulder++; if (level) shoulderLevel++; }
@@ -1163,6 +1201,7 @@ public class Plot : MonoBehaviour
         shoulderShare = shoulder > 0 ? (float)shoulderLevel / shoulder : 0;
         gravelShare = road > 0 ? (float)gravelled / road : 0;
         packedShare = road > 0 ? (float)done / road : 0;
+        rutShare = road > 0 ? (float)cut / road : 0;
     }
 
     public float HeightAt(float x, float z)
@@ -2453,10 +2492,45 @@ public class Plot : MonoBehaviour
     // host: a truck is on this road, its wheels touching the ground at these spots. It does a
     // random amount of damage to the grid square under it. Once a square is worn below the
     // threshold, the wheels start to cut into it: gravel is scattered first, then the ground ruts.
-    public void Wear(Vector3 centre, List<Vector3> wheels)
+    //
+    // That is the rule the first wear road (on the Trucks ground) was played with, and it keeps
+    // it. Every other road that wears follows the rule of 2026-10-06:
+    //   - Bare ground wears as well as gravel, each at its own rate. Paved road does not wear.
+    //   - Damage comes two ways, with a slider between them: by time, to the square under the
+    //     truck, as before; and by landing, to the square under each wheel, in proportion to how
+    //     fast that wheel came down on it. So one hole starts the next.
+    //   - Once a square is worn below the threshold, damage to it is scaled up, and the wheels
+    //     cut deeper the further below it is.
+    public void Wear(Vector3 centre, List<Vector3> wheels, float[] hit, Vector3[] hitAt)
     {
         var tuning = Game.I.tuning;
-        if (!Ready || !Section(centre.x, centre.z, out int link, out float t, out float side)) return;
+        if (!Ready) return;
+        if (id != 5)
+        {
+            float byLanding = Mathf.Clamp01(tuning.wearByLanding);
+            if (byLanding < 1f && Section(centre.x, centre.z, out int under, out float along_, out float off))
+                Damage(tuning, under, along_, off, Random.value * (1f - byLanding));
+            if (byLanding > 0)
+                for (int k = 0; k < hit.Length; k++)
+                {
+                    // a wheel that is only rolling comes down at a few centimetres a second, and that is free
+                    float hard = (hit[k] - 0.15f) / Mathf.Max(0.05f, tuning.wearLandSpeed);
+                    if (hard > 0 && Section(hitAt[k].x, hitAt[k].z, out under, out along_, out off)) Damage(tuning, under, along_, off, Mathf.Min(2f, hard) * byLanding);
+                }
+            changed.Clear();
+            foreach (var wheel in wheels)
+            {
+                if (!Inside(wheel.x, wheel.z, 0.5f)) continue;
+                int at = Mathf.RoundToInt((wheel.z - origin.z) / Cell) * w + Mathf.RoundToInt((wheel.x - origin.x) / Cell);
+                if (zone[at] == 0 || top[at] > 0 || health[at] >= tuning.damageThreshold) continue;
+                // the further below the threshold, the deeper the cut
+                float worse = 1f - health[at] / Mathf.Max(1f, tuning.damageThreshold);
+                Cut(wheel, tuning.wearCut * (gravel[at] == 0 ? tuning.wearDirtCut : 1f) * Random.Range(0.4f, 1f) * Mathf.Lerp(1f, tuning.wearScaleUp, worse));
+            }
+            if (changed.Count > 0) Broadcast();
+            return;
+        }
+        if (!Section(centre.x, centre.z, out int link, out float t, out float side)) return;
         Square(tuning, link, ref t, ref side, out float halfT, out float halfSide);
         Box(link, t, side, halfT, halfSide, out int x0, out int x1, out int z0, out int z1);
         int damage = Mathf.RoundToInt(Random.value * tuning.truckDamage), left = 100;
@@ -2493,6 +2567,87 @@ public class Plot : MonoBehaviour
                 }
         }
         Broadcast();
+    }
+
+    // Test tooling, host: the state of a road that wears, in a line. Shares are of the road's
+    // points: worn below the threshold; its packing gone; cut more than 2 cm and more than 15 cm
+    // below the line; and the deepest cut.
+    public string WearSays()
+    {
+        if (!Ready) return "";
+        int road = 0, worn = 0, loose = 0, cut = 0, deep = 0;
+        float most = 0;
+        for (int i = 0; i < h.Length; i++)
+        {
+            if (zone[i] != 1) continue;
+            road++;
+            if (health[i] < Game.I.tuning.damageThreshold) worn++;
+            if (StartsAs == 2 && packed[i] < 100) loose++;
+            float below = target[i] - h[i];
+            if (below > 0.02f) cut++;
+            if (below > 0.15f) deep++;
+            most = Mathf.Max(most, below);
+        }
+        float share = 100f / Mathf.Max(1, road);
+        return "worn=" + (worn * share).ToString("0.0") + "% unpacked=" + (loose * share).ToString("0.0") + "% cut=" + (cut * share).ToString("0.0") + "% deep=" + (deep * share).ToString("0.0") + "% deepest=" + (most * 100f).ToString("0") + "cm";
+    }
+
+    // host: a truck damages the grid square at t, side of a section, by `amount` of what its
+    // surface takes in a quarter second: bare ground and gravel each have their own rate, and
+    // asphalt takes none. A square already below the threshold takes more.
+    void Damage(Tuning tuning, int link, float t, float side, float amount)
+    {
+        Square(tuning, link, ref t, ref side, out float halfT, out float halfSide);
+        Box(link, t, side, halfT, halfSide, out int x0, out int x1, out int z0, out int z1);
+        int left = 100, gravelled = 0, bare = 0;
+        for (int iz = z0; iz <= z1; iz++)
+            for (int ix = x0; ix <= x1; ix++)
+            {
+                int i = iz * w + ix;
+                if (!InSquare(i, link, t, side, halfT, halfSide)) continue;
+                if (top[i] > 0) return;     // paved: no wear
+                left = Mathf.Min(left, health[i]);
+                if (gravel[i] > 0) gravelled++; else bare++;
+            }
+        float damage = amount * (gravelled > bare ? tuning.wearGravel : tuning.wearDirt);
+        if (left < tuning.damageThreshold) damage *= tuning.wearScaleUp;
+        // a rate of less than one a time still wears, one time in so many
+        int whole = Mathf.FloorToInt(damage) + (Random.value < damage - Mathf.Floor(damage) ? 1 : 0);
+        if (whole <= 0) return;
+        for (int iz = z0; iz <= z1; iz++)
+            for (int ix = x0; ix <= x1; ix++)
+            {
+                int i = iz * w + ix;
+                if (InSquare(i, link, t, side, halfT, halfSide)) health[i] = (byte)Mathf.Max(0, health[i] - whole);
+            }
+    }
+
+    // host: a wheel cuts into the road under it, this deep: the packing goes, then the gravel is
+    // scattered, then the ground ruts. Asphalt is not cut. Points it changes are added to `changed`.
+    void Cut(Vector3 wheel, float depth)
+    {
+        Box(wheel.x, wheel.z, 0.45f, out int x0, out int x1, out int z0, out int z1);
+        for (int iz = z0; iz <= z1; iz++)
+            for (int ix = x0; ix <= x1; ix++)
+            {
+                int i = iz * w + ix;
+                float dx = origin.x + ix * Cell - wheel.x, dz = origin.z + iz * Cell - wheel.z;
+                if (zone[i] == 0 || top[i] > 0 || dx * dx + dz * dz > 0.45f * 0.45f || changed.Contains(i)) continue;
+                packed[i] = 0;
+                int scatter = Mathf.RoundToInt(depth * 1000f);
+                if (gravel[i] >= scatter) gravel[i] = (byte)(gravel[i] - scatter);
+                else
+                {
+                    // no hole goes deeper below the line than the slider allows
+                    // (and not every point as deep as that, or a road worn right out would be smooth again)
+                    // (and not as deep as that everywhere: the bottom is in patches a metre across, or a road worn right out would be smooth again)
+                    int patch = (i / w / 4) * 977 + i % w / 4;
+                    float floor = Mathf.Min(h[i], target[i] - Game.I.tuning.wearDeepest * (0.4f + 0.6f * ((patch * 7919 ^ patch >> 3) & 15) / 15f));
+                    h[i] = Mathf.Max(Mathf.Max(0, floor), Mathf.Round((h[i] - (depth - gravel[i] * 0.001f)) * 1000f) / 1000f);
+                    gravel[i] = 0;
+                }
+                changed.Add(i);
+            }
     }
 
     // ---- the local player's crosshair

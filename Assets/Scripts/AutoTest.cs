@@ -131,6 +131,8 @@ public class AutoTest : MonoBehaviour
             plot.RequestClick(spot.x, spot.z, clicksLeft % 5 == 0, tool);
         }
 
+        if (WearLog != null && Net.IsHost) LogWear(g);
+
         float dt = Time.unscaledDeltaTime;
         worstMs = Mathf.Max(worstMs, dt * 1000f);
         sampleTime += dt;
@@ -145,6 +147,25 @@ public class AutoTest : MonoBehaviour
     }
 
     static bool PlotsReady(Game g) { return g.plots[0].Ready && g.plots[1].Ready && g.plots[2].Ready; }
+
+    // Test tooling, host: set this to a list and a line is added for each road that wears every
+    // time the count of trucks that have set off down it passes one of these marks. That is how
+    // the pace of wear in DESIGN.md was measured.
+    public static System.Collections.Generic.List<string> WearLog;
+    static readonly int[] WearMarks = { 5, 10, 25, 50, 100, 150, 250, 350, 500, 750 };
+    readonly int[] wearMark = new int[Plot.Count];
+    void LogWear(Game g)
+    {
+        foreach (var plot in g.plots)
+        {
+            if (!plot.Ready || !plot.Wears) { wearMark[plot.id] = 0; continue; }
+            g.lorries.Count(plot.id, out int sent, out int arrived, out int wrecked);
+            if (sent < 3) wearMark[plot.id] = 0;        // a new road
+            if (wearMark[plot.id] >= WearMarks.Length || sent < WearMarks[wearMark[plot.id]]) continue;
+            wearMark[plot.id]++;
+            WearLog.Add(Plot.Names[plot.id] + " trucks=" + sent + " arrived=" + arrived + " wrecked=" + wrecked + " " + plot.WearSays() + " t=" + Time.time.ToString("0"));
+        }
+    }
 
     // On a map: stake a road out from the first town to the second, a stake a second, swinging a
     // little from side to side; then click along it, grading two clicks in three and gravelling

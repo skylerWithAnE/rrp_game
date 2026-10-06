@@ -189,25 +189,38 @@ public class Hud : MonoBehaviour
 
     void Lobby(Game g, float width)
     {
-        GUILayout.BeginArea(new Rect(width / 2 - 260, 10, 560, Net.IsHost ? 132 : 60), box);
+        GUILayout.BeginArea(new Rect(width / 2 - 260, 10, 560, Net.IsHost ? 184 : 60), box);
         GUILayout.Label("<b>" + Plot.MapNames[g.map] + "</b>   " + g.PlayerCount + " of " + Session.MaxPlayers + " players", label);
         if (Net.IsHost)
         {
             // the host picks the map; everyone starts again on it
             // the test grounds on one row, the maps on the other
-            for (int row = 0; row < 2; row++)
+            // and the grounds built for the slices of 2026-10-06 on a row of their own
+            for (int row = 0; row < 3; row++)
             {
                 GUILayout.BeginHorizontal();
-                GUILayout.Label(row == 0 ? "Tests" : "Maps", label, GUILayout.Width(40));
+                GUILayout.Label(row == 0 ? "Tests" : row == 1 ? "New" : "Maps", label, GUILayout.Width(40));
                 for (int i = 0; i < Plot.MapNames.Length; i++)
                 {
-                    if (Plot.LandMap(i) != (row == 1)) continue;
+                    if ((Plot.LandMap(i) ? 2 : i >= Plot.FirstNewMap ? 1 : 0) != row) continue;
                     GUI.enabled = i != g.map;
                     if (GUILayout.Button(i == 2 ? "Middle " + Mathf.RoundToInt(g.tuning.mapDistance) : Plot.MapButtons[i])) g.SetMap(i);
                 }
                 GUI.enabled = true;
                 GUILayout.EndHorizontal();
             }
+            // [Claude] the planet's gravity at a click; the slider on the F1 panel is the same number
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Gravity", label, GUILayout.Width(52));
+            for (int k = 0; k < 3; k++)
+            {
+                float gravity = k == 0 ? 1f : k == 1 ? 0.38f : 0.16f;
+                GUI.enabled = Mathf.Abs(g.tuning.planetGravity - gravity) > 0.005f;
+                if (GUILayout.Button(k == 0 ? "Earth 1.00" : k == 1 ? "Mars 0.38" : "Moon 0.16")) { g.tuning.planetGravity = gravity; g.TuningChanged(); }
+            }
+            GUI.enabled = true;
+            GUILayout.Label("now " + g.tuning.planetGravity.ToString("0.00"), label, GUILayout.Width(70));
+            GUILayout.EndHorizontal();
         }
         if (Net.IsHost)
         {
@@ -225,7 +238,7 @@ public class Hud : MonoBehaviour
         text.Append("<b>").Append(Net.IsHost ? "HOST" : "CLIENT").Append("</b>  player ").Append(g.localSlot + 1).Append('\n');
         text.Append("host fps ").Append(Mathf.RoundToInt(g.hostFps));
         if (!Net.IsHost) text.Append("   my fps ").Append(Mathf.RoundToInt(g.fps));
-        text.Append('\n');
+        text.Append("   gravity ").Append(g.tuning.planetGravity.ToString("0.00")).Append(" (").Append(Game.PlanetName(g.tuning.planetGravity)).Append(")\n");
         // the readout is about whichever plot the player is on or nearest
         Plot near = null;
         if (g.local != null)
@@ -236,6 +249,7 @@ public class Hud : MonoBehaviour
                 .Append("  gravel ").Append(Mathf.FloorToInt(plot.gravelShare * 100f)).Append("  packed ").Append(Mathf.FloorToInt(plot.packedShare * 100f)).Append(" %   clicks ").Append(plot.clicks).Append("</size>\n");
         if (near != null && near.IsLand) text.Append("<size=12>road staked from town A: ").Append(Mathf.RoundToInt(near.roadLength)).Append(" m   towns joined: ").Append(near.joined ? "<b>YES</b>" : "no").Append("</size>\n");
         if (near != null && near.IsQuarry) text.Append("<size=12>gravel on the heap: ").Append(near.stock).Append(" clicks' worth").Append((near.carrying & 1 << g.localSlot) != 0 ? "   <b>shovel loaded</b>" : "").Append("</size>\n");
+        if (near != null && near.Wears) text.Append("<size=12>wear: ruts and holes in ").Append((near.rutShare * 100f).ToString("0.0")).Append(" % of the road, the deepest ").Append(Mathf.RoundToInt(near.deepest * 100f)).Append(" cm</size>\n");
         if (near != null) g.lorries.Readout(text, near.id);
         text.Append("holding: <b>").Append(Plot.Tool == Plot.Stakes ? "1 stakes" : Plot.Tool == Plot.Grade ? "2 grade" : Plot.Tool == Plot.Zone ? "4 zoning" : Plot.Tool == Plot.Dev ? "7 DEV: finish a section" : Plot.Tool == Plot.Pave ? "5 asphalt" : Plot.Tool == Plot.Paint ? "6 paint lines" : Plot.Tool == Plot.Brush ? "8 paint brush" : "3 gravel").Append("</b>   sprint ").Append(Player.Sprinting ? "ON" : "off").Append(Player.Flying ? "   <b>FLYING</b>" : "").Append('\n');
         if (g.phase == Phase.Job) text.Append("towns joined by asphalt: ").Append(g.road.asphaltLinked ? "YES" : "no").Append("   by paint: ").Append(g.road.paintedLinked ? "YES" : "no").Append('\n');
@@ -262,8 +276,8 @@ public class Hud : MonoBehaviour
         }
         text.Append("<size=11>F1 tuning   F3 readout   Tab mouse\nWASD walk   Shift sprint on/off   Space hop   1 to 6 and 8 tools\nE drives a vehicle   right click sends a waiting truck\ndev: 7 finishes a section   V flies (Space up, Ctrl down)\nstakes: left click places or chooses, wheel moves\nthe chosen rope, X removes, right click lets go</size>");
 
-        GUI.Box(new Rect(8, 8, 360, 278), GUIContent.none, box);
-        GUI.Label(new Rect(16, 12, 350, 273), text.ToString(), label);
+        GUI.Box(new Rect(8, 8, 360, 312), GUIContent.none, box);
+        GUI.Label(new Rect(16, 12, 350, 307), text.ToString(), label);
     }
 
     // What each thing in the yard is and how big, written over it.
