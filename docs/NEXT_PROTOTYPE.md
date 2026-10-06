@@ -14,6 +14,7 @@ are not lost. Nothing here is designed or decided unless it says the user said i
   "We'll work on the mechanics for now and add set-dressing later." (2026-10-05)
 - **Signage.** Blocking roads with signs. Stop signs. (2026-10-05)
 - **Vehicles are damaged by "hot" (unspread) asphalt and by uncompacted gravel.** (2026-10-05)
+- **Players dumping asphalt** is cut for now: the dump truck is automated. (2026-10-05)
 - **Paving will do more** than it does now. A point to discuss, not yet said what. Today its
   only effect is that trucks drive half as fast again on rolled asphalt. (2026-10-05)
 - From earlier, still parked: dirt flinging as a mechanic; where earth comes from and goes
@@ -41,6 +42,8 @@ Quarries and gravel
 - Whether gravel should be limited on the maps, and how a map gets a quarry.
 
 Paving
+- The dump truck decides for itself when to come, and covers the whole road. Ordering asphalt,
+  or saying where it goes, is not in.
 - The dump truck fills itself whenever it is back at the yard. Where asphalt comes from (a
   plant, oil, the quarry) is not in.
 - The roller drives itself along its lane when sent. Whether a player should drive it.

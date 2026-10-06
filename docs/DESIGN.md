@@ -77,6 +77,14 @@ Decided by the user later on 2026-10-05:
 - For the next prototype: signage, blocking roads with signs, stop signs, and vehicles damaged
   by "hot" (unspread) asphalt and uncompacted gravel. These are in `NEXT_PROTOTYPE.md`.
 
+Decided by the user on 2026-10-05, after trying the dump truck:
+
+- **Dumping asphalt is automated.** The truck drives up and dumps asphalt, "that the player then
+  needs to level with either their shovel or a steamroller". **Players dumping asphalt is cut
+  for now.**
+- **Shovels are in the players' hands, with procedural animations.** "No physical hand or model
+  necessary, just a floating shovel model." For gravel, loading the quarry truck, and levelling.
+
 Everything under "Decided by the user" was said by the user. Everything marked **[Claude]** is a
 proposal that the user has seen and not objected to; it is not a decision until it has been played.
 Do not add anything that is not on this page. If something seems missing, ask.
@@ -272,6 +280,25 @@ Asked for by the user. Neither is part of the game.
 - **V toggles flying.** No gravity and nothing is solid. The way the camera looks is forward,
   Space is up and Ctrl is down, at three times walking speed, six with sprint on.
 
+### The shovel in the player's hands
+
+Asked for by the user on 2026-10-05. The motions are Claude's and have not been seen by the
+user.
+
+- **A shovel floats at the lower right of the view** while a tool that is a shovel is held:
+  grading, gravel or asphalt. It has no hand or arm. With any other tool, and while driving, it
+  drops out of sight.
+- **Each thing done with it moves it**, on springs, so it settles back by itself:
+  grading stabs the blade down and levers back; laying gravel or asphalt pushes forward and
+  flicks; packing gravel comes straight down; loading the shovel at the quarry's rock or from
+  the truck dips and comes up; flinging whips up and forward.
+- **A shovel loaded at the quarry shows its load** on the blade until it is flung.
+- It sways a little with each step.
+- **Other players see it**: every blob now carries its shovel, and it scoops, flings or slams
+  when its player does. (This is the first prototype's blob shovel, which was already there.)
+- Not done: the shovel is the same whatever the tool; nothing flies through the air; paint,
+  stakes and zoning have nothing in the hands.
+
 ### Driving
 
 Asked for by the user on 2026-10-05, to test driving. **A first proposal, not played.** It is
@@ -313,22 +340,24 @@ design decisions lead us". **This is a first proposal and has not been played.**
 
 The process, on a road that is already gravelled and packed:
 
-1. **A dump truck tips asphalt, the way a real one spreads from its tailgate** (user,
-   2026-10-05: "work similarly to how one would work in reality"). It stands at the yard end
-   with a load and its bed down. Left click it and the bed swings up; right click it and it is
-   sent. With the bed up it creeps (a quarter of its speed, `tipSpeed`) and asphalt runs out of
-   the back in a strip as wide as the truck. Empty, the bed comes down by itself and it drives
-   on at full speed. Sent with the bed down it just drives, tipping nothing. It tips only on
-   packed gravel that has none yet. One load is about 75 m (`dumpLoad`), and it fills again
-   whenever it is back at the yard. Claude's reading of "in reality": a truck does not tip
-   while driving at speed, the bed has to be raised, and the asphalt comes out behind it.
+1. **A dump truck brings the asphalt by itself** (user, 2026-10-05: "let's make it automated";
+   the bed that a player raised and the truck that a player sent are cut). A few seconds after
+   it arrives anywhere with a load, if packed gravel is still bare where it would tip, it raises
+   its bed and drives to the other end. Where there is bare packed gravel behind it, it creeps
+   and asphalt runs out of the back in a ridge as wide as the truck; elsewhere it drives at
+   speed. One load covers both lanes of the test road. Empty, it goes back to the yard and
+   fills. It stops when a tenth or less of what it could cover is bare, and no click does
+   anything to it.
 2. **Players spread it with the asphalt tool, key 5.** Hold left click on the road, as with
    gravel: two clicks spread a square (`spreadPerClick`). A square can be spread only if there
    is asphalt somewhere in its row across the road, so the work goes outward from the ridge,
    and a lane the truck has not driven cannot be started.
-3. **A roller rolls it.** It stands off the road at the far end. Right click it and it drives
-   the road in its lane, slowly (`rollerSpeed`), rolling the spread asphalt under it; send it
-   back and it rolls the other lane. Asphalt it has rolled is blacker and lies lower.
+3. **Or a roller levels it, and rolls it** (user: "level with either their shovel or a
+   steamroller"). It stands off the road at the far end. Right click it and it drives the road
+   in its lane, slowly (`rollerSpeed`). Any grid square under it that has asphalt anywhere in
+   it is pressed out flat across the whole square and rolled, so the roller alone finishes a
+   lane the truck has tipped on. Send it back for the other lane. Asphalt it has rolled is
+   blacker and lies lower. The roller on the Driving ground does the same where it is driven.
 4. **Players paint the lines with the paint tool, key 6.** Hold left click on rolled asphalt:
    one click paints a square's share of the lines, a white line inside each edge and a broken
    yellow one down the middle.
@@ -343,8 +372,8 @@ The process, on a road that is already gravelled and packed:
 - The second road on the ground is the same road finished, with trucks on it, to see where it
   is going.
 - The hot spot works for spreading and painting as it does for grading and gravel.
-- In a check by script one load, 240 spreading clicks, two passes of the roller and 240
-  painting clicks paved and painted the whole 60 m road.
+- In a check with nobody touching anything but the roller, the truck tipped both lanes and
+  went home, and two passes of the roller left the whole 60 m road level and rolled.
 - **Why these choices:** each machine does the part a machine does (bring the stuff, press it
   flat) and is sent, not driven, which is the system trucks already have; each hand job is the
   hold-to-click on squares that grading and gravel already are. The row rule is there so that

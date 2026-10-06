@@ -48,6 +48,7 @@ public class Lorries : MonoBehaviour
         public Rig rig;                     // set if it is a truck that waits to be sent
         public Transform bedPart;           // a dump truck's bed, which tips
         public float bedAngle;
+        public bool tipping;                // host: asphalt came out of it this quarter second
         public bool Alive => body != null;
     }
 
@@ -132,8 +133,9 @@ public class Lorries : MonoBehaviour
         var plot = Game.I.plots[r.plot];
         if (r.l == null || !r.l.Alive) return "The next truck is on its way.\n(If none comes, no road joins the depots.)";
         string what = r.kind == GravelTruck ? "Gravel truck: " + r.load + " of " + Mathf.RoundToInt(Game.I.tuning.haulLoad) + " shovels aboard."
-            : r.kind == DumpTruck ? "Dump truck: " + (r.load > 0 ? "asphalt aboard, bed " + (r.bed ? "UP: it will tip as it drives." : "down. Left click it to raise the bed.") : "empty. It fills at the yard.")
-            : "Roller: it rolls spread asphalt as it drives.";
+            : r.kind == DumpTruck ? "Dump truck. It works by itself:\nit tips asphalt wherever there is packed gravel without any."
+            : "Roller: it levels and rolls asphalt as it drives.";
+        if (r.kind == DumpTruck) return what;
         return r.at < 0 ? what + "\nOn its way to " + plot.DepotName(r.to) + "." : what + "\nStanding at " + plot.DepotName(r.at) + ". Right click it to send it on.";
     }
 
@@ -146,18 +148,11 @@ public class Lorries : MonoBehaviour
 
     // host: send a standing truck to another depot. It is put at the start of its way, facing
     // along it: there is no turning round at the end of a road yet.
-    // host: a standing dump truck's bed goes up, or comes down
-    public bool RaiseBed(int rig)
-    {
-        if (rig < 0 || rig >= rigs.Length || rigs[rig].kind != DumpTruck || StandingAt(rig) < 0) return false;
-        rigs[rig].bed = !rigs[rig].bed && rigs[rig].load > 0;
-        return true;
-    }
-
-    public bool Send(int rig, int depot)
+    public bool Send(int rig, int depot, bool byPlayer = true)
     {
         if (rig < 0 || rig >= rigs.Length) return false;
         var r = rigs[rig];
+        if (byPlayer && r.kind == DumpTruck) return false;     // the dump truck is nobody's to send
         if (StandingAt(rig) < 0 || depot == r.at || !Game.I.plots[r.plot].DepotRoute(r.l.path, r.at, depot)) return false;
         var path = r.l.path;
         Vector3 start = path[1], ahead = path[5] - path[1];
@@ -303,6 +298,21 @@ public class Lorries : MonoBehaviour
             }
         }
 
+        // The dump truck sends itself. Standing with a load, a few seconds after it arrived, it
+        // raises its bed and drives to the other end if any packed gravel still has no asphalt;
+        // standing empty away from the yard, it goes back to fill.
+        for (int r = 0; r < rigs.Length; r++)
+        {
+            var rig = rigs[r];
+            if (rig.kind != DumpTruck || StandingAt(r) < 0) continue;
+            rig.wait -= Time.deltaTime;
+            if (rig.wait > 0) continue;
+            rig.wait = 4f;
+            if (rig.load == 0) { rig.bed = false; if (rig.at != rig.home) Send(r, rig.home, false); }
+            else if (g.plots[rig.plot].NeedsAsphalt()) { rig.bed = true; Send(r, rig.at == 0 ? 1 : 0, false); }
+            else rig.bed = false;
+        }
+
         // a truck that waits to be sent: a new one stands at its home depot whenever there is none
         foreach (var rig in rigs)
         {
@@ -313,6 +323,8 @@ public class Lorries : MonoBehaviour
             rig.at = rig.home;
             rig.to = -1;
             rig.load = rig.kind == DumpTruck ? Mathf.RoundToInt(g.tuning.dumpLoad) : 0;
+            rig.bed = false;
+            rig.wait = 4f;
         }
 
         // the map: once the towns are joined, a truck from each every few seconds
@@ -462,8 +474,9 @@ public class Lorries : MonoBehaviour
                 else if (l.rig.bed && l.rig.load > 0)
                 {
                     // out of the back of the raised bed, the width of the truck
-                    if (g.plots[l.plot].Dump(tr.position - Flat(tr.forward).normalized * (t.truckLength * 0.5f + 0.3f), Flat(tr.right).normalized, t.truckWidth * 0.5f)) l.rig.load--;
-                    if (l.rig.load == 0) l.rig.bed = false;     // empty: the bed comes down by itself
+                    l.tipping = g.plots[l.plot].Dump(tr.position - Flat(tr.forward).normalized * (t.truckLength * 0.5f + 0.3f), Flat(tr.right).normalized, t.truckWidth * 0.5f);
+                    if (l.tipping) l.rig.load--;
+                    if (l.rig.load == 0) { l.rig.bed = false; l.tipping = false; }     // empty: the bed comes down by itself
                 }
             }
             if (g.plots[l.plot].Wears && l.wear >= 0.25f && touching.Count > 0)
@@ -501,6 +514,7 @@ public class Lorries : MonoBehaviour
                     }
                     // the dump truck fills again whenever it is back at the yard
                     if (l.rig.kind == DumpTruck && l.rig.at == l.rig.home) l.rig.load = Mathf.RoundToInt(t.dumpLoad);
+                    if (l.rig.kind == DumpTruck) { l.rig.bed = false; l.tipping = false; l.rig.wait = 4f; }
                     continue;
                 }
                 l.trips++;
@@ -519,7 +533,7 @@ public class Lorries : MonoBehaviour
                 rb.AddTorque(Vector3.up * (turn - rb.angularVelocity.y) * 6f, ForceMode.Acceleration);
                 float wanted = t.lorrySpeed * Mathf.Lerp(1f, 0.35f, Mathf.Clamp01(bend / 40f));
                 if (l.rig != null && l.rig.kind == Roller) wanted *= t.rollerSpeed;
-                else if (l.rig != null && l.rig.bed) wanted *= t.tipSpeed;      // creeping, to lay it evenly
+                else if (l.rig != null && l.rig.bed && l.tipping) wanted *= t.tipSpeed;     // creeping while it tips, to lay it evenly
                 else if (g.plots[l.plot].IsPaved(position.x, position.z)) wanted *= t.pavedSpeed;
                 float speed = Vector3.Dot(rb.linearVelocity, tr.forward);
                 // the wheels only bite as well as the surface lets them

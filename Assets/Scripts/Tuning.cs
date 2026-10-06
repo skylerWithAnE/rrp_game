@@ -81,10 +81,10 @@ public class Tuning : ScriptableObject
     [Range(0, 1)] public float gravelFromStock = 1f;
 
     [Header("Paving (the Paving test ground only)")]
-    [Tooltip("How far the dump truck's load of asphalt goes: quarter-seconds of tipping at its creep. 200 is about 75 m of road.")]
-    [Range(20, 250)] public float dumpLoad = 200f;
+    [Tooltip("How far the dump truck's load of asphalt goes: quarter-seconds of tipping at its creep. 250 is about 110 m of road, both lanes of the test road.")]
+    [Range(20, 250)] public float dumpLoad = 250f;
     [Tooltip("How fast the dump truck creeps while it tips, as a share of a truck's speed.")]
-    [Range(0.1f, 1)] public float tipSpeed = 0.25f;
+    [Range(0.1f, 1)] public float tipSpeed = 0.3f;
     [Tooltip("How much of spreading a square one click does. 0.5 spreads it in two clicks.")]
     [Range(0.1f, 1)] public float spreadPerClick = 0.5f;
     [Tooltip("How much of the rolling the roller does to a square each quarter second it is on it.")]

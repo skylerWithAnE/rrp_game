@@ -20,6 +20,7 @@ public enum Op : byte
     Finish,                         // client -> host, the dev tool: do a whole section's next stage
     Car, CarPose,                   // client -> host: get in or out of a vehicle or tip its bucket; where the one I drive is
     Cars,                           // host -> clients: every driven vehicle
+    Swing,                          // client -> host: I swung my shovel, this way
 }
 
 // A byte buffer with the few field types the game sends.

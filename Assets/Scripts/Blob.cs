@@ -55,7 +55,7 @@ public class Blob : MonoBehaviour
         loadVisual.gameObject.SetActive(false);
 
         squash.x = 1;
-        shovel.gameObject.SetActive(false);   // station 1 has no tools
+        // every blob carries a shovel; its swings are the ones its player made (Game.SendSwing)
     }
 
     // First person: the local player does not see their own blob.

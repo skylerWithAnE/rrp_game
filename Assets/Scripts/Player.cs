@@ -136,6 +136,9 @@ public class Player : MonoBehaviour
             float k = 1f - Mathf.Exp(-14f * dt);
             transform.position = Vector3.Lerp(transform.position, netPos, k);
             yaw = Mathf.LerpAngle(yaw, netYaw, k);
+            // a shovel loaded at the quarry shows its load
+            int carried = (Game.I.plots[Plot.Quarry].carrying & 1 << slot) != 0 ? Cubes.Rock : 0;
+            if (carried != load) { load = carried; blob.SetLoad(load, 0); }
         }
         transform.rotation = Quaternion.Euler(0, yaw, 0);
 

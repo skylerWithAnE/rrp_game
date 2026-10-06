@@ -28,6 +28,7 @@ technical plan is in `archive/TECH_PLAN_badscale.md`.
 | `Plot.cs` | A piece of ground with its stakes, sections and tools. Eight small ones are the stations; a ninth is the land of a map, with its towns |
 | `Lorries.cs` | The trucks that drive themselves, on the test grounds' roads and on a map's, and the ones that wait to be sent |
 | `Cars.cs` | The vehicles players drive |
+| `Shovel.cs` | The shovel in the local player's view, and its motion |
 | `Hud.cs` | Menu, readout (F3), tuning panel (F1), labels over things, tool keys |
 | `AutoTest.cs` | Test tooling: command-line flags for self-hosting, self-joining, clicking and logging |
 | `Mats.cs` | Materials and primitive meshes |
@@ -164,6 +165,14 @@ each does to the ground, four times a second (`Cars.Work`): `Plot.Pack` and `Plo
 the roller, `Plot.PaintUnder` under the paint truck, `Plot.Tip` for the loader's bucket. A
 driving player's blob sits at the seat, and on the host its pusher is switched off so it does
 not shove the vehicle.
+
+**The shovel** (`Shovel`) is a child of the camera, moved by four springs. `Shovel.Swing` is
+called where the local player's click is made (`Plot.Update`, `Plot.QuarryTool`), kicks the
+springs, and tells the others through `Game.SendSwing`: a client sends `Swing` to the host,
+which plays it on that player's blob (`Blob.Swing`) and passes it on as `VerbFx`.
+
+The dump truck on the Paving ground sends itself (in `Lorries.Update`): it asks
+`Plot.NeedsAsphalt` and calls `Send` with nobody's hand on it.
 
 The dev tool is a `Finish` message: `Plot.HostFinish` does a section's next stage and sends the
 points like any other edit.

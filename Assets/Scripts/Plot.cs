@@ -1027,7 +1027,7 @@ public class Plot : MonoBehaviour
                     break;
                 }
             case Paving:
-                text = "A road to pave. 1: left click the dump truck to raise its bed, then right click to send it:\nit creeps along tipping asphalt behind it.   2: press 5 and hold left click to spread the asphalt.\n3: right click the roller to roll it.   4: press 6 and hold left click to paint the lines.";
+                text = "A road to pave. The dump truck comes by itself and tips asphalt down each lane.\nLevel it: press 5 and hold left click with the shovel, or right click the roller to send it over.\nThe roller also rolls it. Then press 6 and hold left click to paint the lines.";
                 at = stakes[1] + Vector3.up * 3f;
                 depots.Add(0);
                 depots.Add(3);
@@ -1833,7 +1833,28 @@ public class Plot : MonoBehaviour
         return changed.Count > 0;
     }
 
-    // host: the roller rolls the spread asphalt in the grid squares under it
+    // Is there packed gravel with no asphalt on it where the dump truck would tip: down the
+    // middle of a lane, the width of the truck? The strips at a lane's edges are for the
+    // shovel and the roller, and the truck does not come back for them.
+    public bool NeedsAsphalt()
+    {
+        if (!Ready) return false;
+        // The truck does not follow its lane to the centimetre, so slivers are always left;
+        // it is worth a trip only when a tenth of what it could cover is still bare.
+        float half = Game.I.tuning.truckWidth * 0.5f - 0.15f;
+        int could = 0, bare = 0;
+        for (int i = 0; i < h.Length; i++)
+        {
+            if (zone[i] != 1 || Mathf.Abs(Mathf.Abs(across[i]) - lane * 0.5f) > half) continue;
+            could++;
+            if (top[i] == 0 && Wants(i, Pave)) bare++;
+        }
+        return bare * 10 > could;
+    }
+
+    // host: the roller levels and rolls the asphalt in the grid squares under it. A square with
+    // any asphalt in it, even just where the truck left it, is pressed out flat across the
+    // whole square and rolled.
     public void Roll(List<Vector3> wheels)
     {
         var tuning = Game.I.tuning;
@@ -1845,12 +1866,21 @@ public class Plot : MonoBehaviour
             if (!Section(wheel.x, wheel.z, out int link, out float t, out float side) || Mathf.Abs(side) > lane) continue;
             Square(tuning, link, ref t, ref side, out float halfT, out float halfSide);
             Box(link, t, side, halfT, halfSide, out int x0, out int x1, out int z0, out int z1);
+            bool any = false;
             for (int iz = z0; iz <= z1; iz++)
                 for (int ix = x0; ix <= x1; ix++)
                 {
                     int i = iz * w + ix;
-                    if (top[i] < Spread || top[i] >= Rolled || !InSquare(i, link, t, side, halfT, halfSide) || changed.Contains(i)) continue;
-                    top[i] = (byte)Mathf.Min(Rolled, top[i] + add);
+                    if (top[i] > 0 && InSquare(i, link, t, side, halfT, halfSide)) any = true;
+                }
+            if (!any) continue;
+            for (int iz = z0; iz <= z1; iz++)
+                for (int ix = x0; ix <= x1; ix++)
+                {
+                    int i = iz * w + ix;
+                    if (top[i] >= Rolled || !InSquare(i, link, t, side, halfT, halfSide) || changed.Contains(i)) continue;
+                    if (top[i] == 0 && !Wants(i, Pave)) continue;
+                    top[i] = (byte)Mathf.Min(Rolled, Mathf.Max(top[i], Spread) + add);
                     changed.Add(i);
                 }
         }
@@ -2169,7 +2199,7 @@ public class Plot : MonoBehaviour
         Net.ToHost(m, true);
     }
 
-    public const int Scoop = 0, FlingIn = 1, TakeOff = 2, FlingToHeap = 3, PlaceHeap = 4, SendRig = 5, RaiseBed = 6;
+    public const int Scoop = 0, FlingIn = 1, TakeOff = 2, FlingToHeap = 3, PlaceHeap = 4, SendRig = 5;
 
     // host: one thing a player does with a shovel or a truck here.
     //   Scoop        load the shovel at the rock
@@ -2184,7 +2214,6 @@ public class Plot : MonoBehaviour
         var t = Game.I.tuning;
         var rigs = Game.I.lorries;
         if (what == SendRig) return rigs.Send(Mathf.RoundToInt(a), Mathf.RoundToInt(b));
-        if (what == RaiseBed) return rigs.RaiseBed(Mathf.RoundToInt(a));
         if (!IsQuarry) return false;
         if (what == PlaceHeap)
         {
@@ -2316,16 +2345,15 @@ public class Plot : MonoBehaviour
         int rig = g.lorries.RigOf(hit.collider);
         if (rig < 0 || g.lorries.rigs[rig].plot != id) return false;
         int at = g.lorries.rigs[rig].at;
+        if (g.lorries.rigs[rig].kind == Lorries.DumpTruck)
+        {
+            // it comes and goes by itself
+            Say("Dump truck: it brings asphalt by itself. Level what it leaves with the asphalt tool (5) or the roller", false);
+            return true;
+        }
         if (at < 0) { Say("on its way to " + DepotName(g.lorries.rigs[rig].to), false); return true; }
         int to = (at + 1) % Mathf.Max(1, depots.Count);
         rigLine = g.lorries.RigName(rig) + ": right click sends it to " + DepotName(to);
-        if (g.lorries.rigs[rig].kind == Lorries.DumpTruck)
-        {
-            // a dump truck tips only with its bed up, creeping forward, as a real one spreads
-            bool up = g.lorries.rigs[rig].bed;
-            rigLine += up ? ", tipping as it goes.   Left click lowers its bed" : " without tipping.   Left click raises its bed";
-            if (mouse.leftButton.wasPressedThisFrame) RequestShovel(RaiseBed, rig);
-        }
         if (mouse.rightButton.wasPressedThisFrame) RequestShovel(SendRig, rig, to);
         return false;   // the caller may have more to say about it
     }
@@ -2388,6 +2416,7 @@ public class Plot : MonoBehaviour
         if (what >= 0 && click)
         {
             nextClick = Time.time + 1f / tuning.clicksPerSecond;
+            Shovel.Swing(what == Scoop || what == TakeOff ? Shovel.Scoop : Shovel.Fling);
             RequestShovel(what);
         }
         return true;
@@ -2542,6 +2571,14 @@ public class Plot : MonoBehaviour
         // holding the button keeps clicking, as fast as the cap allows
         if (!mouse.leftButton.isPressed || Time.time < nextClick) return;
         nextClick = Time.time + 1f / tuning.clicksPerSecond;
+        // the shovel in the player's hands: it digs, spreads or tamps with each click
+        if (Tool == Grade) Shovel.Swing(Shovel.Dig);
+        else if (Tool == Pave) Shovel.Swing(Shovel.Spread);
+        else if (Tool == Gravel)
+        {
+            int at = Mathf.Clamp(Mathf.RoundToInt((aim.z - origin.z) / Cell), 0, d - 1) * w + Mathf.Clamp(Mathf.RoundToInt((aim.x - origin.x) / Cell), 0, w - 1);
+            Shovel.Swing(gravel[at] < FullGravel ? Shovel.Spread : Shovel.Tamp);
+        }
         RequestClick(aim.x, aim.z, HotClick(tuning, aim, link, t, side), Tool);
     }
 

@@ -39,6 +39,13 @@ intuitive. I did not test zoning roads, but it clearly worked from your example.
 that looked off' are fine." "The quarry needs to be a bit bigger, and actually a dug out
 section of the world." The rest of that message was requests, and is in `DESIGN.md`.
 
+## 2026-10-05, afternoon: the dump truck
+
+Claude was not watching. The user: "The dump truck does not appear to work. And the bed rotates
+in the wrong direction." Both were faults (see `NOTES.md`): the truck could not be clicked with
+the stake, zoning or dev tool in hand, and the bed swung nose down. After the fix the user
+changed the design instead: dumping is automated, and players level what is dumped.
+
 ## What Claude took from the first playtest
 
 - Nothing wrecked on Short, so nothing there showed the truck as the judge of the road. Bare

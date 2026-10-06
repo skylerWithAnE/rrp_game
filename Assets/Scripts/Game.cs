@@ -103,6 +103,7 @@ public class Game : MonoBehaviour
         cars = Child<Cars>("Cars");
         for (int i = 0; i < plots.Length; i++) plots[i].id = i;
         cam = Child<CameraRig>("Camera");
+        cam.gameObject.AddComponent<Shovel>();
         Child<Hud>("Hud");
         Child<AutoTest>("AutoTest");
         cubes.ApplyTuning();
@@ -319,6 +320,17 @@ public class Game : MonoBehaviour
 
     public Vector3 SpawnPoint(int slot) { return Plot.LandMap(map) ? plots[Plot.Land].SpawnAt(slot) : map == Plot.QuarryMap ? plots[Plot.Quarry].QuarrySpawn(slot) : yard.Spawn(slot); }
 
+    // The local player swung their shovel (one of Blob's swings): tell everyone else, so they
+    // see it on this player's blob.
+    public void SendSwing(int kind)
+    {
+        if (!Net.Running || localSlot < 0) return;
+        var m = Msg.New(Net.IsHost ? Op.VerbFx : Op.Swing, 4);
+        if (Net.IsHost) m.U8((byte)localSlot);
+        m.U8((byte)kind);
+        if (Net.IsHost) Net.ToClients(m, false); else Net.ToHost(m, false);
+    }
+
     // is there ground to stand on yet? A client waits for the host to send it.
     public bool WorldReady => Plot.LandMap(map) ? plots[Plot.Land].Ready : map == Plot.QuarryMap ? plots[Plot.Quarry].Ready : yard.Ready;
 
@@ -424,6 +436,16 @@ public class Game : MonoBehaviour
                 cars.HostAsk(slot, car, what);
             }
             else if (op == Op.CarPose) cars.OnPose(slot, m);
+            else if (op == Op.Swing)
+            {
+                // shown on that player's blob here, and passed on to everyone else
+                int kind = m.U8();
+                p.Swing(kind);
+                var fx = Msg.New(Op.VerbFx, 4);
+                fx.U8((byte)slot);
+                fx.U8((byte)kind);
+                Net.ToClients(fx, false);
+            }
             else if (op == Op.Finish)
             {
                 int plot = m.U8(), link = m.U8();
