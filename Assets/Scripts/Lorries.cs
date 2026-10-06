@@ -41,7 +41,8 @@ public class Lorries : MonoBehaviour
         public Rigidbody rb;
         public Vector3[] wheels;
         public readonly List<Vector3> path = new List<Vector3>();
-        public int index, reached, trips, wrecks;
+        public int index, reached, trips, wrecks, spins;
+        public float spin, seed;            // host: seconds left of a spin-out; and what makes this truck's tail wag unlike the next one's
         public float stuck, flipped, launch = -1, wait, wear, off;
         // host: how fast each wheel has come down on the ground since the road was last worn (m/s), and where
         public readonly float[] hit = new float[4];
@@ -101,7 +102,7 @@ public class Lorries : MonoBehaviour
         {
             if (l.body != null) Destroy(l.body);
             l.body = null;
-            l.trips = l.wrecks = 0;
+            l.trips = l.wrecks = l.spins = 0;
             l.launch = -1;
             l.wait = Wait + (l.back ? 1.5f : 0);
             // the example roads always have trucks on the way
@@ -187,7 +188,7 @@ public class Lorries : MonoBehaviour
     public void Readout(StringBuilder text, int plot)
     {
         if (lorries == null) return;
-        int alive = 0, trips = 0, wrecks = 0;
+        int alive = 0, trips = 0, wrecks = 0, spins = 0;
         bool wanted = false;
         foreach (var l in lorries)
         {
@@ -195,12 +196,13 @@ public class Lorries : MonoBehaviour
             if (l.Alive) alive++;
             trips += l.trips;
             wrecks += l.wrecks;
+            spins += l.spins;
             wanted |= l.wanted;
         }
         if (!wanted && alive + trips + wrecks == 0) return;
         // every truck that has set off down this road since it was made, which is what wear is counted in
         text.Append("<size=12>trucks ").Append(Plot.Names[plot]).Append(": <b>").Append(alive + trips + wrecks).Append(" so far</b>   on the road ").Append(alive)
-            .Append("   arrived ").Append(trips).Append("   wrecked ").Append(wrecks).Append("</size>\n");
+            .Append("   arrived ").Append(trips).Append("   wrecked ").Append(wrecks).Append(spins > 0 ? "   spun out " + spins : "").Append("</size>\n");
     }
 
     // how many trucks have set off down a plot's road, arrived, and been wrecked, since it was made
@@ -260,7 +262,8 @@ public class Lorries : MonoBehaviour
         float top = Travel - 0.25f;     // at rest the springs are squashed a little under a quarter
         l.wheels = new[] { new Vector3(-track, top, front), new Vector3(track, top, front), new Vector3(-track, top, rear), new Vector3(track, top, rear) };
         l.index = l.reached = 0;
-        l.stuck = l.flipped = l.off = 0;
+        l.stuck = l.flipped = l.off = l.spin = 0;
+        l.seed = Random.value * 100f;
         l.launch = -1;
     }
 
@@ -380,6 +383,7 @@ public class Lorries : MonoBehaviour
             snapshot.U8((byte)(l.Alive ? 1 : 0));
             snapshot.U16((ushort)l.trips);
             snapshot.U16((ushort)l.wrecks);
+            snapshot.U16((ushort)l.spins);
             if (!l.Alive) continue;
             snapshot.V3(l.body.transform.position);
             snapshot.Rot(l.body.transform.rotation);
@@ -428,6 +432,7 @@ public class Lorries : MonoBehaviour
             bool alive = m.U8() != 0;
             l.trips = m.U16();
             l.wrecks = m.U16();
+            l.spins = m.U16();
             l.wanted = alive;
             if (!alive)
             {
@@ -485,6 +490,7 @@ public class Lorries : MonoBehaviour
 
             // suspension and sideways grip at each wheel
             int grounded = 0;
+            float loose = 0;        // how much of what the wheels are on is loose gravel
             touching.Clear();
             for (int k = 0; k < l.wheels.Length; k++)
             {
@@ -498,8 +504,13 @@ public class Lorries : MonoBehaviour
                 float squash = 1f - hit.distance / Travel;
                 float force = Spring * springs * squash - Damper * damping * Vector3.Dot(v, up);
                 if (force > 0) rb.AddForceAtPosition(up * force * mass, origin);
-                rb.AddForceAtPosition(-tr.right * Vector3.Dot(v, tr.right) * Grip * bite * mass * 0.25f, origin);
+                // A wheel on loose gravel holds sideways only a share as well as one on packed
+                // gravel on Earth, whatever the gravity: the stones roll under it.
+                float under = g.plots[l.plot].Loose(hit.point.x, hit.point.z);
+                loose += under;
+                rb.AddForceAtPosition(-tr.right * Vector3.Dot(v, tr.right) * Grip * Mathf.Lerp(bite, Mathf.Min(bite, t.looseGrip), under) * mass * 0.25f, origin);
             }
+            if (grounded > 0) loose /= grounded;
             if (l.launch >= 0) continue;
             if (l.rig != null && l.rig.at >= 0)
             {
@@ -574,7 +585,27 @@ public class Lorries : MonoBehaviour
                 float angle = Vector3.SignedAngle(forward, Flat(near - position), Vector3.up);
                 float bend = Mathf.Max(Mathf.Abs(angle), Vector3.Angle(forward, Flat(far - position)));
                 float turn = Mathf.Clamp(angle * 0.06f, -1.5f, 1.5f);
-                rb.AddTorque(Vector3.up * (turn - rb.angularVelocity.y) * 6f, ForceMode.Acceleration);
+                // Loose gravel: the tail is thrown about, the more so the faster the truck goes
+                // and the harder it turns, and the wheel answers less. Sideways enough to its
+                // own motion, it has spun out: round it goes with its wheels locked, and the
+                // driver has it back a few seconds later, wherever it has come to rest.
+                float slide = loose * t.looseFishtail;
+                Vector3 going = Flat(rb.linearVelocity);
+                if (l.spin > 0)
+                {
+                    l.spin -= Time.fixedDeltaTime;
+                    rb.AddForce(-going * 0.8f * bite * mass);
+                    goto spun;
+                }
+                float wag = (Mathf.PerlinNoise(Time.time * 0.7f, l.seed) - 0.5f) * 2f;
+                float answer = 6f * Mathf.Lerp(1f, 0.35f, Mathf.Clamp01(slide));
+                rb.AddTorque(Vector3.up * ((turn - rb.angularVelocity.y) * answer + (wag * 1.5f + turn * 1.2f) * slide * Mathf.Clamp01(going.magnitude / 4f)), ForceMode.Acceleration);
+                if (slide > 0.2f && going.magnitude > 2f && Vector3.Angle(forward, going) > t.spinAngle)
+                {
+                    l.spin = t.spinSeconds;
+                    l.spins++;
+                    rb.AddTorque(Vector3.up * Mathf.Sign(Vector3.SignedAngle(going, forward, Vector3.up)) * 2.5f, ForceMode.VelocityChange);
+                }
                 float wanted = t.lorrySpeed * Mathf.Lerp(1f, 0.35f, Mathf.Clamp01(bend / 40f));
                 if (l.rig != null && l.rig.kind == Roller) wanted *= t.rollerSpeed;
                 else if (l.rig != null && l.rig.bed && l.tipping) wanted *= t.tipSpeed;     // creeping while it tips, to lay it evenly
@@ -583,6 +614,7 @@ public class Lorries : MonoBehaviour
                 // the wheels only bite as well as the surface lets them
                 float push = t.lorryPower * bite * g.plots[l.plot].Going(position.x, position.z);
                 rb.AddForce(tr.forward * Mathf.Clamp((wanted - speed) * 4f, -t.lorryPower * bite, push) * mass);
+            spun:;
             }
 
             // stuck, on its side or fallen off the world: it bounces away and blows up

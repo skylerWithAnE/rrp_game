@@ -220,6 +220,7 @@ public class Hud : MonoBehaviour
             }
             GUI.enabled = true;
             GUILayout.Label("now " + g.tuning.planetGravity.ToString("0.00"), label, GUILayout.Width(70));
+            if (g.map == Plot.SpinMap && GUILayout.Button("Loosen the gravel again")) g.plots[Plot.SpinOut].HostLoosen();
             GUILayout.EndHorizontal();
         }
         if (Net.IsHost)

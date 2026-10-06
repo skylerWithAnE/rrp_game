@@ -138,6 +138,16 @@ public class Tuning : ScriptableObject
     [Tooltip("1: trucks wear the road on a map. 0: they do not.")]
     [Range(0, 1)] public float mapWear = 1f;
 
+    [Header("Loose gravel (everywhere there is any)")]
+    [Tooltip("How well wheels hold sideways on gravel that is not packed, as a share of what they hold on packed gravel on Earth, and the same on every planet. 1: as well as on packed.")]
+    [Range(0.02f, 1)] public float looseGrip = 0.1f;
+    [Tooltip("How hard loose gravel throws a truck's tail about, and how much less the wheel answers. 0: not at all.")]
+    [Range(0, 3)] public float looseFishtail = 2f;
+    [Tooltip("A truck sliding more than this far sideways on loose gravel (degrees between where it points and where it is going) has spun out.")]
+    [Range(10, 80)] public float spinAngle = 22f;
+    [Tooltip("Seconds a truck that has spun out slides with its wheels locked before its driver has it back.")]
+    [Range(0, 8)] public float spinSeconds = 2.5f;
+
     [Header("Station 4: gravel")]
     [Tooltip("Full depth of gravel on the road (m).")]
     [Range(0.05f, 0.25f)] public float gravelDepth = 0.15f;
@@ -178,9 +188,9 @@ public class Tuning : ScriptableObject
     [Tooltip("[Claude] Everything runs this many times as fast, for watching hundreds of trucks go by. 1 is normal. Players walk faster too.")]
     [Range(1, 10)] public float fastForward = 1f;
 
-    [Header("Claude's additions (maps only): 0 switches each off")]
+    [Header("Claude's additions (maps, and the Spin-out ground): 0 switches each off")]
     [Tooltip("Trucks pack the gravel they drive over: how much of the packing each truck does to the squares under its wheels, four times a second. 0.25 is one click's worth. 0: only clicks pack.")]
-    [Range(0, 1)] public float truckPacking = 0.25f;
+    [Range(0, 1)] public float truckPacking = 0.02f;
     [Tooltip("1: a click on the hot spot also does one ordinary click on every other square in the same row across the road. 0: the hot spot only doubles its own square.")]
     [Range(0, 1)] public float hotSpotRow = 1f;
 
