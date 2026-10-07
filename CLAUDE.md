@@ -67,7 +67,10 @@ rejected on 2026-10-04. Its code is still in `Assets/Scripts` (`Cubes`, `Quake`,
 asking.
 
 ## Ground rules from the user
-
+- **Log Liberally** We are currently prototyping mechanics. No amount of logging is too much logging.
+  Use logging liberally to check as many values as possible. It will help us answer questions about how things feel, 
+  when they are happening. Eventually when we move on to build our final prototype, we will strip all
+  of the valuable code out and into a new project.
 - **Latitude for the prototype push (user, 2026-10-05).** The session building the maps worked
   while the user was asleep and was deliberately unrestricted: solve problems creatively, and add
   a system if it would streamline the gameplay, without asking first. Write down each addition as
